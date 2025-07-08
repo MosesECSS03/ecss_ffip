@@ -71,6 +71,40 @@ class DatabaseConnectivity {
         }
     }
 
+    async updateDocument(databaseName, collectionName, query, update) {
+        try {
+            await this.initialize();
+            const db = this.client.db(databaseName);
+            const collection = db.collection(collectionName);
+            const result = await collection.updateOne(query, update);
+            if (result.modifiedCount === 1) {
+                return {
+                    success: true,
+                    message: 'Document updated successfully',
+                    data: result
+                };
+            } else if (result.matchedCount === 1) {
+                return {
+                    success: true,
+                    message: 'No changes made to the document',
+                    data: result
+                };
+            } else {
+                return {
+                    success: false,
+                    message: 'No document found to update',
+                    data: null
+                };
+            }
+        } catch (error) {
+            console.error('Error updating document:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
     async disconnect() {
         try {
             await this.client.close();

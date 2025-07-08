@@ -3,6 +3,7 @@ import QRCode from 'qrcode'
 import ParticipantDetails from './ParticipantDetails'
 import { translations } from '../utils/translations'
 import './Pages.css'
+import { io } from 'socket.io-client';
 
 class SwipeView extends Component {
   constructor(props) {
@@ -13,15 +14,38 @@ class SwipeView extends Component {
       touchStart: 0,
       touchEnd: 0
     }
+    // Initialize socket connection
+    this.socket = io(
+      window.location.hostname === 'localhost'
+        ? 'http://localhost:3001'
+        : 'https://ecss-fft.azurewebsites.net'
+    );
   }
 
   componentDidMount() {
-    this.generateQR()
+    this.generateQR();
     document.addEventListener('keydown', this.handleKeyDown)
+    // Listen for survey-updated event
+    if (this.socket) {
+      this.socket.on('survey-updated', (data) => {
+        console.log('Socket event received', data);
+        // If the updated participant matches the current participant, update details
+        const { participant } = this.props;
+        if (data && data.participant && (data.participant._id === participant._id || data.participant.id === participant.id)) {
+          // Call onParticipantUpdate if provided by parent
+          if (typeof this.props.onParticipantUpdate === 'function') {
+            this.props.onParticipantUpdate(data.participant);
+          }
+        }
+      });
+    }
   }
 
   componentWillUnmount() {
     document.removeEventListener('keydown', this.handleKeyDown)
+    if (this.socket) {
+      this.socket.disconnect();
+    }
   }
 
   // Check if participant has any station results

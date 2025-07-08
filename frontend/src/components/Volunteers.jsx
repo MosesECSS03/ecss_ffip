@@ -54,14 +54,52 @@ class Volunteers extends Component {
         this.videoRef.current,
         async result => {
           if (result && result.data && !this.state.qrScanned) {
-            //this.setState({ qrValue: result.data, qrScanned: true, cameraError: null })
             this.qrScanner.stop()
-            // Send scanned QR code to backend
-            const response = await axios.post(`${API_BASE_URL}/participants`, {
-              "purpose": "retrieveParticipant",
-              "participantID": result.data
-            });
-            console.log('QR Code scanned:', response.data)
+            try {
+              const response = await axios.post(`${API_BASE_URL}/participants`, {
+                "purpose": "retrieveParticipant",
+                "participantID": result.data
+              });
+              console.log('QR Code scanned:', response.data)
+              // Log participant details instead of just the code
+              if (response.data && response.data.success && response.data.data) {
+                const p = response.data.data;
+                console.log('Participant:', {
+                  name: p.name,
+                  age: p.age,
+                  gender: p.gender,
+                  dateOfBirth: p.dateOfBirth,
+                  testDate: p.submittedAt?.date,
+                  phone: p.phone
+                });
+                // Populate fields with participant data
+                const formData = {};
+                Object.keys(response.data.data).forEach(key => {
+                  formData[key] = response.data.data[key];
+                });
+                this.setState({
+                  qrValue: result.data,
+                  qrScanned: true,
+                  cameraError: null,
+                  formData
+                });
+              } else {
+                // No participant found or error
+                this.setState({
+                  qrValue: result.data,
+                  qrScanned: true,
+                  cameraError: response.data.message || 'No participant found',
+                  formData: {}
+                });
+              }
+            } catch (err) {
+              this.setState({
+                qrValue: result.data,
+                qrScanned: true,
+                cameraError: 'Network or server error',
+                formData: {}
+              });
+            }
           }
         },
         {
@@ -123,6 +161,35 @@ class Volunteers extends Component {
     }
   }
 
+  onEnter = async () => {
+    const { selectedStation, formData, qrValue } = this.state;
+    const { language } = this.context;
+    if (!qrValue) {
+      alert(language === 'en' ? 'No QR code scanned.' : '未扫描二维码。');
+      return;
+    }
+    // Only send the fields for the selected station, but include all existing keys as well
+    const fieldsToSend = { ...formData };
+    stationFields[selectedStation].forEach(field => {
+      fieldsToSend[field] = formData[field];
+    });
+    try {
+      const response = await axios.post(`${API_BASE_URL}/participants`, {
+        purpose: 'updateStationData',
+        participantID: qrValue,
+        station: selectedStation,
+        data: fieldsToSend
+      });
+      if (response.data && response.data.success) {
+        alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
+      } else {
+        alert(language === 'en' ? 'Failed to submit data.' : '提交数据失败。');
+      }
+    } catch (err) {
+      alert(language === 'en' ? 'Network or server error.' : '网络或服务器错误。');
+    }
+  }
+
   render() {
     const { selectedStation, formData, qrValue, qrScanned, cameraError } = this.state
     const { language } = this.context
@@ -138,7 +205,7 @@ class Volunteers extends Component {
       'handGrip'
     ]
     return (
-      <div className="page-container" style={{ minHeight: '100vh', width: '100vw', background: '#f7f8fa', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
+      <div className="page-container" style={{ minHeight: '100vh', width: '100vw', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', width: '100%', maxWidth: 600 }}>
           <h1>{t.volunteersTitle}</h1>
         </div>
@@ -177,7 +244,25 @@ class Volunteers extends Component {
         {selectedStation && qrScanned && (
           <div className="details-section">
             <div style={{ textAlign: 'center', marginBottom: 12, color: '#388e3c', fontWeight: 600 }}>
-              {language === 'en' ? 'Scanned QR Code:' : '已扫描二维码：'} {qrValue}
+              {formData && formData.name ? (
+                <>
+                  {language === 'en' ? 'Participant:' : '参与者：'}<br />
+                  {t.name || 'Name'}: {formData.name || '-'}<br />
+                  {t.age || 'Age'}: {formData.age || '-'}<br />
+                  {t.gender || 'Gender'}: {formData.gender || '-'}<br />
+                  {t.dateOfBirth || 'Date of Birth'}: {formData.dateOfBirth || '-'}<br />
+                  {language === 'en' ? 'Test Date' : '测试日期'}: {formData.submittedAt?.date || '-'}<br />
+                  {t.phoneNumber || 'Phone'}: {formData.phoneNumber || '-'}
+                </>
+              ) : cameraError ? (
+                <>
+                  {cameraError}
+                </>
+              ) : (
+                <>
+                  {language === 'en' ? 'Scanned QR Code:' : '已扫描二维码：'} {qrValue}
+                </>
+              )}
             </div>
             <div className="detail-grid" style={{ maxWidth: 400 }}>
               {stationFields[selectedStation].map(field => (
@@ -192,6 +277,26 @@ class Volunteers extends Component {
                   />
                 </div>
               ))}
+              <button
+                style={{
+                  marginTop: 24,
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: 8,
+                  background: '#1976d2',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '1.1rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.10)'
+                }}
+                onClick={() => {
+                  this.onEnter()
+                }}
+              >
+                {language === 'en' ? 'Enter' : '提交'}
+              </button>
             </div>
           </div>
         )}

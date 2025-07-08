@@ -3,6 +3,7 @@ import { translations } from '../utils/translations'
 import LanguageContext from '../contexts/LanguageContext'
 import './Pages.css'
 import axios from "axios"
+import { io } from 'socket.io-client';
 import QRCode from 'qrcode'
 import ParticipantForm from './ParticipantForm'
 import SwipeView from './SwipeView'
@@ -113,6 +114,14 @@ class Participants extends Component {
     
     // Add event listener for escape key
     document.addEventListener('keydown', this.handleEscapeKey)
+
+    // Socket.io: Listen for survey-updated event
+    if (this.socket) {
+      this.socket.on('survey-updated', (data) => {
+        this.loadData && this.loadData();
+        console.log('Socket event received', data);
+      });
+    }
   }
 
   componentWillUnmount() {

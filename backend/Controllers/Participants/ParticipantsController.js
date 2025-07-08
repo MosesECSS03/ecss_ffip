@@ -96,6 +96,49 @@ class ParticipantsController {
             };
         }
     }
+
+    async updateStationData(participantID, data) {
+        try {
+            console.log('Updating station data for participant:', participantID, 'data:', data);
+            await this.dbConnection.initialize();
+            const { ObjectId } = require('mongodb');
+            let query = {};
+            try {
+                query = { _id: new ObjectId(participantID) };
+            } catch (e) {
+                return {
+                    success: false,
+                    error: 'Invalid participant ID format'
+                };
+            }
+            // Build the update object: set the fields in data at the root level
+            const update = { $set: { ...data } };
+            const result = await this.dbConnection.updateDocument(
+                'Fitness-Test',
+                'Participants',
+                query,
+                update
+            );
+            if (result.success) {
+                return {
+                    success: true,
+                    data: result.data,
+                    message: 'Station data updated successfully'
+                };
+            } else {
+                return {
+                    success: false,
+                    error: result.message || 'Failed to update station data'
+                };
+            }
+        } catch (error) {
+            console.error('Error updating station data:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
 }
 
 module.exports = ParticipantsController;

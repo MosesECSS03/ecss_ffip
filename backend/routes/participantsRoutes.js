@@ -19,7 +19,7 @@ router.post('/', async (req, res) =>
       
       // Emit real-time update to connected clients
       if (io && result.success) {
-        io.emit('participant-added', {
+        io.emit('participant-updated', {
           message: 'New participant registered',
           participant: result.data,
         });
@@ -61,6 +61,36 @@ router.post('/', async (req, res) =>
           status: 'error',
           success: false,
           message: result.error || 'Failed to register participant'
+        });
+      }
+    }
+    else if(req.body.purpose === 'updateStationData') 
+    {   
+      // Update station data for the participant
+      const participantID = req.body.participantID;
+      const station = req.body.station;
+      const data = req.body.data;
+      const controller = new ParticipantsController();
+      const result = await controller.updateStationData(participantID, data);
+      console.log('Station data update result:', result);
+      if (result.success) {
+         if (io && result.success) {
+          io.emit('participant-updated', {
+            message: 'Station data updated',
+            participant: result.data,
+          });
+      }
+        res.status(200).json({
+          status: 'success',
+          success: true,
+          message: 'Station data updated successfully',
+          data: result.data
+        });
+      } else {
+        res.status(500).json({
+          status: 'error',
+          success: false,
+          message: result.error || 'Failed to update station data'
         });
       }
     }
