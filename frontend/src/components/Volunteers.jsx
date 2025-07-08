@@ -7,13 +7,13 @@ import axios from "axios"
 
 const stationFields = {
   heightWeight: ['height', 'weight'],
-  sitStand: ['score1', 'remarks'],
-  armBanding: ['score1', 'remarks'],
-  marching: ['score1', 'remarks'],
-  sitReach: ['leftRight', 'score1', 'score2'],
-  backStretch: ['leftRight', 'score1', 'score2'],
-  speedWalking: ['score1', 'score2', 'remarks'],
-  handGrip: ['leftRight', 'score1', 'score2']
+  sitStand: ['score1', 'remarks', 'sitStandResult'],
+  armBanding: ['score1', 'remarks', 'armBandingResult'],
+  marching: ['score1', 'remarks', 'marchingResult'],
+  sitReach: ['leftRight', 'score1', 'score2', 'sitReachResult'],
+  backStretch: ['leftRight', 'score1', 'score2', 'backStretchResult'],
+  speedWalking: ['score1', 'score2', 'remarks', 'speedWalkingResult'],
+  handGrip: ['leftRight', 'score1', 'score2', 'handGripResult']
 }
 
 const API_BASE_URL =
@@ -74,14 +74,6 @@ class Volunteers extends Component {
               // Log participant details instead of just the code
               if (response.data && response.data.success && response.data.data) {
                 const p = response.data.data;
-                console.log('Participant:', {
-                  name: p.name,
-                  age: p.age,
-                  gender: p.gender,
-                  dateOfBirth: p.dateOfBirth,
-                  testDate: p.submittedAt?.date,
-                  phone: p.phone
-                });
                 // Populate only relevant fields with participant data for the selected station
                 const formData = {};
                 const fields = stationFields[this.state.selectedStation] || [];
@@ -275,17 +267,17 @@ class Volunteers extends Component {
       alert(language === 'en' ? 'No QR code scanned.' : '未扫描二维码。');
       return;
     }
-    // Only send the fields for the selected station, but include all existing keys as well
-    const fieldsToSend = { ...formData };
+    // Only send the fields for the selected station, wrapped as { [stationName]: { ...fields } }
+    const fieldsToSend = {};
     stationFields[selectedStation].forEach(field => {
       fieldsToSend[field] = formData[field];
     });
+    const payload = { [selectedStation]: fieldsToSend };
     try {
       const response = await axios.post(`${API_BASE_URL}/participants`, {
         purpose: 'updateStationData',
         participantID: qrValue,
-        station: selectedStation,
-        data: fieldsToSend
+        data: payload
       });
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
@@ -377,32 +369,24 @@ class Volunteers extends Component {
                 </div>
               )}
             </div>
-            {/* Manual entry option */}
-  
           </div>
         )}
         {selectedStation && qrScanned && (
           <div className="details-section">
             <div style={{ textAlign: 'center', marginBottom: 12, color: '#388e3c', fontWeight: 600 }}>
-              {formData && formData.name ? (
-                <>
-                  {language === 'en' ? 'Participant:' : '参与者：'}<br />
-                  {t.name || 'Name'}: {formData.name || '-'}<br />
-                  {t.age || 'Age'}: {formData.age || '-'}<br />
-                  {t.gender || 'Gender'}: {formData.gender || '-'}<br />
-                  {t.dateOfBirth || 'Date of Birth'}: {formData.dateOfBirth || '-'}<br />
-                  {language === 'en' ? 'Test Date' : '测试日期'}: {formData.submittedAt?.date || '-'}<br />
-                  {t.phoneNumber || 'Phone'}: {formData.phoneNumber || '-'}
-                </>
-              ) : cameraError ? (
-                <>
-                  {cameraError}
-                </>
-              ) : (
-                <>
-                  {language === 'en' ? 'Scanned QR Code:' : '已扫描二维码：'} {qrValue}
-                </>
-              )}
+              {/* Always show participant info section as heightWeight, even for manual entry */}
+              {(() => {
+                const infoFields = ['name', 'age', 'gender', 'dateOfBirth', 'submittedAt', 'phoneNumber'];
+                return (
+                  <>
+                    {infoFields.map(field => (
+                      <div key={field}>
+                        {t[field] || field}: {formData[field] || '-'}
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
             <div className="detail-grid" style={{ maxWidth: 400 }}>
               {stationFields[selectedStation].map(field => {
