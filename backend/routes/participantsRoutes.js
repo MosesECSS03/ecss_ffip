@@ -84,6 +84,7 @@ router.post('/', async (req, res) =>
       const result = await controller.updateStationData(participantID, data);
       console.log('Station data update result:', result);
       if (result.success) {
+        console.log('Station data updated successfully:', result.data);
          if (io && result.success) {
           io.emit('participant-updated', {
             message: 'Station data updated',
@@ -95,7 +96,7 @@ router.post('/', async (req, res) =>
           success: true,
           message: 'Station data updated successfully',
           data: result.data
-        });
+        })
       } else {
         res.status(500).json({
           status: 'error',

@@ -18,6 +18,11 @@ const withLanguage = (WrappedComponent) => {
   }
 }
 
+const API_BASE_URL =
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:3001'
+    : 'https://ecss-fft.azurewebsites.net';
+
 class Participants extends Component {
   constructor(props) {
     super(props)
@@ -368,7 +373,7 @@ class Participants extends Component {
   // Function to submit form data to backend
   submitToBackend = async (participantData) => {
     try {
-      const response = await axios.post('http://localhost:3001/participants', {"purpose": "new", participantData})
+      const response = await axios.post(`${API_BASE_URL}/participants`, {"purpose": "new", participantData})
       console.log('Response from backend:', response.data)
       
       // Handle the backend response structure
