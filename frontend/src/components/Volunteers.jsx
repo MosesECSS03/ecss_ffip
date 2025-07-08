@@ -400,11 +400,22 @@ class Volunteers extends Component {
                 const infoFields = ['name', 'age', 'gender', 'dateOfBirth', 'submittedAt', 'phoneNumber'];
                 return (
                   <>
-                    {infoFields.map(field => (
-                      <div key={field}>
-                        {t[field] || field}: {formData[field] || '-'}
-                      </div>
-                    ))}
+                    {infoFields.map(field => {
+                      let value = formData[field] || '-';
+                      // Fix: If value is an object (e.g., {date, time}), render as string
+                      if (typeof value === 'object' && value !== null) {
+                        if ('date' in value && 'time' in value) {
+                          value = `${value.date} ${value.time}`;
+                        } else {
+                          value = JSON.stringify(value);
+                        }
+                      }
+                      return (
+                        <div key={field}>
+                          {t[field] || field}: {value}
+                        </div>
+                      );
+                    })}
                   </>
                 );
               })()}
