@@ -70,6 +70,16 @@ router.post('/', async (req, res) =>
       const participantID = req.body.participantID;
       const station = req.body.station;
       const data = req.body.data;
+      // Calculate BMI if height and weight are present
+      let bmi = null;
+      if (data.height && data.weight) {
+        const heightMeters = parseFloat(data.height) / 100;
+        const weightKg = parseFloat(data.weight);
+        if (heightMeters > 0 && weightKg > 0) {
+          bmi = (weightKg / (heightMeters * heightMeters)).toFixed(2);
+          data.bmi = bmi;
+        }
+      }
       const controller = new ParticipantsController();
       const result = await controller.updateStationData(participantID, data);
       console.log('Station data update result:', result);

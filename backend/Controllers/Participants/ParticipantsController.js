@@ -101,7 +101,6 @@ class ParticipantsController {
         try {
             console.log('Updating station data for participant:', participantID, 'data:', data);
             await this.dbConnection.initialize();
-            const { ObjectId } = require('mongodb');
             let query = {};
             try {
                 query = { _id: new ObjectId(participantID) };
