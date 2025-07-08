@@ -27,7 +27,7 @@ class SwipeView extends Component {
     document.addEventListener('keydown', this.handleKeyDown)
     // Listen for survey-updated event
     if (this.socket) {
-      this.socket.on('survey-updated', (data) => {
+      this.socket.on('participant-updated', (data) => {
         console.log('Socket event received', data);
         // If the updated participant matches the current participant, update details
         const { participant } = this.props;

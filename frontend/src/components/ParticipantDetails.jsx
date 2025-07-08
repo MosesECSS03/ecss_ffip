@@ -73,6 +73,12 @@ const ParticipantDetails = ({ participant, language, onClose }) => {
               <span className="detail-value">{participant.weight} kg</span>
             </div>
           )}
+          {hasValue(participant.bmi) && (
+            <div className="detail-item">
+              <span className="detail-label">{t.bmi}:</span>
+              <span className="detail-value">{participant.bmi}</span>
+            </div>
+          )}
         </div>
       </div>
 

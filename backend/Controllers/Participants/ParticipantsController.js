@@ -102,16 +102,19 @@ class ParticipantsController {
             console.log('Updating station data for participant:', participantID, 'data:', data);
             await this.dbConnection.initialize();
             let query = {};
+            // Always use MongoDB ObjectId for _id
+            const { ObjectId } = require('mongodb');
             try {
                 query = { _id: new ObjectId(participantID) };
             } catch (e) {
                 return {
                     success: false,
-                    error: 'Invalid participant ID format'
+                    error: 'Invalid participant ID format (should be a 24-character hex string)'
                 };
             }
-            // Build the update object: set the fields in data at the root level
-            const update = { $set: { ...data } };
+            // Build the update object: set the fields in data at the root level, but never update _id
+            const { _id, ...dataWithoutId } = data;
+            const update = { $set: { ...dataWithoutId } };
             const result = await this.dbConnection.updateDocument(
                 'Fitness-Test',
                 'Participants',
