@@ -7,13 +7,13 @@ import axios from "axios"
 
 const stationFields = {
   heightWeight: ['height', 'weight'],
-  sitStand: ['score1', 'remarks', 'sitStandResult'],
-  armBanding: ['score1', 'remarks', 'armBandingResult'],
-  marching: ['score1', 'remarks', 'marchingResult'],
-  sitReach: ['leftRight', 'score1', 'score2', 'sitReachResult'],
-  backStretch: ['leftRight', 'score1', 'score2', 'backStretchResult'],
-  speedWalking: ['score1', 'score2', 'remarks', 'speedWalkingResult'],
-  handGrip: ['leftRight', 'score1', 'score2', 'handGripResult']
+  sitStand: ['score1', 'remarks'],
+  armBanding: ['score1', 'remarks'],
+  marching: ['score1', 'remarks'],
+  sitReach: ['leftRight', 'score1', 'score2'],
+  backStretch: ['leftRight', 'score1', 'score2'],
+  speedWalking: ['score1', 'score2', 'remarks'],
+  handGrip: ['leftRight', 'score1', 'score2']
 }
 
 const API_BASE_URL =
@@ -270,14 +270,15 @@ class Volunteers extends Component {
     }
     let payload;
     if (selectedStation === 'heightWeight') {
-      // For heightWeight, send as { heightWeight: { ...fields }, stations: [] }
-      const fieldsToSend = {};
-      stationFields[selectedStation].forEach(field => {
-        fieldsToSend[field] = formData[field];
-      });
-      payload = { heightWeight: fieldsToSend, stations: [] };
+      // For heightWeight, send as { height, weight, bmi, stations: [] } (no heightWeight object)
+      payload = {
+        height: formData.height,
+        weight: formData.weight,
+        bmi: formData.bmi,
+        stations: []
+      };
     } else {
-      // For other stations, add/update the station in stations array and send all completed so far
+      // For other stations, add/update the station in stations array and send all completed so far as a JSON array
       const fieldsToSend = {};
       stationFields[selectedStation].forEach(field => {
         fieldsToSend[field] = formData[field];
@@ -293,7 +294,7 @@ class Volunteers extends Component {
       const response = await axios.post(`${API_BASE_URL}/participants`, {
         purpose: 'updateStationData',
         participantID: qrValue,
-        data: payload
+        data: JSON.stringify(payload) // ensure payload is sent as JSON string
       });
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
