@@ -26,19 +26,7 @@ class SwipeView extends Component {
     this.generateQR();
     document.addEventListener('keydown', this.handleKeyDown)
     // Listen for survey-updated event
-    if (this.socket) {
-      this.socket.on('participant-updated', (data) => {
-        console.log('Socket event received', data);
-        // If the updated participant matches the current participant, update details
-        const { participant } = this.props;
-        if (data && data.participant && (data.participant._id === participant._id || data.participant.id === participant.id)) {
-          // Call onParticipantUpdate if provided by parent
-          if (typeof this.props.onParticipantUpdate === 'function') {
-            this.props.onParticipantUpdate(data.participant);
-          }
-        }
-      });
-    }
+
   }
 
   componentWillUnmount() {
@@ -162,7 +150,7 @@ class SwipeView extends Component {
                   language={language} 
                   onClose={onClose}
                 />
-                
+                {console.log('Raw Participant Data', participant)}
                 {/* Station Results Section within Details */}
                 {hasResults && (
                   <div className="station-results-section">

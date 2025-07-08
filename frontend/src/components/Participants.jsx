@@ -3,7 +3,6 @@ import { translations } from '../utils/translations'
 import LanguageContext from '../contexts/LanguageContext'
 import './Pages.css'
 import axios from "axios"
-import { io } from 'socket.io-client';
 import QRCode from 'qrcode'
 import ParticipantForm from './ParticipantForm'
 import SwipeView from './SwipeView'
@@ -18,11 +17,6 @@ const withLanguage = (WrappedComponent) => {
     )
   }
 }
-
-const API_BASE_URL =
-  window.location.hostname === 'localhost'
-    ? 'http://localhost:3001'
-    : 'https://ecss-fft.azurewebsites.net';
 
 class Participants extends Component {
   constructor(props) {
@@ -69,14 +63,11 @@ class Participants extends Component {
       const savedParticipants = localStorage.getItem('participants')
       if (savedParticipants && savedParticipants !== 'null' && savedParticipants !== 'undefined') {
         let participants = JSON.parse(savedParticipants)
-        
         // Ensure participants is an array
         if (Array.isArray(participants)) {
-          // Enhance existing participants with missing structure (but keep empty values)
           participants = participants.map(participant => ({
             ...participant,
           }))
-          
           this.setState({ 
             participants,
             showForm: false,
@@ -111,15 +102,41 @@ class Participants extends Component {
         hasSubmitted: false
       })
     }
-    
+
     // Add event listener for escape key
     document.addEventListener('keydown', this.handleEscapeKey)
 
-    // Socket.io: Listen for survey-updated event
-    if (this.socket) {
-      this.socket.on('survey-updated', (data) => {
-        this.loadData && this.loadData();
+    // --- Socket.io: Listen for participant-updated event ---
+    if (window.io) {
+      this.socket = window.io(
+        window.location.hostname === 'localhost'
+          ? 'http://localhost:3001'
+          : 'https://ecss-fft.azurewebsites.net'
+      );
+      this.socket.on('participant-updated', (data) => {
         console.log('Socket event received', data);
+        if (data && data.participant) {
+          // Update the participant in local state and localStorage
+          this.setState((prevState) => {
+            const updatedParticipants = prevState.participants.map((p) =>
+              p.id === data.participant.id || p._id === data.participant._id ? data.participant : p
+            );
+            this.saveParticipantsToStorage(updatedParticipants);
+            // Also update swipeParticipantData if it matches
+            let swipeParticipantData = prevState.swipeParticipantData;
+            if (
+              swipeParticipantData &&
+              (swipeParticipantData.id === data.participant.id ||
+                swipeParticipantData._id === data.participant._id)
+            ) {
+              swipeParticipantData = data.participant;
+            }
+            return {
+              participants: updatedParticipants,
+              swipeParticipantData,
+            };
+          });
+        }
       });
     }
   }
@@ -351,7 +368,7 @@ class Participants extends Component {
   // Function to submit form data to backend
   submitToBackend = async (participantData) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/participants`, {"purpose": "new", participantData})
+      const response = await axios.post('http://localhost:3001/participants', {"purpose": "new", participantData})
       console.log('Response from backend:', response.data)
       
       // Handle the backend response structure
