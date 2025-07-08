@@ -55,22 +55,29 @@ class Participants extends Component {
     }
     this.socket = null;
   }
-
-  componentDidMount = async () => {
+  
+  componentDidMount = async () =>{
     // --- SOCKET.IO ---
     this.socket = io(API_BASE_URL);
 
-    this.socket.on('participant-updated', () => {
+    // Listen for participant updates and refresh data live
+    this.socket.on('participant-updated', (data) => {
+      console.log("Socket event received", data);
+      // Force immediate update without async to ensure UI updates quickly
       this.handleParticipantUpdate();
     });
 
-    // Show form by default until we verify participant
-    this.setState({
-      showForm: true,
-      hasSubmitted: false,
-      showSwipeView: false,
-      swipeParticipantData: null
+    // Listen for connection events for debugging
+    this.socket.on('connect', () => {
+      console.log('✅ Socket connected to server');
     });
+
+    this.socket.on('disconnect', () => {
+      console.log('❌ Socket disconnected from server');
+    });
+
+    // Initial load of participant data
+    await this.handleParticipantUpdate();
   }
 
   handleParticipantUpdate = async () => {
@@ -103,12 +110,15 @@ class Participants extends Component {
             showForm: false,
             hasSubmitted: true,
             showSwipeView: true,
-            swipeParticipantData: response.data.data
+            swipeParticipantData: response.data.data,
+            submissionError: null
           });
           return;
         }
       } catch (err) {
         console.error('Error retrieving participant from backend:', err);
+        // Clear any existing error when retrieval fails
+        this.setState({ submissionError: 'Failed to retrieve participant. Please try again.' });
       }
     }
 
@@ -117,7 +127,8 @@ class Participants extends Component {
       showForm: true,
       hasSubmitted: false,
       showSwipeView: false,
-      swipeParticipantData: null
+      swipeParticipantData: null,
+      submissionError: null
     });
   }
 
@@ -209,13 +220,13 @@ class Participants extends Component {
   }
 
   handleSubmit = async (e) => {
-    e.preventDefault()
-    const { formData, participants } = this.state
-    
+    e.preventDefault();
+    const { formData, participants } = this.state;
+
     if (formData.participantDetails.participantName.trim() && 
         formData.participantDetails.participantNric.trim()) {
-      const calculatedAge = this.calculateAge(formData.participantDetails.dateOfBirth)
-      
+      const calculatedAge = this.calculateAge(formData.participantDetails.dateOfBirth);
+
       const newParticipant = {
         id: participants.length + 1,
         name: formData.participantDetails.participantName.trim(),
@@ -228,20 +239,20 @@ class Participants extends Component {
         phoneNumber: formData.participantDetails.phoneNumber,
         healthQuestions: formData.healthDeclaration,
         submittedAt: new Date().toISOString()
-      }
-      
+      };
+
       // Submit to backend first
-      const backendResult = await this.submitToBackend(newParticipant)
-      
+      const backendResult = await this.submitToBackend(newParticipant);
+
       if (backendResult && backendResult.success) {
         // Use the backend response ID for the participant
-        if (backendResult.data && backendResult.data._id) {
-          newParticipant.id = backendResult.data._id
+        let backendId = backendResult.data && (backendResult.data._id || backendResult.data.id);
+        if (backendId) {
+          newParticipant.id = backendId;
         }
-        
         // Only proceed if backend submission was successful
-        const updatedParticipants = [...participants, newParticipant]
-        
+        const updatedParticipants = [...participants, newParticipant];
+
         this.setState(prevState => ({
           participants: updatedParticipants,
           submissionError: null,
@@ -265,16 +276,19 @@ class Participants extends Component {
           showForm: false,
           hasSubmitted: true
         }), () => {
-          // After successful submit, store only the latest participant ID in localStorage
-          localStorage.setItem('participantId', JSON.stringify({ participantId: newParticipant.id }))
+          // After successful submit, store only the backend _id as participantId in localStorage
+          if (backendId) {
+            localStorage.setItem('participantId', JSON.stringify({ participantId: backendId }));
+            console.log('Stored participantId in localStorage:', backendId);
+          }
           // Show swipe view with the new participant after state is updated
-          this.showSwipeView(newParticipant.id)
-        })
+          this.showSwipeView(newParticipant.id);
+        });
       } else {
         // Stay on the form - don't proceed to next screen
         this.setState({ 
           submissionError: backendResult.error || 'Submission failed. Please try again.' 
-        })
+        });
       }
     }
   }

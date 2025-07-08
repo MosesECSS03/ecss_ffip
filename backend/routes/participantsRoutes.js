@@ -68,8 +68,10 @@ router.post('/', async (req, res) =>
     {   
       // Update station data for the participant
       const participantID = req.body.participantID;
-      const station = req.body.station;
       const data = req.body.data;
+      
+      console.log('🔍 Updating station data - participantID:', participantID, 'data:', data);
+      
       // Calculate BMI if height and weight are present
       let bmi = null;
       if (data.height && data.weight) {
@@ -80,17 +82,25 @@ router.post('/', async (req, res) =>
           data.bmi = bmi;
         }
       }
+      
       const controller = new ParticipantsController();
       const result = await controller.updateStationData(participantID, data);
       console.log('Station data update result:', result);
       if (result.success) {
         console.log('Station data updated successfully:', result.data);
-         if (io && result.success) {
+        
+        // Emit real-time update to connected clients
+        if (io) {
+          console.log('🔄 Emitting participant-updated event for:', participantID);
           io.emit('participant-updated', {
             message: 'Station data updated',
             participant: result.data,
+            participantID: participantID
           });
-      }
+        } else {
+          console.warn('⚠️ Socket.IO instance not available');
+        }
+        
         res.status(200).json({
           status: 'success',
           success: true,
