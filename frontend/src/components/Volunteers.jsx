@@ -267,12 +267,28 @@ class Volunteers extends Component {
       alert(language === 'en' ? 'No QR code scanned.' : '未扫描二维码。');
       return;
     }
-    // Only send the fields for the selected station, wrapped as { [stationName]: { ...fields } }
-    const fieldsToSend = {};
-    stationFields[selectedStation].forEach(field => {
-      fieldsToSend[field] = formData[field];
-    });
-    const payload = { [selectedStation]: fieldsToSend };
+    let payload;
+    if (selectedStation === 'heightWeight') {
+      // For heightWeight, send as { heightWeight: { ...fields }, stations: [] }
+      const fieldsToSend = {};
+      stationFields[selectedStation].forEach(field => {
+        fieldsToSend[field] = formData[field];
+      });
+      payload = { heightWeight: fieldsToSend, stations: [] };
+    } else {
+      // For other stations, send as { stations: [all stations with their data] }
+      // We'll collect all station data from formData for all stations except heightWeight
+      const stationsArr = Object.keys(stationFields)
+        .filter(station => station !== 'heightWeight')
+        .map(station => {
+          const stationData = {};
+          stationFields[station].forEach(field => {
+            stationData[field] = formData[field] || '';
+          });
+          return { [station]: stationData };
+        });
+      payload = { stations: stationsArr };
+    }
     try {
       const response = await axios.post(`${API_BASE_URL}/participants`, {
         purpose: 'updateStationData',
@@ -281,23 +297,12 @@ class Volunteers extends Component {
       });
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
-        // For heightWeight station, reset to QR scan screen
-        // For other stations, reset for next manual entry
-        if (selectedStation === 'heightWeight') {
-          this.setState({
-            qrScanned: false,
-            qrValue: '',
-            formData: {},
-            cameraError: null
-          });
-        } else {
-          this.setState({
-            qrValue: 'manual-entry',
-            qrScanned: true,
-            formData: {},
-            cameraError: null
-          });
-        }
+        this.setState({
+          qrScanned: false,
+          qrValue: '',
+          formData: {},
+          cameraError: null
+        });
       } else {
         alert(language === 'en' ? 'Failed to submit data.' : '提交数据失败。');
       }
