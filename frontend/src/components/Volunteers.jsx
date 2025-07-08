@@ -70,7 +70,7 @@ class Volunteers extends Component {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h1>{t.volunteersTitle}</h1>
         </div>
-        <div className="details-section" style={{ maxWidth: 400, marginBottom: 32 }}>
+        <div className="details-section" style={{ maxWidth: 400 }}>
           <label className="dropdown-label" style={{ fontWeight: 600, fontSize: '1.1rem' }}>
             {language === 'en' ? 'Scan QR Code' : '扫描二维码'}:
           </label>
@@ -82,7 +82,9 @@ class Volunteers extends Component {
             style={{ marginBottom: 16, padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 200 }}
             autoFocus
           />
-          <label htmlFor="station-select" className="dropdown-label" style={{ fontWeight: 600, fontSize: '1.1rem', marginTop: 16 }}>
+        </div>
+        <div className="details-section">
+          <label htmlFor="station-select" className="dropdown-label" style={{ fontWeight: 600, fontSize: '1.1rem' }}>
             {t.testStation}:
           </label>
           <select id="station-select" value={selectedStation} onChange={this.handleChange} className="dropdown-select" style={{ marginBottom: '2rem', maxWidth: 320 }}>
@@ -92,8 +94,6 @@ class Volunteers extends Component {
               </option>
             ))}
           </select>
-        </div>
-        <div className="details-section">
           <div className="detail-grid" style={{ maxWidth: 400 }}>
             {stationFields[selectedStation].map(field => (
               <div className="detail-item" key={field}>
