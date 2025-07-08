@@ -2,8 +2,7 @@ import React, { Component } from 'react'
 import QRCode from 'qrcode'
 import ParticipantDetails from './ParticipantDetails'
 import { translations } from '../utils/translations'
-import './Pages.css'
-import { io } from 'socket.io-client';
+import './Pages.css';
 
 class SwipeView extends Component {
   constructor(props) {
@@ -14,12 +13,6 @@ class SwipeView extends Component {
       touchStart: 0,
       touchEnd: 0
     }
-    // Initialize socket connection
-    this.socket = io(
-      window.location.hostname === 'localhost'
-        ? 'http://localhost:3001'
-        : 'https://ecss-fft.azurewebsites.net'
-    );
   }
 
   componentDidMount() {

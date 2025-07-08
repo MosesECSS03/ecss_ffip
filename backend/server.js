@@ -7,7 +7,9 @@ const app = express();
 const corsOptions = {
   origin: [
     'http://localhost:3000',
+    'http://localhost:5173', // Vite dev server
     'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173', // Vite dev server
     'https://purple-desert-0c35a1000.2.azurestaticapps.net',
   ],
   credentials: true,
