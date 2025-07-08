@@ -5,6 +5,7 @@ const ParticipantsController = require('../Controllers/Participants/Participants
 router.post('/', async (req, res) => 
 {
   const io = req.app.get('io'); // Get the Socket.IO instance
+  console.log('🔗 Socket.IO instance:', io);
   console.log('Received POST request on /participants with body:', req.body);
   
   try{
@@ -90,15 +91,28 @@ router.post('/', async (req, res) =>
         console.log('Station data updated successfully:', result.data);
         
         // Emit real-time update to connected clients
+              // Update the socket emission section with proper error handling
         if (io) {
           console.log('🔄 Emitting participant-updated event for:', participantID);
-          io.emit('participant-updated', {
-            message: 'Station data updated',
-            participant: result.data,
-            participantID: participantID
-          });
+          
+          try {
+            io.emit('participant-updated', {
+              message: 'Station data updated',
+              participant: result.data,
+              participantID: participantID
+            });
+            console.log('✅ Socket event emitted successfully');
+          } catch (socketError) {
+            console.error('❌ Error emitting socket event:', socketError);
+            console.error('❌ Socket error details:', {
+              participantID,
+              errorMessage: socketError.message,
+              errorStack: socketError.stack
+            });
+          }
         } else {
           console.warn('⚠️ Socket.IO instance not available');
+          console.warn('⚠️ Available app settings:', Object.keys(req.app.settings || {}));
         }
         
         res.status(200).json({

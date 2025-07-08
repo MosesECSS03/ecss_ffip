@@ -56,28 +56,61 @@ class Participants extends Component {
     this.socket = null;
   }
   
-  componentDidMount = async () =>{
-    // --- SOCKET.IO ---
-    this.socket = io(API_BASE_URL);
+  componentDidMount = async () => {
+    try {
+      console.log('🔌 Connecting to Socket.IO at:', API_BASE_URL);
+      
+      // --- SOCKET.IO ---
+      this.socket = io(API_BASE_URL);
 
-    // Listen for participant updates and refresh data live
-    this.socket.on('participant-updated', (data) => {
-      console.log("Socket event received", data);
-      // Force immediate update without async to ensure UI updates quickly
-      this.handleParticipantUpdate();
-    });
+      // Add connection event listeners for debugging
+      this.socket.on('connect', () => {
+        console.log('✅ Socket connected to server with ID:', this.socket.id);
+      });
 
-    // Listen for connection events for debugging
-    this.socket.on('connect', () => {
-      console.log('✅ Socket connected to server');
-    });
+      this.socket.on('disconnect', () => {
+        console.log('❌ Socket disconnected from server');
+      });
 
-    this.socket.on('disconnect', () => {
-      console.log('❌ Socket disconnected from server');
-    });
+      this.socket.on('connect_error', (error) => {
+        console.error('🚫 Socket connection error:', error);
+      });
 
-    // Initial load of participant data
-    await this.handleParticipantUpdate();
+      // Listen for participant updates and refresh data live
+      this.socket.on('participant-updated', (data) => {
+        try {
+          console.log("🔔 Socket event received", data);
+          console.log("🔄 Triggering handleParticipantUpdate...");
+          
+          // Check if this event is for the current participant to avoid unnecessary updates
+          const currentParticipantId = this.getCurrentParticipantId();
+          console.log("Current participant ID:", currentParticipantId);
+          console.log("Event participant ID:", data.participantID);
+          
+          // Update regardless, but log if it's for the current participant
+          if (currentParticipantId === data.participantID) {
+            console.log("✅ Event matches current participant - updating UI");
+          } else {
+            console.log("ℹ️ Event for different participant, but updating anyway");
+          }
+          
+          // Call handleParticipantUpdate - this will refresh the data from backend
+          this.handleParticipantUpdate();
+        } catch (socketEventError) {
+          console.error('❌ Error handling socket event:', socketEventError);
+        }
+      });
+
+      // Initial load of participant data
+      await this.handleParticipantUpdate();
+      
+    } catch (mountError) {
+      console.error('❌ Error in componentDidMount:', mountError);
+      // Set error state to show user-friendly message
+      this.setState({ 
+        submissionError: 'Failed to initialize connection. Please refresh the page.' 
+      });
+    }
   }
 
   handleParticipantUpdate = async () => {
@@ -326,6 +359,20 @@ class Participants extends Component {
 
   // If loadStateFromLocalStorage is referenced anywhere, define it as a no-op to avoid errors
   loadStateFromLocalStorage = () => {}
+
+  // Add the missing getCurrentParticipantId method
+  getCurrentParticipantId = () => {
+    try {
+      const saved = localStorage.getItem('participantId');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed?.participantId;
+      }
+    } catch (e) {
+      console.warn('Failed to parse participantId from localStorage:', e);
+    }
+    return null;
+  }
 
   render() {
     const { language } = this.props
