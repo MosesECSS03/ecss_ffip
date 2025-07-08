@@ -121,10 +121,16 @@ class Volunteers extends Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
+    // Always start QR scanner when:
+    // 1. Station is selected and QR not scanned
+    // 2. Station changed OR qrScanned state changed
+    // 3. Switching from heightWeight to any other station
     if (
       this.state.selectedStation &&
       !this.state.qrScanned &&
-      (prevState.selectedStation !== this.state.selectedStation || prevState.qrScanned !== this.state.qrScanned)
+      (prevState.selectedStation !== this.state.selectedStation || 
+       prevState.qrScanned !== this.state.qrScanned ||
+       (prevState.selectedStation === 'heightWeight' && this.state.selectedStation !== 'heightWeight'))
     ) {
       this.startQRScanner()
     }
@@ -134,7 +140,15 @@ class Volunteers extends Component {
   }
 
   handleChange = (e) => {
-    this.setState({ selectedStation: e.target.value, qrValue: '', qrScanned: false, cameraError: null })
+    const newStation = e.target.value;
+    // Always reset to QR scan screen when changing stations
+    this.setState({
+      selectedStation: newStation,
+      qrValue: '',
+      qrScanned: false,
+      cameraError: null,
+      formData: {}
+    });
   }
 
   handleLanguageToggle = () => {
@@ -143,12 +157,24 @@ class Volunteers extends Component {
   }
 
   handleInputChange = (e, field) => {
-    this.setState({
-      formData: {
-        ...this.state.formData,
-        [field]: e.target.value
-      }
-    })
+    const { selectedStation } = this.state;
+    // For all stations except heightWeight, reset to QR scan screen on value change
+    if (selectedStation && selectedStation !== 'heightWeight') {
+      this.setState({
+        qrScanned: false,
+        qrValue: '',
+        formData: {},
+        cameraError: null
+      });
+    } else {
+      // For heightWeight, just update the form data
+      this.setState({
+        formData: {
+          ...this.state.formData,
+          [field]: e.target.value
+        }
+      });
+    }
   }
 
   handleQRInput = (e) => {
@@ -184,13 +210,21 @@ class Volunteers extends Component {
       });
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
-        // Reset to QR scan screen for next participant
-        this.setState({
-          qrScanned: false,
-          qrValue: '',
-          formData: {},
-          cameraError: null
-        });
+        // For all stations except heightWeight, reset to QR scan screen for next participant
+        if (selectedStation !== 'heightWeight') {
+          this.setState({
+            qrScanned: false,
+            qrValue: '',
+            formData: {},
+            cameraError: null
+          });
+        } else {
+          // For heightWeight, just clear the form fields
+          this.setState({
+            formData: {},
+            cameraError: null
+          });
+        }
       } else {
         alert(language === 'en' ? 'Failed to submit data.' : '提交数据失败。');
       }
