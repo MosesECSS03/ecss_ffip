@@ -21,6 +21,8 @@ const API_BASE_URL =
     ? 'http://localhost:3001'
     : 'https://ecss-fft.azurewebsites.net';
 
+console.log('🔧 Volunteers API_BASE_URL configured as:', API_BASE_URL);
+
 class Volunteers extends Component {
   static contextType = LanguageContext
 

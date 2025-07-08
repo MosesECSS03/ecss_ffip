@@ -18,16 +18,13 @@ class App extends Component {
   }
 
   componentDidMount() {
-    // Check if language has been selected before
-    const hasSelectedLanguage = localStorage.getItem('languageSelected')
-    if (hasSelectedLanguage === 'true') {
-      this.setState({ languageSelected: true })
-    }
+    // Language will be selected each time the app loads
+    // No localStorage persistence needed
   }
 
   handleLanguageSelected = () => {
     this.setState({ languageSelected: true })
-    localStorage.setItem('languageSelected', 'true')
+    // No localStorage persistence
   }
 
   render() {
