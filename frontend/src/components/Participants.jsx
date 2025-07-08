@@ -58,6 +58,11 @@ class Participants extends Component {
 
   async componentDidMount() {
     // Always check for participantId in localStorage
+    // --- SOCKET.IO ---
+    this.socket = io(API_BASE_URL)
+    this.socket.on('participant-updated', (updatedParticipant) => {
+      console.log('🔄 Participant updated via socket:', updatedParticipant)
+    })
     let participantId = null
     try {
       const saved = localStorage.getItem('participantId')
@@ -95,11 +100,6 @@ class Participants extends Component {
       hasSubmitted: false,
       showSwipeView: false,
       swipeParticipantData: null
-    })
-    // --- SOCKET.IO ---
-    this.socket = io(API_BASE_URL)
-    this.socket.on('participant-updated', (updatedParticipant) => {
-      console.log('🔄 Participant updated via socket:', updatedParticipant)
     })
   }
 

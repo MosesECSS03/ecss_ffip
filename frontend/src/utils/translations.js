@@ -133,7 +133,28 @@ export const translations = {
       backStretch: 'Back Stretching Test',
       speedWalking: '2.44-Meter Speed Walking',
       handGrip: 'Hand Griping Test'
-    }
+    },
+    stationRemarks: {
+      sitReach: {
+        left: 'Left (Straight leg)',
+        right: 'Right (Straight leg)'
+      },
+      backStretch: {
+        left: 'Left (Hand on top)',
+        right: 'Right (Hand on top)'
+      },
+      handGrip: {
+        left: 'Left (Hand)',
+        right: 'Right (Hand)'
+      }
+    },
+    // Station form fields
+    score1: 'Score 1',
+    score2: 'Score 2',
+    remarks: 'Remarks',
+    leftRight: 'Left/Right',
+    height: 'Height',
+    weight: 'Weight'
   },
   zh: {
     // Language Selection
@@ -269,6 +290,27 @@ export const translations = {
       backStretch: '抓背测验',
       speedWalking: '2.44公尺起身续物测验',
       handGrip: '握力测试'
-    }
+    },
+    stationRemarks: {
+      sitReach: {
+        left: '左 (直腿)',
+        right: '右 (直腿)'
+      },
+      backStretch: {
+        left: '左 (上手)',
+        right: '右 (上手)'
+      },
+      handGrip: {
+        left: '左 (手)',
+        right: '右 (手)'
+      }
+    },
+    // Station form fields
+    score1: '分数1',
+    score2: '分数2',
+    remarks: '备注',
+    leftRight: '左/右',
+    height: '身高',
+    weight: '体重'
   }
 }
