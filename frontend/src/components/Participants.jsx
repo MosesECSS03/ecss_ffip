@@ -56,30 +56,47 @@ class Participants extends Component {
     this.socket = null;
   }
 
-  async componentDidMount() {
-    // Always check for participantId in localStorage
+  componentDidMount = async () => {
     // --- SOCKET.IO ---
-    this.socket = io(API_BASE_URL)
-    this.socket.on('participant-updated', (updatedParticipant) => {
-      console.log('🔄 Participant updated via socket:', updatedParticipant)
-    })
-    let participantId = null
+    this.socket = io(API_BASE_URL);
+
+    this.socket.on('participant-updated', () => {
+      this.handleParticipantUpdate();
+    });
+
+    // Show form by default until we verify participant
+    this.setState({
+      showForm: true,
+      hasSubmitted: false,
+      showSwipeView: false,
+      swipeParticipantData: null
+    });
+  }
+
+  handleParticipantUpdate = async () => {
+    let participantId = null;
+
     try {
-      const saved = localStorage.getItem('participantId')
+      const saved = localStorage.getItem('participantId');
       if (saved) {
-        const parsed = JSON.parse(saved)
+        const parsed = JSON.parse(saved);
         if (parsed && parsed.participantId) {
-          participantId = parsed.participantId
+          participantId = parsed.participantId;
         }
       }
     } catch (e) {
-      // ignore parse errors
+      console.warn('Failed to parse participantId from localStorage:', e);
     }
+
     if (participantId) {
-      // Fetch participant from backend
       try {
-        const response = await axios.post(`${API_BASE_URL}/participants`, { purpose: 'retrieveParticipant', participantID: participantId });
-        console.log('🔄 Retrieved participant from backend:', response.data)
+        const response = await axios.post(`${API_BASE_URL}/participants`, {
+          purpose: 'retrieveParticipant',
+          participantID: participantId
+        });
+
+        console.log('🔄 Retrieved participant from backend:', response.data);
+
         if (response.data && response.data.success && response.data.data) {
           this.setState({
             participants: [response.data.data],
@@ -87,20 +104,21 @@ class Participants extends Component {
             hasSubmitted: true,
             showSwipeView: true,
             swipeParticipantData: response.data.data
-          })
+          });
           return;
         }
       } catch (err) {
-        console.error('Error retrieving participant from backend:', err)
+        console.error('Error retrieving participant from backend:', err);
       }
     }
-    // If no valid participant found, ensure form is shown
+
+    // If no participant or failed fetch, show form
     this.setState({
       showForm: true,
       hasSubmitted: false,
       showSwipeView: false,
       swipeParticipantData: null
-    })
+    });
   }
 
   componentWillUnmount() {

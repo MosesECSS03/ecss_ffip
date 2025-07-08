@@ -294,7 +294,7 @@ class Volunteers extends Component {
       const response = await axios.post(`${API_BASE_URL}/participants`, {
         purpose: 'updateStationData',
         participantID: qrValue,
-        data: JSON.stringify(payload) // ensure payload is sent as JSON string
+        data: payload // ensure payload is sent as JSON string
       });
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
