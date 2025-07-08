@@ -76,6 +76,8 @@ class ParticipantsController {
                 query
             );
 
+            console.log('Participant retrieval result:', result);
+
             if (result.success) {
                 return {
                     success: true,

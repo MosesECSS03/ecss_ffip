@@ -184,6 +184,13 @@ class Volunteers extends Component {
       });
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
+        // Reset to QR scan screen for next participant
+        this.setState({
+          qrScanned: false,
+          qrValue: '',
+          formData: {},
+          cameraError: null
+        });
       } else {
         alert(language === 'en' ? 'Failed to submit data.' : '提交数据失败。');
       }

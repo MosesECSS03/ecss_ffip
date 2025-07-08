@@ -7,10 +7,10 @@ export const translations = {
     chinese: '中文',
     continue: 'Continue',
     // HomePage
-    title: 'ECSS FFIP',
-    subtitle: 'Electronic Community Support System - Family Financial Independence Program',
-    welcome: 'Welcome to our Community Platform',
-    description: 'Connect with our community members and access resources for personal and professional development.',
+    title: 'ECSS FFT',
+    subtitle: 'En Community Services Society - Functional Fitness Test',
+    welcome: 'Welcome to Senior Fitness Assessment',
+    description: 'Complete the health declaration form and begin your fitness test journey.',
     // Navigation
     home: 'Home',
     volunteers: 'Volunteers',
@@ -143,10 +143,10 @@ export const translations = {
     chinese: '中文',
     continue: '继续',
     // HomePage
-    title: 'ECSS FFIP',
-    subtitle: '电子社区支持系统 - 家庭财务独立计划',
-    welcome: '欢迎来到我们的社区平台',
-    description: '与我们的社区成员联系，获取个人和专业发展资源。',
+    title: 'ECSS FFT',
+    subtitle: '恩群社区服务 - 乐龄体适能测试',
+    welcome: '欢迎参与乐龄体适能评估',
+    description: '完成健康声明表格，开始您的体适能测试之旅。',
     // Navigation
     home: '首页',
     volunteers: '志愿者',

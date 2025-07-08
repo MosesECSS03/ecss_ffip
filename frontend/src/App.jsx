@@ -18,13 +18,15 @@ class App extends Component {
   }
 
   componentDidMount() {
-    // Language will be selected each time the app loads
-    // No localStorage persistence needed
+    // Check if language was already selected in localStorage
+    const savedLanguage = localStorage.getItem('selectedLanguage')
+    if (savedLanguage) {
+      this.setState({ languageSelected: true })
+    }
   }
 
   handleLanguageSelected = () => {
     this.setState({ languageSelected: true })
-    // No localStorage persistence
   }
 
   render() {

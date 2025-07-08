@@ -23,13 +23,13 @@ function HomePage() {
           
           <div className={`navigation-buttons ${language === 'zh' ? 'chinese-layout' : ''}`}>
             <Link to="/participants" className="nav-button participants-btn">
-              <div className="button-icon">�</div>
+              <div className="button-icon">🏃</div>
               <h3>{t.participants}</h3>
               <p>{t.participantsDesc}</p>
             </Link>
             
             <Link to="/volunteers" className="nav-button volunteers-btn">
-              <div className="button-icon">�</div>
+              <div className="button-icon">🤝</div>
               <h3>{t.volunteers}</h3>
               <p>{t.volunteersDesc}</p>
             </Link>
