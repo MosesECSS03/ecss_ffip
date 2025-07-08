@@ -1,8 +1,8 @@
-import React, { Component } from 'react'
+import React, { Component, createRef } from 'react'
 import LanguageContext from '../contexts/LanguageContext'
 import { translations } from '../utils/translations'
 import './Pages.css'
-import { QrReader } from 'react-qr-reader'
+import QrScanner from 'qr-scanner'
 
 const stationFields = {
   heightWeight: ['height', 'weight'],
@@ -26,6 +26,58 @@ class Volunteers extends Component {
       qrValue: '',
       qrScanned: false,
       cameraError: null
+    }
+    this.videoRef = createRef()
+    this.qrScanner = null
+  }
+
+  componentWillUnmount() {
+    if (this.qrScanner) {
+      this.qrScanner.destroy()
+      this.qrScanner = null
+    }
+  }
+
+  startQRScanner = () => {
+    if (this.qrScanner) {
+      this.qrScanner.destroy()
+      this.qrScanner = null
+    }
+    if (this.videoRef.current) {
+      this.qrScanner = new QrScanner(
+        this.videoRef.current,
+        result => {
+          if (result && result.data && !this.state.qrScanned) {
+            this.setState({ qrValue: result.data, qrScanned: true, cameraError: null })
+            this.qrScanner.stop()
+          }
+        },
+        {
+          onDecodeError: error => {
+            if (!this.state.cameraError) {
+              this.setState({ cameraError: error.message || 'Camera error' })
+            }
+          },
+          highlightScanRegion: true,
+          highlightCodeOutline: true
+        }
+      )
+      this.qrScanner.start().catch(e => {
+        this.setState({ cameraError: e.message || 'Camera error' })
+      })
+    }
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      this.state.selectedStation &&
+      !this.state.qrScanned &&
+      (prevState.selectedStation !== this.state.selectedStation || prevState.qrScanned !== this.state.qrScanned)
+    ) {
+      this.startQRScanner()
+    }
+    if (this.state.qrScanned && this.qrScanner) {
+      this.qrScanner.stop()
     }
   }
 
@@ -55,20 +107,12 @@ class Volunteers extends Component {
     e.preventDefault()
     if (this.state.qrValue.trim() !== '') {
       this.setState({ qrScanned: true })
-    }
-  }
-
-  handleQRScan = (result, error) => {
-    if (result && result.text && !this.state.qrScanned) {
-      this.setState({ qrValue: result.text, qrScanned: true, cameraError: null })
-    }
-    if (error && !this.state.cameraError) {
-      this.setState({ cameraError: error.message || 'Camera error' })
+      if (this.qrScanner) this.qrScanner.stop()
     }
   }
 
   render() {
-    const { selectedStation, formData, qrValue, qrScanned } = this.state
+    const { selectedStation, formData, qrValue, qrScanned, cameraError } = this.state
     const { language } = this.context
     const t = translations[language]
     const stationKeys = [
@@ -100,21 +144,15 @@ class Volunteers extends Component {
           </select>
         </div>
         {selectedStation && !qrScanned && (
-          <div className="details-section" style={{ maxWidth: 400, minHeight: 420 }}>
+          <div className="details-section" style={{ maxWidth: 700, minHeight: 700 }}>
             <label className="dropdown-label" style={{ fontWeight: 600, fontSize: '1.1rem' }}>
               {language === 'en' ? 'Scan QR Code' : '扫描二维码'}:
             </label>
             <div style={{ textAlign: 'center', marginBottom: 8, color: '#1976d2', fontWeight: 600 }}>
               {language === 'en' ? 'Camera is active. Please hold QR code in front of the camera.' : '摄像头已开启，请将二维码对准摄像头'}
             </div>
-            <div id="qr-video-container" style={{ width: '100%', maxWidth: 320, minHeight: 240, margin: '0 auto', borderRadius: 8, background: '#000', border: '3px solid #1976d2', boxShadow: '0 2px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-              <QrReader
-                constraints={{}}
-                onResult={this.handleQRScan}
-                videoContainerStyle={{ paddingTop: 0, minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                videoStyle={{ width: '100%', height: 'auto', borderRadius: 8, background: '#222' }}
-                containerStyle={{ width: '100%', maxWidth: 320, minHeight: 240, margin: '0 auto', borderRadius: 8, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              />
+            <div id="qr-video-container" style={{ width: '100%', maxWidth: 640, minHeight: 480, margin: '0 auto', borderRadius: 18, background: '#000', border: '5px solid #1976d2', boxShadow: '0 4px 32px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              <video ref={this.videoRef} style={{ width: '100%', height: 'auto', minHeight: 440, borderRadius: 18, background: '#222' }} muted playsInline />
               {/* Fallback if video is not visible */}
               <noscript>
                 <div style={{ color: 'red', position: 'absolute', top: '50%', left: 0, right: 0, textAlign: 'center', fontWeight: 700 }}>
