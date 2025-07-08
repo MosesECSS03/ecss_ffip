@@ -16,6 +16,11 @@ const stationFields = {
   handGrip: ['handGripScore']
 }
 
+const API_BASE_URL =
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:3001'
+    : 'https://ecss-fft.azurewebsites.net';
+
 class Volunteers extends Component {
   static contextType = LanguageContext
 
