@@ -82,10 +82,11 @@ class Volunteers extends Component {
                   testDate: p.submittedAt?.date,
                   phone: p.phone
                 });
-                // Populate fields with participant data
+                // Populate only relevant fields with participant data for the selected station
                 const formData = {};
-                Object.keys(response.data.data).forEach(key => {
-                  formData[key] = response.data.data[key];
+                const fields = stationFields[this.state.selectedStation] || [];
+                fields.forEach(key => {
+                  formData[key] = response.data.data[key] || '';
                 });
                 this.setState({
                   qrValue: result.data,
@@ -246,13 +247,13 @@ class Volunteers extends Component {
   }
 
   handleInputChange = (e, field) => {
-    // Just update the form data, don't reset the camera
-    this.setState({
+    // Only update the formData, do not touch qrScanned or other state
+    this.setState(prevState => ({
       formData: {
-        ...this.state.formData,
+        ...prevState.formData,
         [field]: e.target.value
       }
-    });
+    }));
   }
 
   handleQRInput = (e) => {
