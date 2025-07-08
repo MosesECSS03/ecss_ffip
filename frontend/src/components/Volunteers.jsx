@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import LanguageContext from '../contexts/LanguageContext'
 import { translations } from '../utils/translations'
 import './Pages.css'
+import { QrReader } from 'react-qr-reader'
 
 const stationFields = {
   heightWeight: ['height', 'weight'],
@@ -20,14 +21,16 @@ class Volunteers extends Component {
   constructor(props) {
     super(props)
     this.state = {
-      selectedStation: 'heightWeight',
+      selectedStation: '',
       formData: {},
-      qrValue: ''
+      qrValue: '',
+      qrScanned: false,
+      cameraError: null
     }
   }
 
   handleChange = (e) => {
-    this.setState({ selectedStation: e.target.value })
+    this.setState({ selectedStation: e.target.value, qrValue: '', qrScanned: false, cameraError: null })
   }
 
   handleLanguageToggle = () => {
@@ -48,8 +51,24 @@ class Volunteers extends Component {
     this.setState({ qrValue: e.target.value })
   }
 
+  handleQRSubmit = (e) => {
+    e.preventDefault()
+    if (this.state.qrValue.trim() !== '') {
+      this.setState({ qrScanned: true })
+    }
+  }
+
+  handleQRScan = (result, error) => {
+    if (result && result.text && !this.state.qrScanned) {
+      this.setState({ qrValue: result.text, qrScanned: true, cameraError: null })
+    }
+    if (error && !this.state.cameraError) {
+      this.setState({ cameraError: error.message || 'Camera error' })
+    }
+  }
+
   render() {
-    const { selectedStation, formData, qrValue } = this.state
+    const { selectedStation, formData, qrValue, qrScanned } = this.state
     const { language } = this.context
     const t = translations[language]
     const stationKeys = [
@@ -63,55 +82,72 @@ class Volunteers extends Component {
       'handGrip'
     ]
     return (
-      <div className="page-container">
-        <button className="tab-button language-toggle" onClick={this.handleLanguageToggle} style={{ position: 'fixed', top: 24, right: 32, zIndex: 10 }}>
-          {language === 'en' ? '中文' : 'English'}
-        </button>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="page-container" style={{ minHeight: '100vh', width: '100vw', background: '#f7f8fa', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', width: '100%', maxWidth: 600 }}>
           <h1>{t.volunteersTitle}</h1>
         </div>
-        <div className="details-section" style={{ maxWidth: 400 }}>
-          <label className="dropdown-label" style={{ fontWeight: 600, fontSize: '1.1rem' }}>
-            {language === 'en' ? 'Scan QR Code' : '扫描二维码'}:
-          </label>
-          <input
-            type="text"
-            value={qrValue}
-            onChange={this.handleQRInput}
-            placeholder={language === 'en' ? 'Enter or scan QR code...' : '输入或扫描二维码...'}
-            style={{ marginBottom: 16, padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 200 }}
-            autoFocus
-          />
-        </div>
-        <div className="details-section">
+        <div className="details-section" style={{ width: '100%', maxWidth: 600 }}>
           <label htmlFor="station-select" className="dropdown-label" style={{ fontWeight: 600, fontSize: '1.1rem' }}>
             {t.testStation}:
           </label>
           <select id="station-select" value={selectedStation} onChange={this.handleChange} className="dropdown-select" style={{ marginBottom: '2rem', maxWidth: 320 }}>
+            <option value="" disabled>{language === 'en' ? 'Select a station' : '选择测试站'}</option>
             {stationKeys.map(key => (
               <option key={key} value={key}>
                 {t.stations[key]}
               </option>
             ))}
           </select>
-          <div className="detail-grid" style={{ maxWidth: 400 }}>
-            {stationFields[selectedStation].map(field => (
-              <div className="detail-item" key={field}>
-                <span className="detail-label">{t[field] || field}:</span>
-                <input
-                  className="detail-value"
-                  type="number"
-                  value={formData[field] || ''}
-                  onChange={e => this.handleInputChange(e, field)}
-                  style={{ marginLeft: 8, padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 100 }}
-                />
-              </div>
-            ))}
-          </div>
         </div>
+        {selectedStation && !qrScanned && (
+          <div className="details-section" style={{ maxWidth: 400, minHeight: 420 }}>
+            <label className="dropdown-label" style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+              {language === 'en' ? 'Scan QR Code' : '扫描二维码'}:
+            </label>
+            <div style={{ textAlign: 'center', marginBottom: 8, color: '#1976d2', fontWeight: 600 }}>
+              {language === 'en' ? 'Camera is active. Please hold QR code in front of the camera.' : '摄像头已开启，请将二维码对准摄像头'}
+            </div>
+            <div id="qr-video-container" style={{ width: '100%', maxWidth: 320, minHeight: 240, margin: '0 auto', borderRadius: 8, background: '#000', border: '3px solid #1976d2', boxShadow: '0 2px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              <QrReader
+                constraints={{}}
+                onResult={this.handleQRScan}
+                videoContainerStyle={{ paddingTop: 0, minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                videoStyle={{ width: '100%', height: 'auto', borderRadius: 8, background: '#222' }}
+                containerStyle={{ width: '100%', maxWidth: 320, minHeight: 240, margin: '0 auto', borderRadius: 8, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              />
+              {/* Fallback if video is not visible */}
+              <noscript>
+                <div style={{ color: 'red', position: 'absolute', top: '50%', left: 0, right: 0, textAlign: 'center', fontWeight: 700 }}>
+                  {language === 'en' ? 'Camera video not available.' : '摄像头画面不可用'}
+                </div>
+              </noscript>
+            </div>
+          </div>
+        )}
+        {selectedStation && qrScanned && (
+          <div className="details-section">
+            <div style={{ textAlign: 'center', marginBottom: 12, color: '#388e3c', fontWeight: 600 }}>
+              {language === 'en' ? 'Scanned QR Code:' : '已扫描二维码：'} {qrValue}
+            </div>
+            <div className="detail-grid" style={{ maxWidth: 400 }}>
+              {stationFields[selectedStation].map(field => (
+                <div className="detail-item" key={field}>
+                  <span className="detail-label">{t[field] || field}:</span>
+                  <input
+                    className="detail-value"
+                    type="number"
+                    value={formData[field] || ''}
+                    onChange={e => this.handleInputChange(e, field)}
+                    style={{ marginLeft: 8, padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 100 }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
 }
 
-export default Volunteers
+export default Volunteers;
