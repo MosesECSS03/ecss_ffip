@@ -1,0 +1,264 @@
+/* HomePage Styles */
+.homepage {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.homepage-container {
+  max-width: 1200px;
+  width: 100%;
+  text-align: center;
+}
+
+.homepage-header {
+  margin-bottom: 2rem;
+}
+
+.homepage-header h1 {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  color: white;
+  margin: 0 0 1rem 0;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  font-weight: 300;
+  line-height: 1.4;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.homepage-content {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: clamp(2rem, 4vw, 3rem);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+.homepage-content h2 {
+  font-size: clamp(2rem, 4vw, 2.5rem);
+  color: #333;
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.description {
+  font-size: clamp(1rem, 2vw, 1.1rem);
+  color: #666;
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.navigation-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+  justify-content: center;
+}
+
+/* Chinese layout - 2 buttons only */
+.navigation-buttons.chinese-layout {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  max-width: 800px;
+  margin: 2rem auto 0;
+}
+
+.nav-button {
+  display: block;
+  text-decoration: none;
+  background: white;
+  border-radius: 16px;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.nav-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
+.nav-button:hover::before {
+  opacity: 0.1;
+}
+
+.nav-button:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+  border-color: #667eea;
+}
+
+.nav-button:active {
+  transform: translateY(-4px);
+}
+
+.nav-button > * {
+  position: relative;
+  z-index: 2;
+}
+
+.button-icon {
+  font-size: clamp(2.5rem, 5vw, 3rem);
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.nav-button h3 {
+  font-size: clamp(1.3rem, 3vw, 1.5rem);
+  color: #333;
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.nav-button p {
+  font-size: clamp(0.9rem, 2vw, 1rem);
+  color: #666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Specific button colors */
+.volunteers-btn:hover {
+  border-color: #4CAF50;
+}
+
+.volunteers-btn:hover::before {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
+.participants-btn:hover {
+  border-color: #2196F3;
+}
+
+.participants-btn:hover::before {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+}
+
+.trainers-btn:hover {
+  border-color: #FF9800;
+}
+
+.trainers-btn:hover::before {
+  background: linear-gradient(135deg, #FF9800, #F57C00);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .homepage {
+    padding: 0.5rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
+  
+  .homepage-header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .homepage-content {
+    padding: 1.5rem;
+  }
+  
+  .description {
+    margin-bottom: 1.5rem;
+  }
+  
+  .navigation-buttons {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .navigation-buttons.chinese-layout {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .homepage {
+    padding: 0.25rem;
+    padding-top: 1rem;
+  }
+  
+  .homepage-content {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+  
+  .button-icon {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  .homepage {
+    align-items: flex-start;
+    padding-top: 1rem;
+  }
+  
+  .homepage-header {
+    margin-bottom: 1rem;
+  }
+  
+  .homepage-content {
+    padding: 1rem;
+  }
+  
+  .navigation-buttons {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .homepage-content {
+    backdrop-filter: blur(20px);
+  }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .nav-button {
+    transition: none;
+  }
+  
+  .nav-button:hover {
+    transform: none;
+  }
+}

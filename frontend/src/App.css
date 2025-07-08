@@ -1,0 +1,47 @@
+/* App Root Styles */
+.App {
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Reset and Base Styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .App {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Tablet responsiveness */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .App {
+    min-height: 100vh;
+  }
+}
+
+/* Fix for mobile browsers with dynamic viewport */
+@supports (-webkit-touch-callout: none) {
+  .App {
+    min-height: -webkit-fill-available;
+  }
+}

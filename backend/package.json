@@ -1,0 +1,32 @@
+{
+  "name": "ecss-ffip-backend",
+  "version": "1.0.0",
+  "description": "Backend API for ECSS FFIP participant registration system",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node ./bin/www"
+  },
+  "keywords": [
+    "express",
+    "api",
+    "fitness",
+    "registration",
+    "seniors"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "fs": "^0.0.1-security",
+    "helmet": "^7.1.0",
+    "mongodb": "^6.17.0",
+    "path": "^0.12.7",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
