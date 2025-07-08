@@ -33,7 +33,8 @@ class Volunteers extends Component {
       formData: {},
       qrValue: '',
       qrScanned: false,
-      cameraError: null
+      cameraError: null,
+      stations: [] // <-- add stations array to state
     }
     this.qrScanner = null
   }
@@ -261,7 +262,7 @@ class Volunteers extends Component {
   }
 
   onEnter = async () => {
-    const { selectedStation, formData, qrValue } = this.state;
+    const { selectedStation, formData, qrValue, stations } = this.state;
     const { language } = this.context;
     if (!qrValue) {
       alert(language === 'en' ? 'No QR code scanned.' : '未扫描二维码。');
@@ -276,18 +277,17 @@ class Volunteers extends Component {
       });
       payload = { heightWeight: fieldsToSend, stations: [] };
     } else {
-      // For other stations, send as { stations: [all stations with their data] }
-      // We'll collect all station data from formData for all stations except heightWeight
-      const stationsArr = Object.keys(stationFields)
-        .filter(station => station !== 'heightWeight')
-        .map(station => {
-          const stationData = {};
-          stationFields[station].forEach(field => {
-            stationData[field] = formData[field] || '';
-          });
-          return { [station]: stationData };
-        });
-      payload = { stations: stationsArr };
+      // For other stations, add/update the station in stations array and send all completed so far
+      const fieldsToSend = {};
+      stationFields[selectedStation].forEach(field => {
+        fieldsToSend[field] = formData[field];
+      });
+      // Remove any previous entry for this station
+      const filteredStations = stations.filter(s => !s[selectedStation]);
+      const newStations = [...filteredStations, { [selectedStation]: fieldsToSend }];
+      payload = { stations: newStations };
+      // Update state with new stations array
+      this.setState({ stations: newStations });
     }
     try {
       const response = await axios.post(`${API_BASE_URL}/participants`, {
@@ -378,6 +378,22 @@ class Volunteers extends Component {
         )}
         {selectedStation && qrScanned && (
           <div className="details-section">
+            {/* Show completed stations */}
+            {this.state.stations.length > 0 && (
+              <div style={{ marginBottom: 16, color: '#1976d2', fontWeight: 600 }}>
+                {language === 'en' ? 'Completed Stations:' : '已完成站点：'}
+                <ul>
+                  {this.state.stations.map((stationObj, idx) => {
+                    const stationName = Object.keys(stationObj)[0];
+                    return (
+                      <li key={stationName}>
+                        {t.stations[stationName] || stationName}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
             <div style={{ textAlign: 'center', marginBottom: 12, color: '#388e3c', fontWeight: 600 }}>
               {/* Always show participant info section as heightWeight, even for manual entry */}
               {(() => {
