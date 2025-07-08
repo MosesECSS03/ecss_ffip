@@ -3,6 +3,7 @@ import LanguageContext from '../contexts/LanguageContext'
 import { translations } from '../utils/translations'
 import './Pages.css'
 import QrScanner from 'qr-scanner'
+import axios from "axios"
 
 const stationFields = {
   heightWeight: ['height', 'weight'],
@@ -46,10 +47,16 @@ class Volunteers extends Component {
     if (this.videoRef.current) {
       this.qrScanner = new QrScanner(
         this.videoRef.current,
-        result => {
+        async result => {
           if (result && result.data && !this.state.qrScanned) {
-            this.setState({ qrValue: result.data, qrScanned: true, cameraError: null })
+            //this.setState({ qrValue: result.data, qrScanned: true, cameraError: null })
             this.qrScanner.stop()
+            // Send scanned QR code to backend
+            const response = await axios.post(`${API_BASE_URL}/participants`, {
+              "purpose": "retrieveParticipant",
+              "participantID": result.data
+            });
+            console.log('QR Code scanned:', response.data)
           }
         },
         {

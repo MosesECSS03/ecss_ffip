@@ -40,6 +40,30 @@ router.post('/', async (req, res) =>
         });
       }
     }
+    else if(req.body.purpose === 'retrieveParticipant') 
+    {   
+      var participantID = req.body.participantID;
+
+      var controller = new ParticipantsController();
+      const result = await controller.getParticipant(participantID);
+
+      console.log('Participant retrieved:', result);
+      
+      if (result.success) {
+        res.status(201).json({
+          status: 'success',
+          success: true,
+          message: 'Participant registered successfully',
+          data: result.data
+        });
+      } else {
+        res.status(500).json({
+          status: 'error',
+          success: false,
+          message: result.error || 'Failed to register participant'
+        });
+      }
+    }
   }
   catch (error) {
     console.error('Error in POST /participants:', error);

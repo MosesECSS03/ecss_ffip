@@ -51,6 +51,51 @@ class ParticipantsController {
             };
         }
     }
+
+    async getParticipant(participantID) {
+        try {
+            console.log('Retrieving participant with ID:', participantID);
+            // Initialize the database connection
+            await this.dbConnection.initialize();
+
+            // Ensure participantID is an ObjectId
+            const { ObjectId } = require('mongodb');
+            let query = {};
+            try {
+                query = { _id: new ObjectId(participantID) };
+            } catch (e) {
+                return {
+                    success: false,
+                    error: 'Invalid participant ID format'
+                };
+            }
+
+            const result = await this.dbConnection.getDocument(
+                'Fitness-Test', // database name
+                'Participants', // collection name
+                query
+            );
+
+            if (result.success) {
+                return {
+                    success: true,
+                    data: result.data,
+                    message: 'Participant retrieved successfully'
+                };
+            } else {
+                return {
+                    success: false,
+                    error: result.message || 'Failed to retrieve participant data'
+                };
+            }
+        } catch (error) {
+            console.error('Error retrieving participant:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
 }
 
 module.exports = ParticipantsController;
