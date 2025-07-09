@@ -152,6 +152,7 @@ export const translations = {
     score1: 'Score 1',
     score2: 'Score 2',
     remarks: 'Remarks',
+    result: 'Result',
     leftRight: 'Left/Right',
     height: 'Height',
     weight: 'Weight'
@@ -260,7 +261,7 @@ export const translations = {
     jobSkills: '就业技能培训',
     // SwipeView and QR Code
     personalInformation: '个人信息',
-    stationResults: '站点结果',
+    stationResults: '站点成绩',
     presentQRCode: '向站长出示二维码',
     qrCodeSubtitle: '站长将扫描此码以记录您的体能测试结果',
     qrCodeDescription: '📱 站长将扫描此二维码以访问您的参与者信息并记录测试结果。',
@@ -309,6 +310,7 @@ export const translations = {
     score1: '分数1',
     score2: '分数2',
     remarks: '备注',
+    result: '成绩',
     leftRight: '左/右',
     height: '身高',
     weight: '体重'

@@ -71,6 +71,29 @@ class DatabaseConnectivity {
         }
     }
 
+    async findDocuments(databaseName, collectionName, query = {}) {
+        try {
+            await this.initialize();
+            const db = this.client.db(databaseName);
+            const collection = db.collection(collectionName);
+            
+            const documents = await collection.find(query).toArray();
+            
+            return {
+                success: true,
+                message: `Retrieved ${documents.length} documents successfully`,
+                data: documents
+            };
+        } catch (error) {
+            console.error('Error finding documents:', error);
+            return {
+                success: false,
+                error: error.message,
+                data: []
+            };
+        }
+    }
+
     async updateDocument(databaseName, collectionName, query, update) {
         try {
             await this.initialize();

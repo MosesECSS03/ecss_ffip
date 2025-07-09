@@ -143,6 +143,42 @@ class ParticipantsController {
             };
         }
     }
+
+    async getAllParticipants() {
+        try {
+            console.log('Retrieving all participants...');
+            // Initialize the database connection
+            await this.dbConnection.initialize();
+            
+            // Retrieve all participants from the collection
+            const result = await this.dbConnection.findDocuments(
+                'Fitness-Test', // database name
+                'Participants', // collection name
+                {} // empty filter to get all documents
+            );
+
+            if (result.success) {
+                console.log(`Retrieved ${result.data.length} participants`);
+                return { 
+                    success: true, 
+                    data: result.data,
+                    message: `Retrieved ${result.data.length} participants successfully` 
+                };
+            } else {
+                return { 
+                    success: false, 
+                    error: 'Failed to retrieve participants data' 
+                };
+            }
+        } catch (error) {
+            console.error('Error retrieving all participants:', error);
+            return { 
+                success: false, 
+                error: error.message 
+            };
+        }
+    }
+
 }
 
 module.exports = ParticipantsController;
