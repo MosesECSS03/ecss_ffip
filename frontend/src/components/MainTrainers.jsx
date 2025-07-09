@@ -129,33 +129,59 @@ class MainTrainers extends Component {
 
   // Helper method to get all unique station names and their sub-keys from participants data
   getAllStationNamesAndKeys = (participants) => {
+    // Define the fixed order of stations
+    const stationOrder = [
+      'sitStand',
+      'armBanding', 
+      'marching',
+      'sitReach',
+      'backStretch',
+      'speedWalking',
+      'handGrip'
+    ];
+
     const stationStructure = {};
+    
+    // Initialize all stations in the correct order with empty sets
+    stationOrder.forEach(stationName => {
+      stationStructure[stationName] = new Set();
+    });
+
+    // Collect all unique sub-keys for each station
     participants.forEach(participant => {
       if (participant.stations && Array.isArray(participant.stations)) {
         participant.stations.forEach(station => {
           Object.entries(station).forEach(([stationName, stationData]) => {
-            if (!stationStructure[stationName]) {
-              stationStructure[stationName] = new Set();
-            }
-            if (typeof stationData === 'object' && stationData !== null) {
-              Object.keys(stationData).forEach(key => {
-                stationStructure[stationName].add(key);
-              });
-            } else {
-              // For simple values, use 'value' as the key
-              stationStructure[stationName].add('value');
+            // Only process stations that are in our defined order
+            if (stationOrder.includes(stationName)) {
+              if (!stationStructure[stationName]) {
+                stationStructure[stationName] = new Set();
+              }
+              if (typeof stationData === 'object' && stationData !== null) {
+                Object.keys(stationData).forEach(key => {
+                  stationStructure[stationName].add(key);
+                });
+              } else {
+                // For simple values, use 'value' as the key
+                stationStructure[stationName].add('value');
+              }
             }
           });
         });
       }
     });
     
-    // Convert sets to arrays
-    Object.keys(stationStructure).forEach(stationName => {
-      stationStructure[stationName] = Array.from(stationStructure[stationName]);
+    // Convert sets to arrays and ensure all stations are present (even if empty)
+    const finalStructure = {};
+    stationOrder.forEach(stationName => {
+      finalStructure[stationName] = Array.from(stationStructure[stationName] || []);
+      // If no sub-keys found, add a default 'value' key to ensure the station column appears
+      if (finalStructure[stationName].length === 0) {
+        finalStructure[stationName] = ['value'];
+      }
     });
     
-    return stationStructure;
+    return finalStructure;
   }
 
   // Helper method to create dynamic station columns with sub-columns
@@ -168,9 +194,8 @@ class MainTrainers extends Component {
       subKeys.forEach(subKey => {
         // Get translated station name
         const getTranslatedStationName = (name) => {
-          // Map station names to translation keys
+          // Map station names to translation keys - using exact keys from translations.js
           const stationKeyMap = {
-            'heightWeight': t.stations?.heightWeight || name,
             'sitStand': t.stations?.sitStand || name,
             'armBanding': t.stations?.armBanding || name,
             'marching': t.stations?.marching || name,
@@ -359,7 +384,6 @@ class MainTrainers extends Component {
             // Get translated station name
             const getTranslatedStationName = (name) => {
               const stationKeyMap = {
-                'heightWeight': t.stations?.heightWeight || name,
                 'sitStand': t.stations?.sitStand || name,
                 'armBanding': t.stations?.armBanding || name,
                 'marching': t.stations?.marching || name,
