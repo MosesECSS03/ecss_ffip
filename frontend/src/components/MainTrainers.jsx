@@ -30,8 +30,7 @@ class MainTrainers extends Component {
       columnDefs: [
         { 
           headerName: 'S/N', 
-          field: '_id',
-          width: 100,
+          width: 75,
           valueGetter: (params) => {
             // Return the row index + 1 as serial number
             return params.node.rowIndex + 1;
@@ -40,22 +39,22 @@ class MainTrainers extends Component {
         { 
           headerName: 'Name', 
           field: 'name',
-          width: 250
+          width: 150
         },
         { 
           headerName: 'NRIC', 
           field: 'nric',
-          width: 250
+          width: 150
         },
         { 
           headerName: 'Age', 
           field: 'age',
-          width: 250
+          width: 75
         },
         { 
           headerName: 'Gender', 
           field: 'gender',
-          width: x90,
+          width: 100,
           cellRenderer: (params) => {
             return params.value ? params.value.charAt(0).toUpperCase() + params.value.slice(1) : '';
           }
@@ -63,58 +62,40 @@ class MainTrainers extends Component {
         { 
           headerName: 'Date Of Birth', 
           field: 'dateOfBirth',
-          width: 240
+          width: 150
         },
         { 
           headerName: 'Phone', 
           field: 'phoneNumber',
-          width: 130
-        },
-        { 
-          headerName: 'Program', 
-          field: 'program',
-          width: 160
-        },
-        { 
-          headerName: 'BMI', 
-          field: 'bmi',
-          width: 80
+          width: 150
         },
         { 
           headerName: 'Height', 
           field: 'height',
-          width: 90
+          width: 100
         },
         { 
           headerName: 'Weight', 
           field: 'weight',
-          width: 90
+          width: 100
         },
         { 
-          headerName: 'Registered', 
+          headerName: 'BMI', 
+          field: 'bmi',
+          width: 100
+        },
+        { 
+          headerName: 'Test Date', 
           field: 'submittedAt',
-          width: 140,
+          width: 150,
           valueFormatter: (params) => {
             if (params.value && params.value.date && params.value.time) {
-              return `${params.value.date} ${params.value.time}`;
+              return `${params.value.date}`;
             }
-            return 'N/A';
+            return '';
           }
         },
-        { 
-          headerName: 'Stations', 
-          field: 'stations',
-          width: 180,
-          cellRenderer: (params) => {
-            if (params.value && Array.isArray(params.value) && params.value.length > 0) {
-              const stationNames = params.value.map(station => {
-                return Object.keys(station).join(', ');
-              }).join(' | ');
-              return stationNames;
-            }
-            return 'No stations';
-          }
-        }
+        // Station columns will be added dynamically
       ],
       defaultColDef: {
         sortable: true,
@@ -144,6 +125,167 @@ class MainTrainers extends Component {
     });
   }
 
+  // Helper method to get all unique station names and their sub-keys from participants data
+  getAllStationNamesAndKeys = (participants) => {
+    const stationStructure = {};
+    participants.forEach(participant => {
+      if (participant.stations && Array.isArray(participant.stations)) {
+        participant.stations.forEach(station => {
+          Object.entries(station).forEach(([stationName, stationData]) => {
+            if (!stationStructure[stationName]) {
+              stationStructure[stationName] = new Set();
+            }
+            if (typeof stationData === 'object' && stationData !== null) {
+              Object.keys(stationData).forEach(key => {
+                stationStructure[stationName].add(key);
+              });
+            } else {
+              // For simple values, use 'value' as the key
+              stationStructure[stationName].add('value');
+            }
+          });
+        });
+      }
+    });
+    
+    // Convert sets to arrays
+    Object.keys(stationStructure).forEach(stationName => {
+      stationStructure[stationName] = Array.from(stationStructure[stationName]);
+    });
+    
+    return stationStructure;
+  }
+
+  // Helper method to create dynamic station columns with sub-columns
+  createStationColumns = (stationStructure) => {
+    const { language } = this.context;
+    const t = translations[language];
+    const columns = [];
+    
+    Object.entries(stationStructure).forEach(([stationName, subKeys]) => {
+      subKeys.forEach(subKey => {
+        // Get translated station name
+        const getTranslatedStationName = (name) => {
+          // Map station names to translation keys
+          const stationKeyMap = {
+            'heightWeight': t.stations?.heightWeight || name,
+            'sitStand': t.stations?.sitStand || name,
+            'armBanding': t.stations?.armBanding || name,
+            'marching': t.stations?.marching || name,
+            'sitReach': t.stations?.sitReach || name,
+            'backStretch': t.stations?.backStretch || name,
+            'speedWalking': t.stations?.speedWalking || name,
+            'handGrip': t.stations?.handGrip || name,
+          };
+          
+          // Try to find a match or return the original name
+          return stationKeyMap[name] || name;
+        };
+
+        const translatedStationName = getTranslatedStationName(stationName);
+
+        // Get translated sub-key name
+        const getTranslatedSubKey = (key) => {
+          const subKeyMap = {
+            'score1': t.score1 || key,
+            'score2': t.score2 || key,
+            'remarks': t.remarks || key,
+            'result': t.result || key,
+            'height': t.height || key,
+            'weight': t.weight || key,
+            'leftRight': t.leftRight || key,
+            'time': t.time || key,
+            'score': t.score || key
+          };
+          
+          return subKeyMap[key] || key;
+        };
+
+        const translatedSubKey = getTranslatedSubKey(subKey);
+
+        // Create a custom header component for multi-line display
+        const headerComponent = (props) => {
+          if (subKey === 'value') {
+            // For simple values, just show the translated station name
+            return (
+              <div style={{ 
+                textAlign: 'center', 
+                lineHeight: '1.2', 
+                whiteSpace: 'pre-line',
+                fontSize: '14px',
+                fontWeight: '600',
+                padding: '4px'
+              }}>
+                {translatedStationName}
+              </div>
+            );
+          } else {
+            // For complex values, show translated station name on first line and translated sub-key on second line
+            return (
+              <div style={{ 
+                textAlign: 'center', 
+                lineHeight: '1.2', 
+                whiteSpace: 'pre-line',
+                fontSize: '14px',
+                fontWeight: '600',
+                padding: '4px'
+              }}>
+                {translatedStationName}<br/>{translatedSubKey}
+              </div>
+            );
+          }
+        };
+        
+        // Set width based on column type - remarks columns get wider width
+        let columnWidth = 150; // default width
+        if (subKey.toLowerCase().includes('remarks') || subKey.toLowerCase().includes('remark')) {
+          columnWidth = 300;
+        }
+        
+        const columnDef = {
+          headerName: '', // Empty since we're using custom header component
+          field: `station_${stationName}_${subKey}`,
+          width: columnWidth,
+          headerClass: 'multi-line-header',
+          headerComponent: headerComponent, // Always use custom header component
+          valueGetter: (params) => {
+            if (params.data.stations && Array.isArray(params.data.stations)) {
+              for (let station of params.data.stations) {
+                if (station[stationName]) {
+                  const stationData = station[stationName];
+                  if (typeof stationData === 'object' && stationData !== null) {
+                    return stationData[subKey] || '';
+                  } else if (subKey === 'value') {
+                    return stationData;
+                  }
+                }
+              }
+            }
+            return '';
+          }
+        };
+        
+        columns.push(columnDef);
+      });
+    });
+    
+    return columns;
+  }
+
+  // Update column definitions with station columns
+  updateColumnDefsWithStations = (participants) => {
+    const stationStructure = this.getAllStationNamesAndKeys(participants);
+    const stationColumns = this.createStationColumns(stationStructure);
+    
+    // Get base columns (everything except the dynamic station columns)
+    const baseColumns = this.state.columnDefs;
+    
+    // Combine base columns with station columns
+    const updatedColumnDefs = [...baseColumns, ...stationColumns];
+    
+    this.setState({ columnDefs: updatedColumnDefs });
+  }
+
   componentWillUnmount() {
     // Clean up socket connection
     if (this.socket) {
@@ -161,7 +303,11 @@ class MainTrainers extends Component {
       this.setState({ 
         participants: response.data,
         loading: false 
-      })
+      });
+      
+      // Update column definitions with station columns after data is loaded
+      this.updateColumnDefsWithStations(response.data);
+      
     } catch (error) {
       console.error('Error fetching participants:', error)
       this.setState({ 
@@ -184,7 +330,7 @@ class MainTrainers extends Component {
 
     return (
       <div className="page-container desktop-only">
-        <h1>Participants</h1>
+        <h1>All Participants Results </h1>
         
         {loading && <p>Loading participants...</p>}
         {error && <p className="error-message">{error}</p>}
@@ -196,21 +342,26 @@ class MainTrainers extends Component {
                 columnDefs={columnDefs}
                 rowData={participants}
                 defaultColDef={defaultColDef}
-                rowHeight={rowHeight}
                 headerHeight={headerHeight}
+                getRowHeight={() => 'auto'}
                 pagination={true}
-                paginationPageSize={20}
+                paginationPageSize={participants.length}
                 domLayout='normal'
                 suppressHorizontalScroll={false}
+                alwaysShowHorizontalScroll={true}
+                alwaysShowVerticalScroll={false}
+                suppressColumnVirtualisation={false}
+                suppressRowVirtualisation={true}
+                enableBrowserTooltips={true}
                 onGridReady={(params) => {
                   this.gridApi = params.api;
                   this.gridColumnApi = params.columnApi;
-                  // Auto-size columns to fit content
-                  params.api.sizeColumnsToFit();
                 }}
                 onGridSizeChanged={(params) => {
-                  // Re-size columns when grid size changes
-                  params.api.sizeColumnsToFit();
+                  // Allow natural scrolling
+                  if (params.api) {
+                    params.api.resetRowHeights();
+                  }
                 }}
               />
             </div>

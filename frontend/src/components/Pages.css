@@ -963,6 +963,75 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* Participants Table Container - Enable Scrolling */
+.participants-table-container {
+  width: 100%;
+  height: 600px;
+  overflow: visible;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  position: relative;
+}
+
+.participants-table-container .ag-theme-alpine {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Enable auto row height for better content visibility */
+.participants-table-container .ag-theme-alpine {
+  --ag-row-height: auto;
+  --ag-header-height: 70px;
+  --ag-font-size: 18px;
+  --ag-font-weight: 500;
+}
+
+/* Ensure rows can expand to fit content */
+.participants-table-container .ag-theme-alpine .ag-row {
+  height: auto !important;
+  min-height: 65px;
+}
+
+.participants-table-container .ag-theme-alpine .ag-cell-wrapper {
+  height: auto;
+  line-height: 1.4;
+}
+
+/* Multi-line header styling for station columns */
+.participants-table-container .ag-theme-alpine .ag-header-cell.multi-line-header {
+  white-space: pre-line !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  line-height: 1.2 !important;
+  padding: 8px 4px !important;
+  height: auto !important;
+  min-height: 70px !important;
+}
+
+.participants-table-container .ag-theme-alpine .ag-header-cell.multi-line-header .ag-header-cell-label {
+  white-space: pre-line !important;
+  text-align: center !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  height: auto !important;
+  display: block !important;
+}
+
+.participants-table-container .ag-theme-alpine .ag-header-cell.multi-line-header .ag-header-cell-text {
+  white-space: pre-line !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  height: auto !important;
+  display: block !important;
+}
+
+.participants-table-container .ag-theme-alpine .ag-header-cell.multi-line-header span {
+  white-space: pre-line !important;
+  display: block !important;
+}
+
 /* Programme Indemnity Styles */
 .indemnity-statements {
   display: flex;
@@ -985,10 +1054,10 @@
 .statement-number {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: white;
   min-width: 2rem;
   text-align: center;
-  background: none;
+  background: #646cff;
   border-radius: 50%;
   width: 2rem;
   height: 2rem;
@@ -997,7 +1066,6 @@
   justify-content: center;
   flex-shrink: 0;
 }
-
 .statement-text {
   font-size: 1.3rem;
   font-weight: 500;
@@ -2383,30 +2451,47 @@
 .participants-table-container .ag-paging-panel {
   background: #f8fafc;
   border-top: 2px solid #e2e8f0;
-  padding: 12px 20px;
+  padding: 20px 20px; /* Increased padding for more height */
   color: #64748b;
+  min-height: 80px; /* Increased minimum height */
+  display: flex;
+  align-items: center;
 }
 
 .participants-table-container .ag-paging-button {
-  background: #667eea;
+  background: none; /* Changed to black */
+  color: #000000;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px; /* Increased padding for larger buttons */
+  margin: 0 2px; /* Reduced margin to remove gaps/dividers */
+  transition: all 0.2s ease;
+  font-size: 52px;
+  font-weight: bolder;
+}
+
+/* Remove any dividers between pagination elements */
+.participants-table-container .ag-paging-panel .ag-paging-row-summary-panel {
+  border: none !important;
+}
+
+.participants-table-container .ag-paging-panel .ag-paging-page-summary-panel {
+  border: none !important;
+  padding: 0 10px;
+}
+
+/* Style the page size selector */
+.participants-table-container .ag-paging-page-size {
+  margin: 0 10px;
+}
+
+.participants-table-container .ag-paging-page-size select {
+  background: #000000;
   color: white;
   border: none;
   border-radius: 6px;
   padding: 8px 12px;
-  margin: 0 4px;
-  transition: all 0.2s ease;
-}
-
-.participants-table-container .ag-paging-button:hover {
-  background: #5a67d8;
-  transform: translateY(-1px);
-}
-
-.participants-table-container .ag-paging-button:disabled {
-  background: #cbd5e1;
-  color: #94a3b8;
-  cursor: not-allowed;
-  transform: none;
+  font-size: 14px;
 }
 
 /* Filter and Sort Icons */
@@ -2487,115 +2572,5 @@
   padding: 1rem;
   border-radius: 6px;
   margin: 1rem 0;
-  text-align: center;
-}
-
-/* Responsive Table Scrolling for smaller desktops */
-@media (max-width: 1400px) {
-  .participants-table-container {
-    overflow-x: auto;
-  }
-  
-  .participants-table {
-    min-width: 1000px;
-  }
-}
-
-/* AG Grid Custom Styles */
-.ag-grid-custom-cell {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: flex;
-  align-items: center;
-  font-size: 18px;
-  font-weight: 500;
-}
-
-.ag-grid-custom-header {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.participants-table-container .ag-theme-alpine {
-  --ag-row-height: 65px;
-  --ag-header-height: 70px;
-  --ag-font-size: 18px;
-  --ag-font-weight: 500;
-}
-
-.participants-table-container .ag-theme-alpine .ag-cell {
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 18px;
-  font-weight: 500;
-}
-
-.participants-table-container .ag-theme-alpine .ag-header-cell-label {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-
-/* Programme Indemnity Styles */
-.indemnity-statements {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  margin-top: 1rem;
-}
-
-.indemnity-statement {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1.5rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  background: #f8f9fa;
-  line-height: 1.5;
-}
-
-.statement-number {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: white;
-  min-width: 2rem;
-  text-align: center;
-  background: #646cff;
-  border-radius: 50%;
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.statement-text {
-  font-size: 1.3rem;
-  font-weight: 500;
-  color: #2c3e50;
-  flex: 1;
-}
-
-@media (max-width: 768px) {
-  .indemnity-statement {
-    padding: 1rem;
-    gap: 0.75rem;
-  }
-  
-  .statement-number {
-    font-size: 1.2rem;
-    width: 1.5rem;
-    height: 1.5rem;
-    min-width: 1.5rem;
-  }
-  
-  .statement-text {
-    font-size: 1.1rem;
-  }
 }
 
