@@ -9,6 +9,9 @@ import { ModuleRegistry } from 'ag-grid-community';
 import { AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import * as XLSX from 'xlsx';
+
+import { io } from 'socket.io-client' 
 
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -121,7 +124,8 @@ class MainTrainers extends Component {
     // --- SOCKET.IO ---
     this.socket = io(API_BASE_URL);
     // Listen for participant updates and refresh data live
-    this.socket.on('participant-updated', (data) => {
+    this.socket.on('participant-updated', async (data) => {
+      await this.fetchParticipants()
     });
   }
 
@@ -323,6 +327,111 @@ class MainTrainers extends Component {
     await this.fetchParticipants();
   }
 
+  // Export data to Excel
+  exportToExcel = () => {
+    const { participants } = this.state;
+    const { language } = this.context;
+    const t = translations[language];
+    
+    if (!participants || participants.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    // Create export data array
+    const exportData = participants.map((participant, index) => {
+      const row = {
+        'S/N': index + 1,
+        [t.name || 'Name']: participant.name || '',
+        [t.nric || 'NRIC']: participant.nric || '',
+        [t.age || 'Age']: participant.age || '',
+        [t.gender || 'Gender']: participant.gender ? participant.gender.charAt(0).toUpperCase() + participant.gender.slice(1) : '',
+        'Date Of Birth': participant.dateOfBirth || '',
+        [t.phoneNumber || 'Phone']: participant.phoneNumber || '',
+        [t.height || 'Height']: participant.height || '',
+        [t.weight || 'Weight']: participant.weight || '',
+        'BMI': participant.bmi || '',
+        'Test Date': participant.submittedAt && participant.submittedAt.date ? participant.submittedAt.date : ''
+      };
+
+      // Add station data
+      if (participant.stations && Array.isArray(participant.stations)) {
+        participant.stations.forEach(station => {
+          Object.entries(station).forEach(([stationName, stationData]) => {
+            // Get translated station name
+            const getTranslatedStationName = (name) => {
+              const stationKeyMap = {
+                'heightWeight': t.stations?.heightWeight || name,
+                'sitStand': t.stations?.sitStand || name,
+                'armBanding': t.stations?.armBanding || name,
+                'marching': t.stations?.marching || name,
+                'sitReach': t.stations?.sitReach || name,
+                'backStretch': t.stations?.backStretch || name,
+                'speedWalking': t.stations?.speedWalking || name,
+                'handGrip': t.stations?.handGrip || name,
+              };
+              return stationKeyMap[name] || name;
+            };
+
+            const translatedStationName = getTranslatedStationName(stationName);
+
+            if (typeof stationData === 'object' && stationData !== null) {
+              Object.entries(stationData).forEach(([subKey, value]) => {
+                const getTranslatedSubKey = (key) => {
+                  const subKeyMap = {
+                    'score1': t.score1 || key,
+                    'score2': t.score2 || key,
+                    'remarks': t.remarks || key,
+                    'result': t.result || key,
+                    'height': t.height || key,
+                    'weight': t.weight || key,
+                    'leftRight': t.leftRight || key,
+                    'time': t.time || key,
+                    'score': t.score || key
+                  };
+                  return subKeyMap[key] || key;
+                };
+
+                const translatedSubKey = getTranslatedSubKey(subKey);
+                const columnName = `${translatedStationName} - ${translatedSubKey}`;
+                row[columnName] = value || '';
+              });
+            } else {
+              row[translatedStationName] = stationData || '';
+            }
+          });
+        });
+      }
+
+      return row;
+    });
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+    // Auto-size columns
+    const columnWidths = [];
+    Object.keys(exportData[0] || {}).forEach((key, index) => {
+      const maxLength = Math.max(
+        key.length,
+        ...exportData.map(row => String(row[key] || '').length)
+      );
+      columnWidths[index] = { wch: Math.min(Math.max(maxLength + 2, 10), 50) };
+    });
+    worksheet['!cols'] = columnWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Participants Data');
+
+    // Generate filename with current date
+    const currentDate = new Date().toISOString().split('T')[0];
+    const filename = `ECSS_FFT_Participants_${currentDate}.xlsx`;
+
+    // Save file
+    XLSX.writeFile(workbook, filename);
+  };
+
   render() {
     const { language } = this.context
     const t = translations[language]
@@ -330,7 +439,40 @@ class MainTrainers extends Component {
 
     return (
       <div className="page-container desktop-only">
-        <h1>All Participants Results </h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h1>All Participants Results</h1>
+          <button 
+            onClick={this.exportToExcel}
+            disabled={loading || participants.length === 0}
+            style={{
+              backgroundColor: '#000000',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '12px 24px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: participants.length > 0 ? 'pointer' : 'not-allowed',
+              opacity: participants.length > 0 ? 1 : 0.6,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => {
+              if (participants.length > 0) {
+                e.target.style.backgroundColor = '#333333';
+                e.target.style.transform = 'translateY(-1px)';
+              }
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = '#000000';
+              e.target.style.transform = 'translateY(0)';
+            }}
+          >
+            📊 Export to Excel
+          </button>
+        </div>
         
         {loading && <p>Loading participants...</p>}
         {error && <p className="error-message">{error}</p>}
