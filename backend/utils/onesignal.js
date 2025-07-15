@@ -39,7 +39,7 @@ async function sendOneSignalNotification({ title, message, url }) {
       }
     );
 
-    console.log("OneSignal API response:", response.data);
+    //console.log("OneSignal API response:", response.data);
     return response.data;
   } catch (error) {
     console.error("OneSignal API error:", error.response ? error.response.data : error.message);

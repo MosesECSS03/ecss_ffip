@@ -9,15 +9,16 @@ const API_BASE_URL =
     : 'https://ecss-fft.azurewebsites.net'
 
 class ParticipantForm extends Component {
-  sendHealthSignal = async (questionKey) => {
+  sendHealthSignal = async (question, answer) => {
     const { formData } = this.props;
     const name = formData?.participantDetails?.participantName || '';
     const phoneNumber = formData?.participantDetails?.phoneNumber || '';
+    console.log('Sending health signal for question:', question, 'Answer:', answer, );
     try {
       await axios.post(`${API_BASE_URL}/participants`, {
         purpose: 'healthSignal',
-        question: questionKey,
-        answer: 'yes',
+        question,
+        answer,
         name,
         phoneNumber
       });
@@ -30,6 +31,14 @@ class ParticipantForm extends Component {
   render() {
     const { formData, language, onInputChange, onSubmit, submissionError } = this.props;
     const t = translations[language];
+
+    // Determine if health declaration section should be disabled
+    const isHealthSectionDisabled =
+      !formData.participantDetails.participantName ||
+      !formData.participantDetails.participantNric ||
+      !formData.participantDetails.dateOfBirth ||
+      !formData.participantDetails.phoneNumber ||
+      !formData.participantDetails.gender;
 
     return (
       <div className="page-container senior-friendly-page">
@@ -127,7 +136,7 @@ class ParticipantForm extends Component {
                 </div>
               </div>
               {/* Health Declaration */}
-              <div className="form-section">
+              <div className="form-section" style={isHealthSectionDisabled ? { opacity: 0.5, pointerEvents: 'none' } : {}}>
                 <h3 className="section-title">{t.healthDeclaration}</h3>
                 {Object.keys(formData.healthDeclaration.questions).map((questionKey, index) => (
                   <div key={index} className="senior-form-group health-question-row">
@@ -141,12 +150,14 @@ class ParticipantForm extends Component {
                             value="yes"
                             checked={formData.healthDeclaration.questions[questionKey] === 'yes'}
                             onChange={e => {
+                              if (isHealthSectionDisabled) return;
                               onInputChange(e);
                               if (e.target.checked) {
-                                this.sendHealthSignal(questionKey);
+                                this.sendHealthSignal(t[questionKey], "yes");
                               }
                             }}
                             className="checkbox-input-inline"
+                            disabled={isHealthSectionDisabled}
                           />
                           <span className="checkbox-text-inline">{t.yes}</span>
                         </label>
@@ -156,8 +167,9 @@ class ParticipantForm extends Component {
                             name={`healthDeclaration.questions.${questionKey}`}
                             value="no"
                             checked={formData.healthDeclaration.questions[questionKey] === 'no'}
-                            onChange={onInputChange}
+                            onChange={isHealthSectionDisabled ? undefined : onInputChange}
                             className="checkbox-input-inline"
+                            disabled={isHealthSectionDisabled}
                           />
                           <span className="checkbox-text-inline">{t.no}</span>
                         </label>

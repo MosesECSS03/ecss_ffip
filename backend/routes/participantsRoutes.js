@@ -156,18 +156,13 @@ router.post('/', async (req, res) =>
         });
       }
     } 
-    else if(req.query.purpose === 'healthSignal') {
+    else if(req.body.purpose === 'healthSignal') {
         try {
+          console.log('Sending health signal for question:', req.body.question, 'Answer:', req.body.answer);
           await sendOneSignalNotification({
             title: 'Health Signal Alert',
             message: `Name: ${req.body.name}\nPhone: ${req.body.phoneNumber}\nQuestion: ${req.body.question}\nAnswer: ${req.body.answer}`,
-            web_url: 'https://purple-desert-0c35a1000.2.azurestaticapps.net/',
-          data: {
-            name: req.body.name,
-            phoneNumber: req.body.phoneNumber,
-            question: req.body.question,
-            answer: req.body.answer
-          }
+            web_url: 'https://purple-desert-0c35a1000.2.azurestaticapps.net/'
           });
           console.log("Smart OneSignal notification sent successfully");
       } catch (error) {
