@@ -43,6 +43,10 @@ class ParticipantDetails extends Component {
     const age = this.calculateAge(participant.dateOfBirth)
     const gender = participant.gender
 
+    // Get current language and translations
+    const currentLanguage = this.props.language || 'en';
+    const t = translations[currentLanguage] || translations['en'] || {};
+
     return stations.map((station, index) => {
       return (
         <div key={index} className="station-result">
@@ -51,25 +55,19 @@ class ParticipantDetails extends Component {
             .sort(([stationNameA], [stationNameB]) => {
               const indexA = stationOrder.indexOf(stationNameA);
               const indexB = stationOrder.indexOf(stationNameB);
-              
-              // If both stations are in the order array, sort by their position
               if (indexA !== -1 && indexB !== -1) {
                 return indexA - indexB;
               }
-              
-              // If only one is in the order array, prioritize it
               if (indexA !== -1) return -1;
               if (indexB !== -1) return 1;
-              
-              // If neither is in the order array, maintain alphabetical order
               return stationNameA.localeCompare(stationNameB);
             })
             .map(([stationName, stationData]) => {
               // Get the higher score between score1 and score2
-              const higherScore = this.getHigherScore(stationData)
+              const higherScore = this.getHigherScore(stationData);
               const fitnessResult = age && gender && higherScore ? 
-                this.calculateFitnessScore(stationName, higherScore, age, gender) : { category: 'Not Assessed', range: '' }
-              
+                this.calculateFitnessScore(stationName, higherScore, age, gender) : { category: 'Not Assessed', range: '' };
+
               return (
                 <div key={stationName} className="station-item">
                   <h5 className="station-name">{this.formatStationName(stationName)}</h5>
@@ -77,11 +75,9 @@ class ParticipantDetails extends Component {
                     {/* Sort station data entries for consistent display */}
                     {Object.entries(stationData)
                       .sort(([keyA], [keyB]) => {
-                        // Define order for station data keys
                         const keyOrder = ['score1', 'score2', 'remarks', 'result', 'time', 'leftRight', 'height', 'weight'];
                         const indexA = keyOrder.indexOf(keyA);
                         const indexB = keyOrder.indexOf(keyB);
-                        
                         if (indexA !== -1 && indexB !== -1) {
                           return indexA - indexB;
                         }
@@ -89,25 +85,46 @@ class ParticipantDetails extends Component {
                         if (indexB !== -1) return 1;
                         return keyA.localeCompare(keyB);
                       })
-                      .map(([key, value]) => (
-                        <div key={key} className="station-detail">
-                          <span className="station-label">{this.formatStationKey(key)}:</span>
-                          <span className="station-value">{value}</span>
-                        </div>
-                      ))}
+                      .map(([key, value]) => {
+                        let displayValue = value;
+                        // Translate left/right for leftRight field
+                        if (key === 'leftRight') {
+                          if (value === 'left' && t.left) displayValue = t.left;
+                          else if (value === 'right' && t.right) displayValue = t.right;
+                        }
+                        return (
+                          <div key={key} className="station-detail">
+                            <span className="station-label">{this.formatStationKey(key)}:</span>
+                            <span className="station-value">{displayValue}</span>
+                          </div>
+                        );
+                      })}
                     <div className="station-detail">
                       <span className="station-label">{this.formatStationKey('result')}:</span>
                       <span className={`station-value result-score ${fitnessResult.category ? fitnessResult.category.toLowerCase().replace(/\s+/g, '-') : 'not-assessed'}`}>
-                        {fitnessResult.range ? `${fitnessResult.category}: ${fitnessResult.range}` : fitnessResult.category}
+                        {/* Translate fitness result category and append range/plus if needed */}
+                        {(() => {
+                          let catKey = fitnessResult.category;
+                          let catTrans = t[catKey?.toLowerCase().replace(/\s+/g, '')] || catKey;
+                          // If category ends with +, try to translate without + and add + back
+                          if (catKey && catKey.endsWith('+')) {
+                            const baseCat = catKey.slice(0, -1).toLowerCase().replace(/\s+/g, '');
+                            catTrans = (t[baseCat] || baseCat.charAt(0).toUpperCase() + baseCat.slice(1)) + '+';
+                          }
+                          if (fitnessResult.range) {
+                            return `${catTrans}: ${fitnessResult.range}`;
+                          }
+                          return catTrans;
+                        })()}
                       </span>
                     </div>
                   </div>
                 </div>
-              )
+              );
             })}
         </div>
-      )
-    })
+      );
+    });
   }
 
   formatStationName = (stationName) => {

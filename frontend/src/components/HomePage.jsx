@@ -84,8 +84,8 @@ function HomePage() {
             {language !== 'zh' && (
               <a href="/trainers" className="nav-button trainers-btn" onClick={e => handleProtectedClick('trainers', e)}>
                 <div className="button-icon">🔒</div>
-                <h3>{t.trainersNav || 'Trainer Dash'}</h3>
-                <p>{t.trainersDesc || 'Access trainer-only features'}</p>
+                <h3>{t.trainersNav || 'Dashboard'}</h3>
+                <p>{t.trainersDesc || 'Access participants results'}</p>
               </a>
             )}
           </div>

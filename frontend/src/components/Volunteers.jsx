@@ -240,8 +240,14 @@ class Volunteers extends Component {
   }
 
   handleInputChange = (e, field, unit = '') => {
-    // Store value as-is to allow user to backspace/delete unit
-    const val = e.target.value;
+    let val = e.target.value;
+    if (unit) {
+      // Remove any existing unit and trailing spaces
+      val = val.replace(new RegExp(`\\s*${unit}$`), '');
+      // Remove any non-numeric except dot
+      val = val.replace(/[^0-9.]/g, '');
+      if (val) val = `${val} ${unit}`;
+    }
     this.setState(prevState => ({
       formData: {
         ...prevState.formData,
@@ -313,15 +319,16 @@ class Volunteers extends Component {
     let payload;
     if (selectedStation === 'heightWeight') {
       payload = {
-        height: getFieldWithUnit('height', formData.height),
-        weight: getFieldWithUnit('weight', formData.weight),
-        bmi: formData.bmi, // bmi is likely just a value, not value+unit
+        height: getFieldWithUnit('height', formData.height ?? ''),
+        weight: getFieldWithUnit('weight', formData.weight ?? ''),
+        bmi: formData.bmi ?? '',
         stations: []
       };
     } else {
       const fieldsToSend = {};
       stationFields[selectedStation].forEach(field => {
-        fieldsToSend[field] = getFieldWithUnit(field, formData[field]);
+        // Always include the field, even if empty
+        fieldsToSend[field] = getFieldWithUnit(field, formData[field] ?? '');
       });
       // Remove any previous entry for this station
       const filteredStations = stations.filter(s => !s[selectedStation]);
@@ -567,10 +574,12 @@ class Volunteers extends Component {
                 if (selectedStation === 'heightWeight') {
                   if (field === 'height') { unit = 'cm'; placeholder = `${t[field] || 'Height'}`; }
                   if (field === 'weight') { unit = 'kg'; placeholder = `${t[field] || 'Weight'}`; }
-                } else if (["sitReach", "backStretch"].includes(selectedStation) && field.startsWith('score')) {
+                } else if (selectedStation === 'sitReach' && field.startsWith('score')) {
+                  unit = 'cm'; placeholder = `${t[field] || field}`;
+                } else if (selectedStation === 'backStretch' && field.startsWith('score')) {
                   unit = 'cm'; placeholder = `${t[field] || field}`;
                 } else if (selectedStation === 'speedWalking' && field.startsWith('score')) {
-                  unit = 'secs'; placeholder = `${t[field] || field} `;
+                  unit = 'secs'; placeholder = `${t[field] || field}`;
                 } else if (selectedStation === 'handGrip' && field.startsWith('score')) {
                   unit = 'kg'; placeholder = `${t[field] || field}`;
                 }

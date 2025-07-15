@@ -21,7 +21,7 @@ export const translations = {
     home: 'Home',
     volunteers: 'Volunteers',
     participants: 'Participants',
-    trainers: 'Main Trainers',
+    trainers: 'Dashbord',
     // Volunteers Page
     volunteersTitle: 'Volunteers',
     youthVolunteers: 'Youth Volunteers',
@@ -38,7 +38,7 @@ export const translations = {
     status: 'Status',
     pending: 'Pending',
     // Trainers Page
-    trainersTitle: 'Main Trainers',
+    trainersTitle: 'Dashboard',
     experience: 'Experience',
     certifications: 'Certifications',
     bio: 'Bio',
