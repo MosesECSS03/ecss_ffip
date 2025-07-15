@@ -102,13 +102,13 @@ class MainTrainers extends Component {
         sortable: true,
         resizable: true,
         cellStyle: {
-          'white-space': 'nowrap',
-          'overflow': 'hidden',
-          'text-overflow': 'ellipsis',
-          'display': 'flex',
-          'align-items': 'center',
-          'font-size': '18px',
-          'font-weight': '500'
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: 'flex',
+          alignItems: 'center',
+          fontSize: '18px',
+          fontWeight: '500'
         }
       },
       rowHeight: 65,
@@ -502,32 +502,30 @@ class MainTrainers extends Component {
         {!loading && !error && (
           <div className="participants-table-container">
             <div className="ag-theme-alpine" style={{ height: '600px', width: '100%' }}>
-              <AgGridReact
-                columnDefs={columnDefs}
-                rowData={participants}
-                defaultColDef={defaultColDef}
-                headerHeight={headerHeight}
-                getRowHeight={() => 'auto'}
-                pagination={true}
-                paginationPageSize={participants.length}
-                domLayout='normal'
-                suppressHorizontalScroll={false}
-                alwaysShowHorizontalScroll={true}
-                alwaysShowVerticalScroll={false}
-                suppressColumnVirtualisation={false}
-                suppressRowVirtualisation={true}
-                enableBrowserTooltips={true}
-                onGridReady={(params) => {
-                  this.gridApi = params.api;
-                  this.gridColumnApi = params.columnApi;
-                }}
-                onGridSizeChanged={(params) => {
-                  // Allow natural scrolling
-                  if (params.api) {
-                    params.api.resetRowHeights();
-                  }
-                }}
-              />
+                  <AgGridReact
+                    columnDefs={columnDefs}
+                    rowData={participants}
+                    defaultColDef={defaultColDef}
+                    headerHeight={headerHeight}
+                    getRowHeight={() => rowHeight}
+                    pagination={true}
+                    paginationPageSize={20}
+                    domLayout='normal'
+                    suppressHorizontalScroll={false}
+                    alwaysShowHorizontalScroll={true}
+                    alwaysShowVerticalScroll={false}
+                    suppressColumnVirtualisation={false}
+                    suppressRowVirtualisation={true}
+                    onGridReady={(params) => {
+                      this.gridApi = params.api;
+                      this.gridColumnApi = params.columnApi;
+                    }}
+                    onGridSizeChanged={(params) => {
+                      if (params.api) {
+                        params.api.resetRowHeights();
+                      }
+                    }}
+                  />
             </div>
             
             {participants.length === 0 && (
