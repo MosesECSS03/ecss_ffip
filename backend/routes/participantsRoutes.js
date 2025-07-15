@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ParticipantsController = require('../Controllers/Participants/ParticipantsController');
+const { sendOneSignalNotification } = require('../utils/onesignal');
 
 router.post('/', async (req, res) => 
 {
@@ -17,6 +18,7 @@ router.post('/', async (req, res) =>
       const result = await controller.addParticipant(participantData);
 
       console.log('New participant added:', result);
+
       
       // Emit real-time update to connected clients
       if (io && result.success) {
@@ -154,6 +156,26 @@ router.post('/', async (req, res) =>
         });
       }
     } 
+    else if(req.query.purpose === 'healthSignal') {
+        try {
+        await sendOneSignalNotification({
+          title: 'Health Signal Alert',
+          message: `Name: ${req.body.name}\nPhone: ${req.body.phoneNumber}\nQuestion: ${req.body.question}\nAnswer: ${req.body.answer}`,
+          web_url: 'https://purple-desert-0c35a1000.2.azurestaticapps.net/',
+        data: {
+          name: req.body.name,
+          phoneNumber: req.body.phoneNumber,
+          question: req.body.question,
+          answer: req.body.answer
+        }
+        });
+        console.log("Smart OneSignal notification sent successfully");
+      } catch (error) {
+        console.error("Failed to send OneSignal notification:", error);
+        // Continue with the response even if notification fails
+      }
+
+    }
   }
   catch (error) {
     console.error('Error in POST /participants:', error);
@@ -162,7 +184,7 @@ router.post('/', async (req, res) =>
 });
 
 // GET route for retrieving all participants
-router.get('/', async (req, res) => {
+router.post('/', async (req, res) => {
   console.log('Received GET request on /participants - retrieving all participants');
   
   try {
