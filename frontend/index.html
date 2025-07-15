@@ -29,17 +29,22 @@
           // Force the prompt if not already subscribed
           const permission = await OneSignal.Notification.permission;
           if (permission !== "granted") {
-            await OneSignal.User.PushSubscription.optIn();
+            // Try optIn (for browsers that support it)
+            if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
+              await OneSignal.User.PushSubscription.optIn();
+            }
+            // Fallback: show slidedown prompt (works on most browsers, including Safari)
+            if (OneSignal.showSlidedownPrompt) {
+              OneSignal.showSlidedownPrompt();
+            }
           }
         } catch (error) {
           console.error("OneSignal init error:", error);
         }
-        
         // Set tag for current path for notification filtering
         const currentPath = window.location.pathname;
         console.log('Setting OneSignal path tag:', currentPath);
         await OneSignal.User.addTag('current_path', currentPath);
-        
         // Track path changes
         const originalPushState = history.pushState;
         history.pushState = function() {
