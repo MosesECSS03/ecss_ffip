@@ -18,7 +18,7 @@ async function sendOneSignalNotification({ title, message, url }) {
       headings: { en: title },
       priority: 10,
       ttl: 259200,
-      url: url,
+      //url: url,
       android_sound: "default",
       ios_sound: "default",
       chrome_web_icon: "https://ecss.org.sg/wp-content/uploads/2023/03/cropped-EN_Logo_RGB_Normal_Small-01.png", // Optional: your icon URL
