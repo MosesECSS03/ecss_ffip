@@ -8,9 +8,8 @@ const ONESIGNAL_API_KEY = 'Basic os_v2_app_n3xpgsfebvekrbc6rvqesuov6jieg5savoeuy
  * Send a OneSignal push notification to all users as a visible banner.
  */
 async function sendOneSignalNotification({ title, message, url }) {
+  console.log("Sending OneSignal notification with:", { title, message, url });
   try {
-    console.log("Sending OneSignal notification with:", { title, message, url });
-
     const data = {
       app_id: ONESIGNAL_APP_ID,
       included_segments: ["Active Users", "Engaged Users", "All"],

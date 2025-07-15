@@ -7,7 +7,7 @@ router.post('/', async (req, res) =>
 {
   const io = req.app.get('io'); // Get the Socket.IO instance
   console.log('🔗 Socket.IO instance:', io);
-  sconsole.log('Received POST request on /participants with body:', req.body);  
+  console.log('Received POST request on /participants with body:', req.body);  
   try{
     if(req.body.purpose === 'new') 
     {   
