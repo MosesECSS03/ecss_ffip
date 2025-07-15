@@ -526,28 +526,49 @@ class Volunteers extends Component {
                 let unit = '';
                 let placeholder = t[field] || field;
                 if (selectedStation === 'heightWeight') {
-                  if (field === 'height') { unit = 'cm'; placeholder = `${t[field] || 'Height'} (${unit})`; }
-                  if (field === 'weight') { unit = 'kg'; placeholder = `${t[field] || 'Weight'} (${unit})`; }
+                  if (field === 'height') { unit = 'cm'; placeholder = t[field] || 'Height'; }
+                  if (field === 'weight') { unit = 'kg'; placeholder = t[field] || 'Weight'; }
                 } else if (["sitReach", "backStretch"].includes(selectedStation) && field.startsWith('score')) {
-                  unit = 'cm'; placeholder = `${t[field] || field} (${unit})`;
+                  unit = 'cm'; placeholder = t[field] || field;
                 } else if (selectedStation === 'speedWalking' && field.startsWith('score')) {
-                  unit = 'secs'; placeholder = `${t[field] || field} (${unit})`;
+                  unit = 'secs'; placeholder = t[field] || field;
                 } else if (selectedStation === 'handGrip' && field.startsWith('score')) {
-                  unit = 'kg'; placeholder = `${t[field] || field} (${unit})`;
+                  unit = 'kg'; placeholder = t[field] || field;
                 }
+
+                // Find last value for this station/field
+                let lastValue = '';
+                if (this.state.stations && this.state.stations.length > 0) {
+                  const lastStationObj = this.state.stations.find(s => s[selectedStation]);
+                  if (lastStationObj && lastStationObj[selectedStation] && lastStationObj[selectedStation][field]) {
+                    lastValue = lastStationObj[selectedStation][field];
+                  }
+                }
+
                 return (
-                  <div className="detail-item" key={field} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="detail-label">{t[field] || field}:</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <input
-                        className="detail-value"
-                        type={field === 'remarks' ? 'text' : 'number'}
-                        value={formData[field] || ''}
-                        onChange={e => this.handleInputChange(e, field)}
-                        placeholder={placeholder}
-                        style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 100 }}
-                      />
+                  <div className="detail-item" key={field} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="detail-label">{t[field] || field}:</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <input
+                          className="detail-value"
+                          type={field === 'remarks' ? 'text' : 'number'}
+                          value={formData[field] || ''}
+                          onChange={e => this.handleInputChange(e, field)}
+                          placeholder={placeholder}
+                          style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 100 }}
+                        />
+                        {(formData[field] && unit) && (
+                          <span style={{ color: '#888', fontWeight: 500, minWidth: 28 }}>{unit}</span>
+                        )}
+                      </div>
                     </div>
+                    {/* Show last value for this station/field if available */}
+                    {lastValue && (
+                      <div style={{ color: '#1976d2', fontSize: '0.95em', marginLeft: 8 }}>
+                        Last: {lastValue}{unit}
+                      </div>
+                    )}
                   </div>
                 );
               })}
