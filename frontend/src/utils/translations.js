@@ -1,5 +1,11 @@
 export const translations = {
   en: {
+    // Password Popup
+    passwordPopupTitle: 'Enter Password',
+    passwordPopupPlaceholder: 'Password',
+    passwordPopupSubmit: 'Submit',
+    passwordPopupCancel: 'Cancel',
+    passwordPopupError: 'Incorrect password. Please try again.',
     // Language Selection
     selectLanguage: 'Select Language',
     chooseLanguage: 'Choose your preferred language',
@@ -158,6 +164,12 @@ export const translations = {
     weight: 'Weight'
   },
   zh: {
+    // Password Popup
+    passwordPopupTitle: '输入密码',
+    passwordPopupPlaceholder: '密码',
+    passwordPopupSubmit: '提交',
+    passwordPopupCancel: '取消',
+    passwordPopupError: '密码错误，请重试。',
     // Language Selection
     selectLanguage: '选择语言',
     chooseLanguage: '选择您的首选语言',

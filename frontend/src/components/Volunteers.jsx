@@ -522,8 +522,17 @@ class Volunteers extends Component {
                   );
                 }
                 // Default rendering for other fields
+                // Determine unit for this field/station
+                let unit = '';
+                if (['sitReach', 'backStretch'].includes(selectedStation) && field.startsWith('score')) {
+                  unit = 'cm';
+                } else if (selectedStation === 'speedWalking' && field.startsWith('score')) {
+                  unit = 'secs';
+                } else if (selectedStation === 'handGrip' && field.startsWith('score')) {
+                  unit = 'kg';
+                }
                 return (
-                  <div className="detail-item" key={field}>
+                  <div className="detail-item" key={field} style={{ display: 'flex', alignItems: 'center' }}>
                     <span className="detail-label">{t[field] || field}:</span>
                     <input
                       className="detail-value"
@@ -532,6 +541,9 @@ class Volunteers extends Component {
                       onChange={e => this.handleInputChange(e, field)}
                       style={{ marginLeft: 8, padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 100 }}
                     />
+                    {unit && (
+                      <span style={{ marginLeft: 8, color: '#888', fontWeight: 500 }}>{unit}</span>
+                    )}
                   </div>
                 );
               })}
