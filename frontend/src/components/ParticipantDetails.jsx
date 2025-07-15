@@ -98,7 +98,7 @@ class ParticipantDetails extends Component {
                     <div className="station-detail">
                       <span className="station-label">{this.formatStationKey('result')}:</span>
                       <span className={`station-value result-score ${fitnessResult.category ? fitnessResult.category.toLowerCase().replace(/\s+/g, '-') : 'not-assessed'}`}>
-                        {fitnessResult.range ? `${fitnessResult.category}: ${fitnessResult.range}` : fitnessResult.category}
+                        {fitnessResult.range ? `${fitnessResult.category}` : fitnessResult.category}
                       </span>
                     </div>
                   </div>
