@@ -5,62 +5,49 @@
     <link rel="icon" href="https://ecss.org.sg/wp-content/uploads/2023/07/En_logo_Final_Large_RGB.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ECSS FFT Test</title>
-     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-      <script>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "6eeef348-a40d-48a8-845e-8d604951d5f2",
-          notifyButton: {
-            enable: true,
-          },
-          promptOptions: {
-            slidedown: {
-              prompts: [
-                { type: "push", autoPrompt: true }
-              ]
-            }
-          }
-        });
-
-        if (window.OneSignal) {
-          window.OneSignal.push(() => {
-            // Notification display event (already present)
-            window.OneSignal.on('notificationDisplay', (event) => {
-              console.log('OneSignal notification event:', event);
-              window.dispatchEvent(new CustomEvent('onesignal-notification', {
-                detail: {
-                  type: 'info',
-                  message: event.heading ? `${event.heading}: ${event.content}` : event.content || JSON.stringify(event)
-                }
-              }));
-            });
-
-            // Notification click event: focus existing tab if open
-            window.OneSignal.on('notificationClick', function(event) {
-              const urlToOpen = event.notification.url || event.data?.url;
-              if (!urlToOpen) return;
-              // Try to focus an existing tab with the same URL
-              if (window.clients && window.clients.matchAll) {
-                window.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(windowClients) {
-                  for (let client of windowClients) {
-                    if (client.url === urlToOpen && 'focus' in client) {
-                      client.focus();
-                      return;
-                    }
-                  }
-                  // If not open, open a new tab
-                  if (window.clients.openWindow) {
-                    window.clients.openWindow(urlToOpen);
-                  }
-                });
-              } else {
-                // Fallback for browsers without clients API
-                window.open(urlToOpen, '_blank');
+        try {
+          await OneSignal.init({
+            appId: "6eeef348-a40d-48a8-845e-8d604951d5f2",
+            allowLocalhostAsSecureOrigin: true,
+            notifyButton: {
+              enable: true,
+            },
+            promptOptions: {
+              slidedown: {
+                prompts: [
+                  { type: "push", autoPrompt: true }
+                ]
               }
-            });
+            }
           });
+          console.log("OneSignal initialized successfully");
+
+          // Force the prompt if not already subscribed
+          const permission = await OneSignal.Notification.permission;
+          if (permission !== "granted") {
+            await OneSignal.User.PushSubscription.optIn();
+          }
+        } catch (error) {
+          console.error("OneSignal init error:", error);
         }
+        
+        // Set tag for current path for notification filtering
+        const currentPath = window.location.pathname;
+        console.log('Setting OneSignal path tag:', currentPath);
+        await OneSignal.User.addTag('current_path', currentPath);
+        
+        // Track path changes
+        const originalPushState = history.pushState;
+        history.pushState = function() {
+          originalPushState.apply(this, arguments);
+          const newPath = window.location.pathname;
+          console.log('Path changed, updating OneSignal tag:', newPath);
+          OneSignal.User.addTag('current_path', newPath);
+        };
       });
     </script>
   </head>
