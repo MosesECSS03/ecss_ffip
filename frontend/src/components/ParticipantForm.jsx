@@ -7,6 +7,7 @@ const API_BASE_URL =
   window.location.hostname === 'localhost'
     ? 'http://localhost:3001'
     : 'https://ecss-fft.azurewebsites.net'
+    //ecss-fft.azurewebsites.net
 
 class ParticipantForm extends Component {
   sendHealthSignal = async (question, answer) => {

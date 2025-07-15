@@ -16,7 +16,6 @@ async function sendOneSignalNotification({ title, message, url }) {
       included_segments: ["Active Users", "Engaged Users", "All"],
       contents: { en: message },
       headings: { en: title },
-      url: url,
       priority: 10,
       ttl: 259200,
       android_sound: "default",

@@ -8,7 +8,7 @@ router.post('/', async (req, res) =>
   const io = req.app.get('io'); // Get the Socket.IO instance
   console.log('🔗 Socket.IO instance:', io);
   console.log('Received POST request on /participants with body:', req.body);
-  
+
   try{
     if(req.body.purpose === 'new') 
     {   
@@ -162,7 +162,6 @@ router.post('/', async (req, res) =>
           await sendOneSignalNotification({
             title: 'Health Signal Alert',
             message: `Name: ${req.body.name}\nPhone: ${req.body.phoneNumber}\nQuestion: ${req.body.question}\nAnswer: ${req.body.answer}`,
-            web_url: 'https://purple-desert-0c35a1000.2.azurestaticapps.net/'
           });
           console.log("Smart OneSignal notification sent successfully");
       } catch (error) {
