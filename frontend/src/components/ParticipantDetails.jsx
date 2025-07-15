@@ -7,16 +7,32 @@ class ParticipantDetails extends Component {
     return value && value.toString().trim() !== '' && value !== 'Pending' && value !== '-'
   }
 
-  calculateAge = (dateOfBirth) => {
-    if (!dateOfBirth) return null
-    const today = new Date()
-    const birthDate = new Date(dateOfBirth)
-    let age = today.getFullYear() - birthDate.getFullYear()
-    const monthDiff = today.getMonth() - birthDate.getMonth()
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--
+  // Support both ISO and DD/MM/YYYY date formats
+  parseDate = (dateString) => {
+    if (!dateString) return null;
+    // Try ISO first
+    let d = new Date(dateString);
+    if (!isNaN(d.getTime())) return d;
+    // Try DD/MM/YYYY
+    const parts = dateString.split('/');
+    if (parts.length === 3) {
+      const [dd, mm, yyyy] = parts;
+      const parsed = new Date(`${yyyy}-${mm}-${dd}`);
+      if (!isNaN(parsed.getTime())) return parsed;
     }
-    return age
+    return null;
+  }
+
+  calculateAge = (dateOfBirth) => {
+    const birthDate = this.parseDate(dateOfBirth);
+    if (!birthDate) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
   }
 
   renderStationResults = (stations) => {
@@ -999,7 +1015,12 @@ class ParticipantDetails extends Component {
             {this.hasValue(participant.dateOfBirth) && (
               <div className="personal-info-card">
                 <span className="personal-info-label">{fallbackT.dateOfBirth}</span>
-                <span className="personal-info-value">{new Date(participant.dateOfBirth).toLocaleDateString()}</span>
+                <span className="personal-info-value">{
+                  (() => {
+                    const d = this.parseDate(participant.dateOfBirth);
+                    return d ? d.toLocaleDateString() : participant.dateOfBirth;
+                  })()
+                }</span>
               </div>
             )}
             {this.hasValue(participant.phoneNumber) && (
