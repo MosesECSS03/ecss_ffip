@@ -239,12 +239,30 @@ class Volunteers extends Component {
     setLanguage(language === 'en' ? 'zh' : 'en')
   }
 
-  handleInputChange = (e, field) => {
-    // Only update the formData, do not touch qrScanned or other state
+  handleInputChange = (e, field, unit = '') => {
+    // Store value as-is to allow user to backspace/delete unit
+    const val = e.target.value;
     this.setState(prevState => ({
       formData: {
         ...prevState.formData,
-        [field]: e.target.value
+        [field]: val
+      }
+    }));
+  }
+
+  handleInputBlur = (e, field, unit = '') => {
+    let val = e.target.value;
+    if (unit && val && !val.trim().endsWith(unit)) {
+      // Remove any existing unit and trailing spaces
+      val = val.replace(new RegExp(`\s*${unit}$`), '');
+      // Remove any non-numeric except dot and space
+      val = val.replace(/[^0-9.]/g, '');
+      if (val) val = `${val} ${unit}`;
+    }
+    this.setState(prevState => ({
+      formData: {
+        ...prevState.formData,
+        [field]: val
       }
     }));
   }
@@ -268,26 +286,47 @@ class Volunteers extends Component {
       alert(language === 'en' ? 'No QR code scanned.' : '未扫描二维码。');
       return;
     }
+    // Helper to ensure value is in the format '{value} {unit}' for fields with units
+    const getFieldWithUnit = (field, value) => {
+      let unit = '';
+      if (selectedStation === 'heightWeight') {
+        if (field === 'height') unit = 'cm';
+        if (field === 'weight') unit = 'kg';
+      } else if (["sitReach", "backStretch"].includes(selectedStation) && field.startsWith('score')) {
+        unit = 'cm';
+      } else if (selectedStation === 'speedWalking' && field.startsWith('score')) {
+        unit = 'secs';
+      } else if (selectedStation === 'handGrip' && field.startsWith('score')) {
+        unit = 'kg';
+      }
+      if (unit && value !== undefined && value !== null && value !== '') {
+        // If value already ends with unit, return as is
+        if (typeof value === 'string' && value.trim().endsWith(unit)) {
+          return value.trim();
+        }
+        // Otherwise, append unit
+        return `${value} ${unit}`;
+      }
+      return value;
+    };
+
     let payload;
     if (selectedStation === 'heightWeight') {
-      // For heightWeight, send as { height, weight, bmi, stations: [] } (no heightWeight object)
       payload = {
-        height: formData.height,
-        weight: formData.weight,
-        bmi: formData.bmi,
+        height: getFieldWithUnit('height', formData.height),
+        weight: getFieldWithUnit('weight', formData.weight),
+        bmi: formData.bmi, // bmi is likely just a value, not value+unit
         stations: []
       };
     } else {
-      // For other stations, add/update the station in stations array and send all completed so far as a JSON array
       const fieldsToSend = {};
       stationFields[selectedStation].forEach(field => {
-        fieldsToSend[field] = formData[field];
+        fieldsToSend[field] = getFieldWithUnit(field, formData[field]);
       });
       // Remove any previous entry for this station
       const filteredStations = stations.filter(s => !s[selectedStation]);
       const newStations = [...filteredStations, { [selectedStation]: fieldsToSend }];
       payload = { stations: newStations };
-      // Update state with new stations array
       this.setState({ stations: newStations });
     }
     try {
@@ -526,14 +565,14 @@ class Volunteers extends Component {
                 let unit = '';
                 let placeholder = t[field] || field;
                 if (selectedStation === 'heightWeight') {
-                  if (field === 'height') { unit = 'cm'; placeholder = t[field] || 'Height'; }
-                  if (field === 'weight') { unit = 'kg'; placeholder = t[field] || 'Weight'; }
+                  if (field === 'height') { unit = 'cm'; placeholder = `${t[field] || 'Height'}`; }
+                  if (field === 'weight') { unit = 'kg'; placeholder = `${t[field] || 'Weight'}`; }
                 } else if (["sitReach", "backStretch"].includes(selectedStation) && field.startsWith('score')) {
-                  unit = 'cm'; placeholder = t[field] || field;
+                  unit = 'cm'; placeholder = `${t[field] || field}`;
                 } else if (selectedStation === 'speedWalking' && field.startsWith('score')) {
-                  unit = 'secs'; placeholder = t[field] || field;
+                  unit = 'secs'; placeholder = `${t[field] || field} `;
                 } else if (selectedStation === 'handGrip' && field.startsWith('score')) {
-                  unit = 'kg'; placeholder = t[field] || field;
+                  unit = 'kg'; placeholder = `${t[field] || field}`;
                 }
 
                 // Find last value for this station/field
@@ -550,23 +589,38 @@ class Volunteers extends Component {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span className="detail-label">{t[field] || field}:</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <input
-                          className="detail-value"
-                          type={field === 'remarks' ? 'text' : 'number'}
-                          value={formData[field] || ''}
-                          onChange={e => this.handleInputChange(e, field)}
-                          placeholder={placeholder}
-                          style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 100 }}
-                        />
-                        {(formData[field] && unit) && (
-                          <span style={{ color: '#888', fontWeight: 500, minWidth: 28 }}>{unit}</span>
+                        {unit ? (
+                          <input
+                            className="detail-value"
+                            type="text"
+                            value={
+                              formData[field] !== undefined && formData[field] !== null && formData[field] !== ''
+                                ? formData[field]
+                                : ''
+                            }
+                            onChange={e => this.handleInputChange(e, field, unit)}
+                            onBlur={e => this.handleInputBlur(e, field, unit)}
+                            placeholder={placeholder.replace(/\s*\([^)]*\)$/, '')}
+                            style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 100 }}
+                          />
+                        ) : (
+                          <input
+                            className="detail-value"
+                            type="text"
+                            value={formData[field] || ''}
+                            onChange={e => {
+                              this.handleInputChange(e, field);
+                            }}
+                            placeholder={placeholder}
+                            style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 100 }}
+                          />
                         )}
                       </div>
                     </div>
                     {/* Show last value for this station/field if available */}
                     {lastValue && (
                       <div style={{ color: '#1976d2', fontSize: '0.95em', marginLeft: 8 }}>
-                        Last: {lastValue}{unit}
+                        Last: {lastValue}
                       </div>
                     )}
                   </div>
