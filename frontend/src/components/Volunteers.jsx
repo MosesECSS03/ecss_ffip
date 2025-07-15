@@ -524,15 +524,16 @@ class Volunteers extends Component {
                 // Default rendering for other fields
                 // Determine unit for this field/station
                 let unit = '';
+                let placeholder = t[field] || field;
                 if (selectedStation === 'heightWeight') {
-                  if (field === 'height') unit = 'cm';
-                  if (field === 'weight') unit = 'kg';
+                  if (field === 'height') { unit = 'cm'; placeholder = `${t[field] || 'Height'} (${unit})`; }
+                  if (field === 'weight') { unit = 'kg'; placeholder = `${t[field] || 'Weight'} (${unit})`; }
                 } else if (["sitReach", "backStretch"].includes(selectedStation) && field.startsWith('score')) {
-                  unit = 'cm';
+                  unit = 'cm'; placeholder = `${t[field] || field} (${unit})`;
                 } else if (selectedStation === 'speedWalking' && field.startsWith('score')) {
-                  unit = 'secs';
+                  unit = 'secs'; placeholder = `${t[field] || field} (${unit})`;
                 } else if (selectedStation === 'handGrip' && field.startsWith('score')) {
-                  unit = 'kg';
+                  unit = 'kg'; placeholder = `${t[field] || field} (${unit})`;
                 }
                 return (
                   <div className="detail-item" key={field} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -543,11 +544,9 @@ class Volunteers extends Component {
                         type={field === 'remarks' ? 'text' : 'number'}
                         value={formData[field] || ''}
                         onChange={e => this.handleInputChange(e, field)}
+                        placeholder={placeholder}
                         style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 100 }}
                       />
-                      {unit && (
-                        <span style={{ color: '#888', fontWeight: 500, minWidth: 28 }}>{unit}</span>
-                      )}
                     </div>
                   </div>
                 );
