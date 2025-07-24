@@ -159,12 +159,12 @@ router.post('/', async (req, res) =>
         try {
           console.log('Sending health signal for question:', req.body.question, 'Answer:', req.body.answer);
           await sendOneSignalNotification({
-             title: 'Health Signal Alert',
+            title: 'Health Signal Alert',
             message: `Name: ${req.body.name}\nPhone: ${req.body.phoneNumber}\nQuestion: ${req.body.question}\nAnswer: ${req.body.answer}`,
             playerIds: [
-              "alan_wee",
-              "moses_lee_safari",
-              "moses_lee_chrome"
+              "0e935d7b-34f1-445d-94bd-9ef985ea8386",
+              "4200638f-086a-434b-99a4-19779b192b8a",
+              "7d368e7d-3306-4cba-beee-ed7339f60953"
             ]
           });
           console.log("Smart OneSignal notification sent successfully");
