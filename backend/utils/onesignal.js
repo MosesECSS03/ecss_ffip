@@ -32,7 +32,7 @@ async function sendOneSignalNotification({ title, message, url, playerIds }) {
     if (playerIds && Array.isArray(playerIds) && playerIds.length > 0) {
       data.include_player_ids = playerIds;
     } else {
-      data.included_segments = ["All"];
+      data.included_segments = ["All", "Active Users", "Engaged Users"];
     }
     console.log("OneSignal request payload:", JSON.stringify(data));
 
