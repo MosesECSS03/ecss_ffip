@@ -13,8 +13,8 @@ const ONESIGNAL_API_KEY = 'Basic os_v2_app_n3xpgsfebvekrbc6rvqesuov6jieg5savoeuy
  * @param {string} [params.url] - Optional URL to open on click
  * @param {string[]} [params.playerIds] - Optional array of OneSignal player IDs to target specific users
  */
-async function sendOneSignalNotification({ title, message, url}) {
-  console.log("Sending OneSignal notification with:", { title, message, url});
+async function sendOneSignalNotification({ title, message, url, playerIds }) {
+  console.log("Sending OneSignal notification with:", { title, message, url, playerIds });
   try {
     const data = {
       app_id: ONESIGNAL_APP_ID,
@@ -29,11 +29,11 @@ async function sendOneSignalNotification({ title, message, url}) {
       chrome_web_image: "https://ecss.org.sg/wp-content/uploads/2023/03/cropped-EN_Logo_RGB_Normal_Small-01.png", // Optional: banner image
       // Remove content_available/mutable_content to avoid silent notifications
     };
-      data.include_player_ids = [
-      "4297137a-65af-4551-89c0-4a0566bb63e7",
-      "18111175-e4b2-4820-b2ad-60d5a53a5ba9",
-      "0b21bd83-6afb-4a21-8efc-561f2fbd9efe"
-    ];
+    if (playerIds && Array.isArray(playerIds) && playerIds.length > 0) {
+      data.include_player_ids = playerIds;
+    } else {
+      data.included_segments = ["All"];
+    }
     console.log("OneSignal request payload:", JSON.stringify(data));
 
     const response = await axios.post(

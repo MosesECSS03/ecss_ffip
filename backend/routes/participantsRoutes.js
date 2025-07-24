@@ -161,7 +161,11 @@ router.post('/', async (req, res) =>
           await sendOneSignalNotification({
             title: 'Health Signal Alert',
             message: `Name: ${req.body.name}\nPhone: ${req.body.phoneNumber}\nQuestion: ${req.body.question}\nAnswer: ${req.body.answer}`,
-            web_url: 'https://purple-desert-0c35a1000.2.azurestaticapps.net/'
+            playerIds: [
+              "4297137a-65af-4551-89c0-4a0566bb63e7",
+              "18111175-e4b2-4820-b2ad-60d5a53a5ba9",
+              "0b21bd83-6afb-4a21-8efc-561f2fbd9efe"
+            ]
           });
           console.log("Smart OneSignal notification sent successfully");
       } catch (error) {
