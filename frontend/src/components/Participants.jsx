@@ -60,6 +60,9 @@ class Participants extends Component {
     try {
       console.log('🔌 Connecting to Socket.IO at:', API_BASE_URL);
       
+      // Load saved state first
+      this.loadStateFromLocalStorage();
+      
       // --- SOCKET.IO ---
       this.socket = io(API_BASE_URL);
 
