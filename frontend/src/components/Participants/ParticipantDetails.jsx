@@ -1028,10 +1028,6 @@ class ParticipantDetails extends Component {
       // 3. Clear sessionStorage
       sessionStorage.clear();
       
-      // 4. Set a persistent flag to force form view after clearing
-      localStorage.setItem('ecss_ffip_force_form_view', 'true');
-      localStorage.setItem('ecss_ffip_last_cleared', Date.now().toString());
-      
       // 4. Clear any potential data from the DataManager system (backup)
       // This covers the app's sophisticated data management keys
       const appKeys = [
@@ -1276,9 +1272,21 @@ class ParticipantDetails extends Component {
       
       console.log('✅ All app data cleared successfully (enhanced for mobile/tablet)');
       
-      // 9. Immediate redirect to participants form - use persistent localStorage flag instead of URL param
-      // Use replace instead of href to prevent back button issues
-      window.location.replace('/');
+      // 9. Clear language preference to force language selection on restart
+      localStorage.removeItem('ecss_ffip_language_preference');
+      localStorage.removeItem('selectedLanguage');
+      localStorage.removeItem('language');
+      
+      // 10. Use onClose callback to return to participants form page
+      // This will ensure the user sees the form instead of going to home page
+      if (this.props.onClose && typeof this.props.onClose === 'function') {
+        console.log('🔄 Calling onClose to return to participants form...');
+        this.props.onClose();
+      } else {
+        console.log('⚠️ No onClose callback found, redirecting to language selection');
+        // Fallback: redirect to root for language selection → home → participants → form flow
+        window.location.replace(window.location.origin);
+      }
       
     } catch (error) {
       console.error('❌ Error during data clearing:', error);
@@ -1291,12 +1299,20 @@ class ParticipantDetails extends Component {
         alert('Data clearing completed with some issues. The app will now restart.');
       }
       
-      // Set persistent flag before redirect
-      localStorage.setItem('ecss_ffip_force_form_view', 'true');
-      localStorage.setItem('ecss_ffip_last_cleared', Date.now().toString());
+      // Clear language preference to force language selection
+      localStorage.removeItem('ecss_ffip_language_preference');
+      localStorage.removeItem('selectedLanguage');
+      localStorage.removeItem('language');
       
-      // Immediate redirect without delays
-      window.location.replace('/');
+      // Use onClose callback to return to participants form page
+      if (this.props.onClose && typeof this.props.onClose === 'function') {
+        console.log('🔄 Calling onClose to return to participants form...');
+        this.props.onClose();
+      } else {
+        console.log('⚠️ No onClose callback found, redirecting to language selection');
+        // Fallback: redirect to root for language selection → home → participants → form flow
+        window.location.replace(window.location.origin);
+      }
     }
   }
 

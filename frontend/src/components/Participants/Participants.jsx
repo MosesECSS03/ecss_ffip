@@ -1011,8 +1011,8 @@ class Participants extends Component {
       this.clearSavedState();
     });
     
-    // Navigate back to HomePage
-    window.location.href = '/';
+    // Don't navigate away - just show the form within the participants page
+    console.log('🔄 Closed swipe view, showing form');
   }
 
   render() {
