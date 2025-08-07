@@ -4,6 +4,7 @@
   import ParticipantDetails from './ParticipantDetails'
   import { translations } from '../../utils/translations'
   import '../Pages.css'
+  import { io } from 'socket.io-client'
 
 
   const API_BASE_URL =
@@ -41,6 +42,39 @@
       
       document.addEventListener('keydown', this.handleKeyDown)
       
+      // --- SOCKET.IO ---
+      this.socket = io(API_BASE_URL);
+
+      // Listen for participant updates and refresh data live
+      this.socket.on('participant-updated', (data) => {
+        try {
+          console.log("🔔 Socket event received", data);
+          console.log("🔄 Triggering handleParticipantUpdate...");
+          
+          // Check if this event is for the current participant to avoid unnecessary updates
+          const currentParticipantId = this.getCurrentParticipantId();
+          console.log("Current participant ID:", currentParticipantId);
+          console.log("Event participant ID:", data.participantID);
+          
+          // Update only if it matches current participant and user doesn't have form data
+          if (currentParticipantId === data.participantID) {
+            console.log("✅ Event matches current participant");
+            
+            // Don't override form data if user is currently filling it
+            if (!this.hasFilledFormData()) {
+              console.log("🔄 No form data, updating from socket event");
+              this.handleParticipantUpdate();
+            } else {
+              console.log("📝 User has form data, not updating from socket event");
+            }
+          } else {
+            console.log("ℹ️ Event for different participant, ignoring update");
+          }
+        } catch (socketEventError) {
+          console.error('❌ Error handling socket event:', socketEventError);
+        }
+      });
+      
       // Listen for survey-updated event
     }
 
@@ -62,7 +96,7 @@
         });
         
         if (response.data && response.data.success) {
-          console.log('Retrieved participant data:', response.data.data);
+          console.log(' :', response.data.data);
           // You can update state with the retrieved data if needed
           this.setState({ updatedParticipant: response.data.data });
         } else {
@@ -83,6 +117,28 @@
       const { participant } = this.props;
       // Use updated data if available, otherwise fall back to props
       return updatedParticipant || participant;
+    }
+
+    // Helper method to get current participant ID
+    getCurrentParticipantId = () => {
+      const participant = this.getCurrentParticipant();
+      return participant?.id;
+    }
+
+    // Check if user has filled form data (to avoid overriding their input)
+    hasFilledFormData = () => {
+      // This should return true if the user is currently filling out forms
+      // For now, returning false to allow updates - you can customize this logic
+      return false;
+    }
+
+    // Handle participant update from socket event
+    handleParticipantUpdate = async () => {
+      const participantId = this.getCurrentParticipantId();
+      if (participantId) {
+        console.log("🔄 Updating participant data from socket event");
+        await this.retrieveParticipantData(participantId);
+      }
     }
 
     // Check if participant has any station data

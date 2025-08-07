@@ -5,7 +5,7 @@ import '../Pages.css'
 import axios from "axios"
 import ParticipantForm from './ParticipantForm'
 import SwipeView from './SwipeView'
-import { io } from 'socket.io-client'
+
 
 const API_BASE_URL =
   window.location.hostname === 'localhost'
@@ -238,40 +238,7 @@ class Participants extends Component {
           isLoading: false 
         });
       }
-      
-      // --- SOCKET.IO ---
-      this.socket = io(API_BASE_URL);
-
-      // Listen for participant updates and refresh data live
-      this.socket.on('participant-updated', (data) => {
-        try {
-          console.log("🔔 Socket event received", data);
-          console.log("🔄 Triggering handleParticipantUpdate...");
-          
-          // Check if this event is for the current participant to avoid unnecessary updates
-          const currentParticipantId = this.getCurrentParticipantId();
-          console.log("Current participant ID:", currentParticipantId);
-          console.log("Event participant ID:", data.participantID);
-          
-          // Update only if it matches current participant and user doesn't have form data
-          if (currentParticipantId === data.participantID) {
-            console.log("✅ Event matches current participant");
-            
-            // Don't override form data if user is currently filling it
-            if (!this.hasFilledFormData()) {
-              console.log("🔄 No form data, updating from socket event");
-              this.handleParticipantUpdate();
-            } else {
-              console.log("📝 User has form data, not updating from socket event");
-            }
-          } else {
-            console.log("ℹ️ Event for different participant, ignoring update");
-          }
-        } catch (socketEventError) {
-          console.error('❌ Error handling socket event:', socketEventError);
-        }
-      });
-
+    
       // Only check for existing participant if user hasn't filled out form data
       const hasFormData = this.hasFilledFormData();
       console.log('📝 Has form data filled:', hasFormData);
