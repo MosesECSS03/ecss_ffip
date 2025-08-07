@@ -181,12 +181,57 @@ class Participants extends Component {
 
   componentDidMount = async () => {
     try {
-      // Check if this is a fresh start (after data clearing)
+      // Check if this is a fresh start (after data clearing) using persistent localStorage flag
+      const forceFormView = localStorage.getItem('ecss_ffip_force_form_view');
+      const lastCleared = localStorage.getItem('ecss_ffip_last_cleared');
+      
+      // Check if cleared recently (within last 5 minutes) to handle persistent form view
+      const recentlyClearedTime = 5 * 60 * 1000; // 5 minutes
+      const wasRecentlyCleared = lastCleared && (Date.now() - parseInt(lastCleared)) < recentlyClearedTime;
+      
+      if (forceFormView === 'true' || wasRecentlyCleared) {
+        console.log('🆕 Fresh start detected via localStorage flag, forcing clean form view');
+        
+        // Remove the flag after processing (but keep it for a short time for refreshes)
+        if (!wasRecentlyCleared) {
+          localStorage.removeItem('ecss_ffip_force_form_view');
+        }
+        
+        // Force fresh state - make sure to set both isLoading and isInitializing to false
+        this.setState({
+          isLoading: false,
+          isInitializing: false,
+          showForm: true,
+          showSwipeView: false,
+          hasSubmitted: false,
+          swipeParticipantData: null,
+          formData: {
+            participantDetails: {
+              participantName: '',
+              phoneNumber: '',
+              gender: '',
+              dateOfBirth: ''
+            },
+            healthDeclaration: {
+              questions: {
+                healthQuestion1: '',
+                healthQuestion2: '',
+                healthQuestion3: '',
+                healthQuestion4: ''
+              }
+            }
+          },
+          dataStatusMessage: '✅ Ready for new participant'
+        });
+        return; // Exit early, don't load any saved state
+      }
+      
+      // Also check URL parameter for backward compatibility
       const urlParams = new URLSearchParams(window.location.search);
       const isFreshStart = urlParams.get('fresh') === 'true';
       
       if (isFreshStart) {
-        console.log('🆕 Fresh start detected, forcing clean form view');
+        console.log('🆕 Fresh start detected via URL param, forcing clean form view');
         // Clean the URL
         window.history.replaceState({}, document.title, window.location.pathname);
         
@@ -656,6 +701,11 @@ class Participants extends Component {
 
   handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Clear the force form view flag when user submits a new form
+    localStorage.removeItem('ecss_ffip_force_form_view');
+    localStorage.removeItem('ecss_ffip_last_cleared');
+    
     const { formData, participants } = this.state;
     
     const nameValid = formData.participantDetails.participantName && formData.participantDetails.participantName.trim();

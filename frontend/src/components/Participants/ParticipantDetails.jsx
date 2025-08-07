@@ -1028,6 +1028,10 @@ class ParticipantDetails extends Component {
       // 3. Clear sessionStorage
       sessionStorage.clear();
       
+      // 4. Set a persistent flag to force form view after clearing
+      localStorage.setItem('ecss_ffip_force_form_view', 'true');
+      localStorage.setItem('ecss_ffip_last_cleared', Date.now().toString());
+      
       // 4. Clear any potential data from the DataManager system (backup)
       // This covers the app's sophisticated data management keys
       const appKeys = [
@@ -1272,9 +1276,9 @@ class ParticipantDetails extends Component {
       
       console.log('✅ All app data cleared successfully (enhanced for mobile/tablet)');
       
-      // 9. Immediate redirect to fresh form - no delays to avoid timing issues
+      // 9. Immediate redirect to participants form - use persistent localStorage flag instead of URL param
       // Use replace instead of href to prevent back button issues
-      window.location.replace('/participants?fresh=true');
+      window.location.replace('/participants');
       
     } catch (error) {
       console.error('❌ Error during data clearing:', error);
@@ -1287,8 +1291,12 @@ class ParticipantDetails extends Component {
         alert('Data clearing completed with some issues. The app will now restart.');
       }
       
+      // Set persistent flag before redirect
+      localStorage.setItem('ecss_ffip_force_form_view', 'true');
+      localStorage.setItem('ecss_ffip_last_cleared', Date.now().toString());
+      
       // Immediate redirect without delays
-      window.location.replace('/participants?fresh=true');
+      window.location.replace('/participants');
     }
   }
 
