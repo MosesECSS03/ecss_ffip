@@ -517,7 +517,7 @@ class MainTrainers extends Component {
                     headerHeight={headerHeight}
                     getRowHeight={() => rowHeight}
                     pagination={true}
-                    paginationPageSize={20}
+                    paginationPageSize={participants.length}
                     domLayout='normal'
                     suppressHorizontalScroll={false}
                     alwaysShowHorizontalScroll={true}

@@ -27,7 +27,7 @@
 
     componentDidMount = async() =>
     {
-      this.generateQR();
+      sthis.generateQR();
       const { participant } = this.props;
       console.log('Participant data1234:', participant);
       const participantId = participant?.id;
