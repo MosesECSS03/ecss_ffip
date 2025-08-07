@@ -53,20 +53,13 @@
           
           // Check if this event is for the current participant to avoid unnecessary updates
           const currentParticipantId = this.getCurrentParticipantId();
-          console.log("Current participant ID:", currentParticipantId);
+          console.log("Current participant ID:", participantId);
           console.log("Event participant ID:", data.participantID);
           
           // Update only if it matches current participant and user doesn't have form data
           if (currentParticipantId === data.participantID) {
             console.log("✅ Event matches current participant");
-            
-            // Don't override form data if user is currently filling it
-            if (!this.hasFilledFormData()) {
-              console.log("🔄 No form data, updating from socket event");
-              this.handleParticipantUpdate();
-            } else {
-              console.log("📝 User has form data, not updating from socket event");
-            }
+            this.handleParticipantUpdate();
           } else {
             console.log("ℹ️ Event for different participant, ignoring update");
           }
