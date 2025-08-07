@@ -348,6 +348,19 @@ class Volunteers extends Component {
                   formData[key] = response.data.data[key];
                 });
                 
+                // Check if participant has height and weight recorded
+                const hasHeight = formData.height && formData.height !== '' && formData.height !== '-';
+                const hasWeight = formData.weight && formData.weight !== '' && formData.weight !== '-';
+                
+                if (!hasHeight || !hasWeight) {
+                  // Show warning popup for missing height/weight data
+                  const warningMessage = language === 'en' 
+                    ? 'Warning: This participant has not recorded height and weight measurements yet.\n\nPlease ensure height and weight are measured first before proceeding with other station tests.'
+                    : '警告：该参与者尚未记录身高和体重测量数据。\n\n请确保在进行其他站点测试之前先测量身高和体重。';
+                  
+                  alert(warningMessage);
+                }
+                
                 this.setState({
                   qrValue: result.data,
                   qrScanned: true,
@@ -486,6 +499,19 @@ class Volunteers extends Component {
                 Object.keys(response.data.data).forEach(key => {
                   formData[key] = response.data.data[key];
                 });
+                
+                // Check if participant has height and weight recorded
+                const hasHeight = formData.height && formData.height !== '' && formData.height !== '-';
+                const hasWeight = formData.weight && formData.weight !== '' && formData.weight !== '-';
+                
+                if (!hasHeight || !hasWeight) {
+                  // Show warning popup for missing height/weight data
+                  const warningMessage = language === 'en' 
+                    ? 'Warning: This participant has not recorded height and weight measurements yet.\n\nPlease ensure height and weight are measured first before proceeding with other station tests.'
+                    : '警告：该参与者尚未记录身高和体重测量数据。\n\n请确保在进行其他站点测试之前先测量身高和体重。';
+                  
+                  alert(warningMessage);
+                }
                 
                 this.setState({
                   qrValue: result.data,
