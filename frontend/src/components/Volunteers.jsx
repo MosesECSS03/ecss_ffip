@@ -116,6 +116,8 @@ class Volunteers extends Component {
       this.qrScanner.destroy()
       this.qrScanner = null
     }
+    // Clear camera error when scanner stops
+    this.setState({ cameraError: null });
   }
 
   // Data persistence methods
@@ -299,143 +301,6 @@ class Volunteers extends Component {
     }
   }
 
-  startQRScanner = () => {
-    // Clean up any existing scanner
-    if (this.qrScanner) {
-      this.qrScanner.destroy()
-      this.qrScanner = null
-    }
-    
-    // Clear any previous camera errors
-    this.setState({ cameraError: null })
-    
-    if (this.videoNode) {
-      this.qrScanner = new QrScanner(
-        this.videoNode,
-        async result => {
-          if (result && result.data && !this.isProcessingQR) {
-            // Set processing flag to prevent multiple simultaneous scans
-            this.isProcessingQR = true;
-            
-            // Generate unique scan ID for tracking
-            const scanId = `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            console.log(`🔍 QR Scan started [${scanId}]:`, result.data);
-            
-            try {
-              // Use AbortController for fast timeout handling
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout for fast response
-              
-              const response = await axios.post(`${API_BASE_URL}/participants`, {
-                "purpose": "retrieveParticipant",
-                "participantID": result.data
-              }, {
-                signal: controller.signal,
-                timeout: 3000, // Fast timeout
-                headers: {
-                  'X-Scan-ID': scanId, // Track requests for debugging
-                  'X-Device-ID': this.deviceId || 'unknown'
-                }
-              });
-              
-              clearTimeout(timeoutId);
-              console.log(`✅ QR Scan completed [${scanId}]:`, response.data?.success ? 'Success' : 'Failed');
-              
-              if (response.data && response.data.success && response.data.data) {
-                // Populate ALL participant data for comprehensive access
-                const formData = {};
-                Object.keys(response.data.data).forEach(key => {
-                  formData[key] = response.data.data[key];
-                });
-                
-                // Check if participant has height and weight recorded
-                const hasHeight = formData.height && formData.height !== '' && formData.height !== '-';
-                const hasWeight = formData.weight && formData.weight !== '' && formData.weight !== '-';
-                
-                if (!hasHeight || !hasWeight) {
-                  // Show warning popup for missing height/weight data
-                  const warningMessage = language === 'en' 
-                    ? 'Warning: This participant has not recorded height and weight measurements yet.\n\nPlease ensure height and weight are measured first before proceeding with other station tests.'
-                    : '警告：该参与者尚未记录身高和体重测量数据。\n\n请确保在进行其他站点测试之前先测量身高和体重。';
-                  
-                  alert(warningMessage);
-                }
-                
-                this.setState({
-                  qrValue: result.data,
-                  qrScanned: true,
-                  cameraError: null,
-                  formData
-                }, () => {
-                  // Immediately save state after successful scan
-                  this.immediateSave();
-                  console.log(`💾 Data saved for scan [${scanId}]`);
-                });
-              } else {
-                // No participant found or error
-                this.setState({
-                  qrValue: result.data,
-                  qrScanned: true,
-                  cameraError: response.data?.message || 'No participant found',
-                  formData: {}
-                });
-              }
-            } catch (err) {
-              console.error(`❌ QR Scan error [${scanId}]:`, err.message);
-              
-              // Handle different error types
-              if (err.name === 'AbortError') {
-                console.log(`⏱️ QR Scan timeout [${scanId}] - continuing with offline mode`);
-              }
-              
-              this.setState({
-                qrValue: result.data,
-                qrScanned: true,
-                cameraError: err.name === 'AbortError' ? 'Request timeout - try again' : 'Network or server error',
-                formData: {}
-              });
-            } finally {
-              // Always clear processing flag
-              this.isProcessingQR = false;
-            }
-          }
-        },
-        {
-          onDecodeError: error => {
-            // Safely handle decode errors with proper error checking
-            const errorMessage = error && error.message ? error.message : 'Unknown decode error';
-            console.log('🔍 QR Scanner decode attempt:', errorMessage);
-            // Only suppress the most common "no QR code found" messages
-            if (!errorMessage.includes('No QR code found') && !errorMessage.includes('Could not find')) {
-              console.warn('QR Scanner decode error:', errorMessage);
-            }
-          },
-          highlightScanRegion: true,
-          highlightCodeOutline: true,
-          // Optimize for speed and multiple device support
-          maxScansPerSecond: 10, // Increase scan rate for faster detection
-          preferredCamera: 'environment', // Use rear camera by default for better scanning
-          calculateScanRegion: (video) => {
-            // Optimize scan region for faster processing
-            const smallerDimension = Math.min(video.videoWidth, video.videoHeight);
-            const scanRegionSize = Math.round(0.6 * smallerDimension); // Smaller region = faster
-            return {
-              x: Math.round((video.videoWidth - scanRegionSize) / 2),
-              y: Math.round((video.videoHeight - scanRegionSize) / 2),
-              width: scanRegionSize,
-              height: scanRegionSize,
-            };
-          }
-        }
-      )
-      
-      this.qrScanner.start().catch(e => {
-        console.error('QR Scanner start error:', e)
-        this.setState({ cameraError: e.message || 'Camera access denied or not available' })
-      })
-    }
-  }
-
   setVideoRef = (node) => {
     // Only update if the node actually changed
     if (node !== this.videoNode) {
@@ -449,6 +314,7 @@ class Volunteers extends Component {
         this._qrScannerStartTimeout = setTimeout(() => {
           if (!this.qrScanner && !this.isProcessingQR) {
             console.log(`📹 Starting QR scanner on device [${this.deviceId}] for station: ${this.state.selectedStation}`);
+            // Use the backend-connected scanner to retrieve participant data
             this.startQRScannerWithNode(node);
           }
         }, 100); // Reduced from 200ms to 100ms for faster response
@@ -472,6 +338,11 @@ class Volunteers extends Component {
             // Set processing flag to prevent multiple simultaneous scans
             this.isProcessingQR = true;
             
+            // Stop scanner immediately to prevent multiple scans
+            if (this.qrScanner) {
+              this.qrScanner.stop();
+            }
+            
             // Generate unique scan ID for tracking
             const scanId = `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             console.log(`🔍 QR Scan started [${scanId}]:`, result.data);
@@ -479,15 +350,16 @@ class Volunteers extends Component {
             try {
               // Use AbortController for fast timeout handling
               const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+              const timeoutId = setTimeout(() => controller.abort(), 5000); // Increased timeout
               
               const response = await axios.post(`${API_BASE_URL}/participants`, {
                 "purpose": "retrieveParticipant",
                 "participantID": result.data
               }, {
                 signal: controller.signal,
-                timeout: 3000,
+                timeout: 5000,
                 headers: {
+                  'Content-Type': 'application/json',
                   'X-Scan-ID': scanId,
                   'X-Device-ID': this.deviceId || 'unknown'
                 }
@@ -495,31 +367,31 @@ class Volunteers extends Component {
               
               clearTimeout(timeoutId);
               console.log(`✅ QR Scan completed [${scanId}]:`, response.data?.success ? 'Success' : 'Failed');
+              console.log(`📋 Full response for scan [${scanId}]:`, response.data);
               
               if (response.data && response.data.success && response.data.data) {
+                console.log(`📋 Participant data retrieved for scan [${scanId}]:`, response.data.data);
                 // Populate ALL participant data
                 const formData = {};
                 Object.keys(response.data.data).forEach(key => {
                   formData[key] = response.data.data[key];
                 });
                 
-                // Check if participant has height and weight recorded
+                // Check if participant has height and weight recorded for non-heightWeight stations
                 const hasHeight = formData.height && formData.height !== '' && formData.height !== '-';
                 const hasWeight = formData.weight && formData.weight !== '' && formData.weight !== '-';
                 
-                if (!hasHeight || !hasWeight) {
-                  // Show warning popup for missing height/weight data
-                  const warningMessage = language === 'en' 
-                    ? 'Warning: This participant has not recorded height and weight measurements yet.\n\nPlease ensure height and weight are measured first before proceeding with other station tests.'
-                    : '警告：该参与者尚未记录身高和体重测量数据。\n\n请确保在进行其他站点测试之前先测量身高和体重。';
-                  
-                  alert(warningMessage);
-                }
+                // Store height/weight status in formData for later use in form validation
+                formData.hasHeightWeight = hasHeight && hasWeight;
+                
+                // Stop and hide QR scanner after successful participant data retrieval
+                this.stopQRScanner();
+                console.log(`📹 QR scanner stopped after successful scan [${scanId}]`);
                 
                 this.setState({
                   qrValue: result.data,
                   qrScanned: true,
-                  cameraError: null,
+                  cameraError: null, // Clear any previous errors
                   formData
                 }, () => {
                   // Immediately save state after successful scan
@@ -527,6 +399,11 @@ class Volunteers extends Component {
                   console.log(`💾 Data saved for scan [${scanId}]`);
                 });
               } else {
+                console.log(`❌ Invalid response structure for scan [${scanId}]:`, response.data);
+                // Stop scanner even on invalid response
+                this.stopQRScanner();
+                console.log(`📹 QR scanner stopped after invalid response [${scanId}]`);
+                
                 this.setState({
                   qrValue: result.data,
                   qrScanned: true,
@@ -536,11 +413,51 @@ class Volunteers extends Component {
               }
             } catch (err) {
               console.error(`❌ QR Scan error [${scanId}]:`, err.message);
+              console.error(`❌ Full error details for scan [${scanId}]:`, err);
+              
+              // Check if we have response data even with an error (e.g., timeout after successful response)
+              if (err.response && err.response.data && err.response.data.success && err.response.data.data) {
+                console.log(`✅ Data retrieved despite error for scan [${scanId}]:`, err.response.data.data);
+                // Populate participant data even if there was a network hiccup
+                const formData = {};
+                Object.keys(err.response.data.data).forEach(key => {
+                  formData[key] = err.response.data.data[key];
+                });
+                
+                // Stop and hide QR scanner after successful participant data retrieval
+                this.stopQRScanner();
+                console.log(`📹 QR scanner stopped after successful scan despite error [${scanId}]`);
+                
+                this.setState({
+                  qrValue: result.data,
+                  qrScanned: true,
+                  cameraError: null, // Clear error since we got the data
+                  formData
+                }, () => {
+                  this.immediateSave();
+                  console.log(`💾 Data saved despite error for scan [${scanId}]`);
+                });
+                return; // Exit early since we handled the data
+              }
+              
+              // Only show error if we truly didn't get any participant data
+              let errorMessage = 'Network or server error';
+              if (err.name === 'AbortError') {
+                errorMessage = 'Request timeout - check connection';
+              } else if (err.code === 'ERR_NETWORK') {
+                errorMessage = 'Network connection failed - check backend server';
+              } else if (err.response) {
+                errorMessage = `Server error: ${err.response.status}`;
+              }
+              
+              // Stop scanner on error too
+              this.stopQRScanner();
+              console.log(`📹 QR scanner stopped after error [${scanId}]`);
               
               this.setState({
                 qrValue: result.data,
                 qrScanned: true,
-                cameraError: err.name === 'AbortError' ? 'Request timeout - try again' : 'Network or server error',
+                cameraError: errorMessage,
                 formData: {}
               });
             } finally {
@@ -602,6 +519,7 @@ class Volunteers extends Component {
       this._qrScannerStartTimeout = setTimeout(() => {
         if (!this.qrScanner && !this.isProcessingQR) {
           console.log(`🔄 Restarting QR scanner on device [${this.deviceId}] for station change`);
+          // Use the backend-connected scanner to retrieve participant data
           this.startQRScannerWithNode(this.videoNode);
         }
       }, 100); // Fast restart for better user experience
@@ -700,6 +618,17 @@ class Volunteers extends Component {
       alert(language === 'en' ? 'No QR code scanned.' : '未扫描二维码。');
       return;
     }
+    
+    // Check if height/weight is required but missing
+    const requiresHeightWeight = selectedStation !== 'heightWeight';
+    const hasHeightWeight = formData.hasHeightWeight;
+    
+    if (requiresHeightWeight && !hasHeightWeight) {
+      alert(language === 'en' 
+        ? 'Cannot proceed: This participant must complete height and weight measurements first.' 
+        : '无法继续：该参与者必须先完成身高体重测量。');
+      return;
+    }
     // Helper to ensure value is in the format '{value} {unit}' for fields with units
     const getFieldWithUnit = (field, value) => {
       let unit = '';
@@ -748,7 +677,12 @@ class Volunteers extends Component {
       const response = await axios.post(`${API_BASE_URL}/participants`, {
         purpose: 'updateStationData',
         participantID: qrValue,
-        data: payload // ensure payload is sent as JSON string
+        data: payload
+      }, {
+        timeout: 10000, // 10 second timeout for data submission
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
@@ -776,7 +710,24 @@ class Volunteers extends Component {
         alert(language === 'en' ? 'Failed to submit data.' : '提交数据失败。');
       }
     } catch (err) {
-      alert(language === 'en' ? 'Network or server error.' : '网络或服务器错误。');
+      console.error('❌ Data submission error:', err);
+      let errorMessage = language === 'en' ? 'Network or server error.' : '网络或服务器错误。';
+      
+      if (err.code === 'ERR_NETWORK') {
+        errorMessage = language === 'en' 
+          ? 'Network connection failed. Please check your internet connection and try again.' 
+          : '网络连接失败。请检查您的互联网连接并重试。';
+      } else if (err.response) {
+        errorMessage = language === 'en' 
+          ? `Server error (${err.response.status}). Please try again.` 
+          : `服务器错误 (${err.response.status})。请重试。`;
+      } else if (err.code === 'ECONNABORTED') {
+        errorMessage = language === 'en' 
+          ? 'Request timeout. Please check your connection and try again.' 
+          : '请求超时。请检查您的连接并重试。';
+      }
+      
+      alert(errorMessage);
     }
   }
 
@@ -833,339 +784,445 @@ class Volunteers extends Component {
         </div>
         {/* QR scanner for all stations */}
         {selectedStation && (
-          <div className="details-section" style={{ maxWidth: 700, minHeight: 700 }}>
-            <div style={{ textAlign: 'center', marginBottom: 8, color: '#1976d2', fontWeight: 600 }}>
-              {cameraError ? (
-                <span style={{ color: '#d32f2f' }}>
-                  {language === 'en' ? 'Camera Error: ' : '摄像头错误：'}{cameraError}
-                </span>
-              ) : (
-                <div>
-                  <span>
-                    {language === 'en' ? 'Camera is active. Please hold QR code in front of the camera.' : '摄像头已开启，请将二维码对准摄像头'}
+          <div className="details-section" style={{ maxWidth: 700, minHeight: formData.name ? 'auto' : 700 }}>
+            
+            {/* Show participant info prominently when loaded */}
+            {formData.name && (
+              <div style={{ 
+                textAlign: 'center', 
+                marginBottom: 16, 
+                padding: '16px', 
+                backgroundColor: '#e8f5e8', 
+                border: '2px solid #28a745',
+                borderRadius: '8px',
+                color: '#155724'
+              }}>
+                <h3 style={{ margin: '0 0 12px 0', color: '#28a745' }}>
+                  ✅ {language === 'en' ? 'Participant Loaded' : '参与者已加载'}
+                </h3>
+                <div style={{ fontSize: '1.1em', fontWeight: 600 }}>
+                  {(() => {
+                    const infoFields = ['name', 'age', 'gender', 'dateOfBirth', 'phoneNumber'];
+                    return (
+                      <>
+                        {infoFields.map(field => {
+                          let value = formData[field];
+                          
+                          // Skip fields that are empty or "-"
+                          if (!value || value === '-') {
+                            return null;
+                          }
+                          
+                          // Fix: If value is an object (e.g., {date, time}), render as string
+                          if (typeof value === 'object' && value !== null) {
+                            if ('date' in value && 'time' in value) {
+                              value = `${value.date} ${value.time}`;
+                            } else {
+                              value = JSON.stringify(value);
+                            }
+                          }
+                          
+                          // Capitalize gender values (Male/Female instead of male/female)
+                          if (field === 'gender' && typeof value === 'string') {
+                            value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+                          }
+                          
+                          // Capitalize first letter of field label
+                          const fieldLabel = t[field] || field;
+                          const capitalizedLabel = fieldLabel.charAt(0).toUpperCase() + fieldLabel.slice(1);
+                          
+                          return (
+                            <div key={field} style={{ marginBottom: '4px' }}>
+                              {capitalizedLabel}: <strong>{value}</strong>
+                            </div>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </div>
+                <button 
+                  onClick={() => {
+                    // Clear processing flag and reset scanner state
+                    this.isProcessingQR = false;
+                    
+                    // Stop any existing scanner
+                    this.stopQRScanner();
+                    
+                    // Reset state to allow new scan
+                    this.setState({ 
+                      qrScanned: false, 
+                      qrValue: '', 
+                      formData: {},  // Clear all form data including name
+                      cameraError: null
+                    }, () => {
+                      // Restart scanner after state is cleared
+                      if (this.videoNode && this.state.selectedStation) {
+                        setTimeout(() => {
+                          if (!this.qrScanner && !this.isProcessingQR) {
+                            console.log('📹 Restarting QR scanner for new participant scan');
+                            this.startQRScannerWithNode(this.videoNode);
+                          }
+                        }, 200);
+                      }
+                    });
+                  }}
+                  style={{
+                    marginTop: '12px',
+                    padding: '8px 16px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.9em',
+                    fontWeight: '600'
+                  }}
+                >
+                  {language === 'en' ? '📹 Scan Different Participant' : '📹 扫描其他参与者'}
+                </button>
+              </div>
+            )}
+            
+            {/* Only show camera status when no participant is loaded and no successful scan */}
+            {!formData.name && !qrScanned && (
+              <div style={{ textAlign: 'center', marginBottom: 8, color: '#1976d2', fontWeight: 600 }}>
+                {cameraError && !this.isProcessingQR && !qrValue ? (
+                  <span style={{ color: '#d32f2f' }}>
+                    {language === 'en' ? 'Camera Error: ' : '摄像头错误：'}{cameraError}
                   </span>
-                  <div style={{ fontSize: '0.8em', color: '#666', marginTop: '4px' }}>
-                    {language === 'en' ? `Device: ${this.deviceId.split('_')[1]} | Station: ${selectedStation}` : `设备: ${this.deviceId.split('_')[1]} | 站点: ${selectedStation}`}
+                ) : (
+                  <div>
+                    <span>
+                      {language === 'en' ? 'Camera is active. Please hold QR code in front of the camera.' : '摄像头已开启，请将二维码对准摄像头'}
+                    </span>
                     {this.isProcessingQR && (
-                      <span style={{ color: '#ff9800', marginLeft: '8px' }}>
+                      <div style={{ fontSize: '0.8em', color: '#ff9800', marginTop: '4px' }}>
                         {language === 'en' ? '⚡ Processing...' : '⚡ 处理中...'}
-                      </span>
+                      </div>
+                    )}
+                    {qrValue && !formData.name && (
+                      <div style={{ fontSize: '0.9em', color: '#ff9800', marginTop: '8px' }}>
+                        🔍 {language === 'en' ? `QR: ${qrValue} | Loading participant...` : `二维码: ${qrValue} | 加载参与者...`}
+                      </div>
                     )}
                   </div>
-                  {qrScanned && formData.name && (
-                    <div style={{ fontSize: '1em', color: '#28a745', marginTop: '8px', fontWeight: 'bold' }}>
-                      ✅ {language === 'en' ? `Participant: ${formData.name} | Scan again anytime` : `参与者: ${formData.name} | 可随时重新扫描`}
+                )}
+              </div>
+            )}
+            
+            {/* Hide camera when participant is loaded or scan is complete */}
+            {!formData.name && !qrScanned && (
+              <div id="qr-video-container" style={{ width: '100%', maxWidth: 640, minHeight: 480, margin: '0 auto', borderRadius: 18, background: '#000', border: '5px solid #1976d2', boxShadow: '0 4px 32px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                <video
+                  ref={this.setVideoRef}
+                  style={{ width: '100%', height: 'auto', minHeight: 440, borderRadius: 18, background: '#222' }}
+                  autoPlay
+                  playsInline
+                  muted
+                />
+                {/* Loading indicator */}
+                {!this.qrScanner && (
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+                      {language === 'en' ? '🚀 Starting fast camera...' : '🚀 启动快速摄像头...'}
                     </div>
-                  )}
-                  {qrValue && !formData.name && (
-                    <div style={{ fontSize: '0.9em', color: '#ff9800', marginTop: '8px' }}>
-                      🔍 {language === 'en' ? `QR: ${qrValue} | Loading participant...` : `二维码: ${qrValue} | 加载参与者...`}
+                    <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+                      {language === 'en' ? 'Optimized for multiple devices' : '为多设备优化'}
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div id="qr-video-container" style={{ width: '100%', maxWidth: 640, minHeight: 480, margin: '0 auto', borderRadius: 18, background: '#000', border: '5px solid #1976d2', boxShadow: '0 4px 32px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-              <video
-                ref={this.setVideoRef}
-                style={{ width: '100%', height: 'auto', minHeight: 440, borderRadius: 18, background: '#222' }}
-                autoPlay
-                playsInline
-                muted
-              />
-              {/* Loading indicator */}
-              {!this.qrScanner && (
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-                    {language === 'en' ? '🚀 Starting fast camera...' : '🚀 启动快速摄像头...'}
                   </div>
-                  <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
-                    {language === 'en' ? 'Optimized for multiple devices' : '为多设备优化'}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        {selectedStation && (qrScanned || qrValue) && (
-          <div className="details-section">
-            {/* Show completed stations only if participant has stations data AND has meaningful completed data */}
-            {(() => {
-              // First check if participant has stations data at all
-              if (!formData.stations || !Array.isArray(formData.stations) || formData.stations.length === 0) {
-                return null; // No stations key or empty stations - participant hasn't completed any stations yet
-              }
-              
-              // Helper function to check if a station has meaningful completed data
-              const hasCompletedData = (stationObj) => {
-                const stationData = Object.values(stationObj)[0];
-                if (!stationData || typeof stationData !== 'object') return false;
-                
-                // Check if any field has meaningful non-empty data
-                return Object.values(stationData).some(val => {
-                  if (!val || val === '' || val === '-' || val === 'null' || val === 'undefined') return false;
-                  // For numeric fields, check if it's not just "0" or " cm", " kg", " secs"
-                  if (typeof val === 'string') {
-                    const trimmed = val.trim();
-                    if (trimmed === '0' || trimmed === '0 cm' || trimmed === '0 kg' || trimmed === '0 secs') return false;
-                    if (trimmed.match(/^\s*(cm|kg|secs)\s*$/)) return false; // Just unit without value
-                    if (trimmed.length > 0) return true;
-                  }
-                  return val !== null && val !== undefined;
-                });
-              };
-              
-              // Use participant's stations data from formData, not local state
-              const participantStations = formData.stations || [];
-              const completedStations = participantStations.filter(hasCompletedData);
-              
-              return completedStations.length > 0 && (
-                <div style={{ marginBottom: 16, color: '#1976d2', fontWeight: 600 }}>
-                  {language === 'en' ? 'Completed Stations:' : '已完成站点：'}
-                  <ul>
-                    {completedStations.map((stationObj, idx) => {
-                      const stationName = Object.keys(stationObj)[0];
-                      return (
-                        <li key={stationName}>
-                          {t.stations[stationName] || stationName}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-            })()}
-            <div style={{ textAlign: 'center', marginBottom: 12, color: '#388e3c', fontWeight: 600 }}>
-              {/* Always show participant info section as heightWeight, even for manual entry */}
-              {(() => {
-                const infoFields = ['name', 'age', 'gender', 'dateOfBirth', 'phoneNumber'];
-                return (
-                  <>
-                    {infoFields.map(field => {
-                      let value = formData[field];
-                      
-                      // Skip fields that are empty or "-"
-                      if (!value || value === '-') {
-                        return null;
-                      }
-                      
-                      // Fix: If value is an object (e.g., {date, time}), render as string
-                      if (typeof value === 'object' && value !== null) {
-                        if ('date' in value && 'time' in value) {
-                          value = `${value.date} ${value.time}`;
-                        } else {
-                          value = JSON.stringify(value);
-                        }
-                      }
-                      
-                      // Capitalize gender values (Male/Female instead of male/female)
-                      if (field === 'gender' && typeof value === 'string') {
-                        value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-                      }
-                      
-                      // Capitalize first letter of field label
-                      const fieldLabel = t[field] || field;
-                      const capitalizedLabel = fieldLabel.charAt(0).toUpperCase() + fieldLabel.slice(1);
-                      
-                      return (
-                        <div key={field}>
-                          {capitalizedLabel}: {value}
-                        </div>
-                      );
-                    })}
-                  </>
-                );
-              })()}
-            </div>
-            <div className="detail-grid" style={{ maxWidth: 400 }}>
-              {stationFields[selectedStation].map(field => {
-                // For sitReach, backStretch, handGrip stations with leftRight field
-                if (field === 'leftRight' && ['sitReach', 'backStretch', 'handGrip'].includes(selectedStation)) {
-                  // Get context-specific labels for each station
-                  const getContextLabel = (side) => {
-                    const contexts = {
-                      sitReach: language === 'en' ? 'Straight leg' : '直腿',
-                      backStretch: language === 'en' ? 'Hand on top' : '上面的手',
-                      handGrip: language === 'en' ? 'Hand' : '手'
-                    };
-                    const context = contexts[selectedStation] || '';
-                    const sideLabel = side === 'left' ? 
-                      (language === 'en' ? 'Left L' : '左L') : 
-                      (language === 'en' ? 'Right R' : '右R');
-                    return `${sideLabel} (${context})`;
-                  };
+                )}
+              </div>
+            )}
 
-                  return (
-                    <div className="detail-item" key={field} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                      <span className="detail-label" style={{ marginBottom: '0.5rem' }}>{language === 'en' ? 'Left/Right:' : '左/右：'}</span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
-                          <input
-                            type="checkbox"
-                            checked={formData[field] === 'left'}
-                            onChange={e => {
-                              if (e.target.checked) {
-                                this.handleInputChange({ target: { value: 'left' } }, field);
-                              } else {
-                                this.handleInputChange({ target: { value: '' } }, field);
-                              }
-                            }}
-                            style={{ marginRight: '0.5rem' }}
-                          />
-                          {getContextLabel('left')}
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
-                          <input
-                            type="checkbox"
-                            checked={formData[field] === 'right'}
-                            onChange={e => {
-                              if (e.target.checked) {
-                                this.handleInputChange({ target: { value: 'right' } }, field);
-                              } else {
-                                this.handleInputChange({ target: { value: '' } }, field);
-                              }
-                            }}
-                            style={{ marginRight: '0.5rem' }}
-                          />
-                          {getContextLabel('right')}
-                        </label>
+            {/* Show form fields in the same position as camera when participant is loaded */}
+            {formData.name && selectedStation && (
+              <div style={{ width: '100%', maxWidth: 640, margin: '0 auto', padding: '20px', borderRadius: 18, background: '#f8f9fa', border: '2px solid #28a745', boxShadow: '0 4px 32px rgba(0,0,0,0.12)' }}>
+                
+                {/* Check if height/weight is required but missing */}
+                {(() => {
+                  const requiresHeightWeight = selectedStation !== 'heightWeight';
+                  const hasHeightWeight = formData.hasHeightWeight;
+                  
+                  if (requiresHeightWeight && !hasHeightWeight) {
+                    // Show blocking message for missing height/weight
+                    const currentLanguage = this.context?.language || 'en';
+                    return (
+                      <div style={{ 
+                        textAlign: 'center', 
+                        padding: '20px', 
+                        backgroundColor: '#fff3cd', 
+                        border: '2px solid #ffc107',
+                        borderRadius: '8px',
+                        color: '#856404',
+                        marginBottom: '16px'
+                      }}>
+                        <h3 style={{ margin: '0 0 12px 0', color: '#ffc107' }}>
+                          ⚠️ {currentLanguage === 'en' ? 'Height & Weight Required' : '需要身高体重数据'}
+                        </h3>
+                        <p style={{ margin: '0 0 16px 0', fontSize: '1.1em' }}>
+                          {currentLanguage === 'en' 
+                            ? 'This participant must complete height and weight measurements before accessing other test stations.'
+                            : '该参与者必须先完成身高体重测量才能进行其他测试站点。'}
+                        </p>
                       </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {/* Show completed stations info */}
+                {(() => {
+                  // First check if participant has stations data at all
+                  if (!formData.stations || !Array.isArray(formData.stations) || formData.stations.length === 0) {
+                    return null; // No stations key or empty stations - participant hasn't completed any stations yet
+                  }
+                  
+                  // Helper function to check if a station has meaningful completed data
+                  const hasCompletedData = (stationObj) => {
+                    const stationData = Object.values(stationObj)[0];
+                    if (!stationData || typeof stationData !== 'object') return false;
+                    
+                    // Check if any field has meaningful non-empty data
+                    return Object.values(stationData).some(val => {
+                      if (!val || val === '' || val === '-' || val === 'null' || val === 'undefined') return false;
+                      // For numeric fields, check if it's not just "0" or " cm", " kg", " secs"
+                      if (typeof val === 'string') {
+                        const trimmed = val.trim();
+                        if (trimmed === '0' || trimmed === '0 cm' || trimmed === '0 kg' || trimmed === '0 secs') return false;
+                        if (trimmed.match(/^\s*(cm|kg|secs)\s*$/)) return false; // Just unit without value
+                        if (trimmed.length > 0) return true;
+                      }
+                      return val !== null && val !== undefined;
+                    });
+                  };
+                  
+                  // Use participant's stations data from formData, not local state
+                  const participantStations = formData.stations || [];
+                  const completedStations = participantStations.filter(hasCompletedData);
+                  
+                  return completedStations.length > 0 && (
+                    <div style={{ marginBottom: 16, color: '#1976d2', fontWeight: 600, textAlign: 'center' }}>
+                      {language === 'en' ? 'Completed Stations:' : '已完成站点：'}
+                      <ul style={{ textAlign: 'left', display: 'inline-block' }}>
+                        {completedStations.map((stationObj, idx) => {
+                          const stationName = Object.keys(stationObj)[0];
+                          return (
+                            <li key={stationName}>
+                              {t.stations[stationName] || stationName}
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </div>
                   );
-                }
-                // Special handling for remarks field with context-specific labels
-                if (field === 'remarks' && ['sitReach', 'backStretch', 'handGrip'].includes(selectedStation)) {
-                  const stationData = t.stationRemarks?.[selectedStation];
-                  const leftLabel = stationData?.left || 'Left';
-                  const rightLabel = stationData?.right || 'Right';
+                })()}
+
+                {/* Station fields form */}
+                {(() => {
+                  const requiresHeightWeight = selectedStation !== 'heightWeight';
+                  const hasHeightWeight = formData.hasHeightWeight;
+                  const canProceed = !requiresHeightWeight || hasHeightWeight;
+                  
+                  if (!canProceed) {
+                    // Don't show the form if height/weight is required but missing
+                    return null;
+                  }
                   
                   return (
-                    <div className="detail-item" key={field} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                      <span className="detail-label" style={{ marginBottom: '0.5rem' }}>{t.remarks || 'Remarks'}:</span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
-                          <input
-                            type="checkbox"
-                            checked={formData[field] === leftLabel}
-                            onChange={e => {
-                              if (e.target.checked) {
-                                this.handleInputChange({ target: { value: leftLabel } }, field);
-                              } else {
-                                this.handleInputChange({ target: { value: '' } }, field);
-                              }
-                            }}
-                            style={{ marginRight: '0.5rem' }}
-                          />
-                          {leftLabel}
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
-                          <input
-                            type="checkbox"
-                            checked={formData[field] === rightLabel}
-                            onChange={e => {
-                              if (e.target.checked) {
-                                this.handleInputChange({ target: { value: rightLabel } }, field);
-                              } else {
-                                this.handleInputChange({ target: { value: '' } }, field);
-                              }
-                            }}
-                            style={{ marginRight: '0.5rem' }}
-                          />
-                          {rightLabel}
-                        </label>
-                      </div>
-                    </div>
-                  );
-                }
-                // Default rendering for other fields
-                // Determine unit for this field/station
-                let unit = '';
-                let placeholder = t[field] || field;
-                if (selectedStation === 'heightWeight') {
-                  if (field === 'height') { unit = 'cm'; placeholder = `${t[field] || 'Height'}`; }
-                  if (field === 'weight') { unit = 'kg'; placeholder = `${t[field] || 'Weight'}`; }
-                } else if (selectedStation === 'sitReach' && field.startsWith('score')) {
-                  unit = 'cm'; placeholder = `${t[field] || field}`;
-                } else if (selectedStation === 'backStretch' && field.startsWith('score')) {
-                  unit = 'cm'; placeholder = `${t[field] || field}`;
-                } else if (selectedStation === 'speedWalking' && field.startsWith('score')) {
-                  unit = 'secs'; placeholder = `${t[field] || field}`;
-                } else if (selectedStation === 'handGrip' && field.startsWith('score')) {
-                  unit = 'kg'; placeholder = `${t[field] || field}`;
-                }
+                    <div className="detail-grid" style={{ maxWidth: '100%' }}>
+                  {stationFields[selectedStation].map(field => {
+                    // For sitReach, backStretch, handGrip stations with leftRight field
+                    if (field === 'leftRight' && ['sitReach', 'backStretch', 'handGrip'].includes(selectedStation)) {
+                      // Get context-specific labels for each station
+                      const getContextLabel = (side) => {
+                        const contexts = {
+                          sitReach: language === 'en' ? 'Straight leg' : '直腿',
+                          backStretch: language === 'en' ? 'Hand on top' : '上面的手',
+                          handGrip: language === 'en' ? 'Hand' : '手'
+                        };
+                        const context = contexts[selectedStation] || '';
+                        const sideLabel = side === 'left' ? 
+                          (language === 'en' ? 'Left L' : '左L') : 
+                          (language === 'en' ? 'Right R' : '右R');
+                        return `${sideLabel} (${context})`;
+                      };
 
-                // Find last value for this station/field
-                let lastValue = '';
-                if (this.state.stations && this.state.stations.length > 0) {
-                  const lastStationObj = this.state.stations.find(s => s[selectedStation]);
-                  if (lastStationObj && lastStationObj[selectedStation] && lastStationObj[selectedStation][field]) {
-                    lastValue = lastStationObj[selectedStation][field];
-                  }
-                }
+                      return (
+                        <div className="detail-item" key={field} style={{ flexDirection: 'column', alignItems: 'flex-start', marginBottom: '16px' }}>
+                          <span className="detail-label" style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{language === 'en' ? 'Left/Right:' : '左/右：'}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                              <input
+                                type="checkbox"
+                                checked={formData[field] === 'left'}
+                                onChange={e => {
+                                  if (e.target.checked) {
+                                    this.handleInputChange({ target: { value: 'left' } }, field);
+                                  } else {
+                                    this.handleInputChange({ target: { value: '' } }, field);
+                                  }
+                                }}
+                                style={{ marginRight: '0.5rem' }}
+                              />
+                              {getContextLabel('left')}
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                              <input
+                                type="checkbox"
+                                checked={formData[field] === 'right'}
+                                onChange={e => {
+                                  if (e.target.checked) {
+                                    this.handleInputChange({ target: { value: 'right' } }, field);
+                                  } else {
+                                    this.handleInputChange({ target: { value: '' } }, field);
+                                  }
+                                }}
+                                style={{ marginRight: '0.5rem' }}
+                              />
+                              {getContextLabel('right')}
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    }
+                    // Special handling for remarks field with context-specific labels
+                    if (field === 'remarks' && ['sitReach', 'backStretch', 'handGrip'].includes(selectedStation)) {
+                      const stationData = t.stationRemarks?.[selectedStation];
+                      const leftLabel = stationData?.left || 'Left';
+                      const rightLabel = stationData?.right || 'Right';
+                      
+                      return (
+                        <div className="detail-item" key={field} style={{ flexDirection: 'column', alignItems: 'flex-start', marginBottom: '16px' }}>
+                          <span className="detail-label" style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{t.remarks || 'Remarks'}:</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                              <input
+                                type="checkbox"
+                                checked={formData[field] === leftLabel}
+                                onChange={e => {
+                                  if (e.target.checked) {
+                                    this.handleInputChange({ target: { value: leftLabel } }, field);
+                                  } else {
+                                    this.handleInputChange({ target: { value: '' } }, field);
+                                  }
+                                }}
+                                style={{ marginRight: '0.5rem' }}
+                              />
+                              {leftLabel}
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                              <input
+                                type="checkbox"
+                                checked={formData[field] === rightLabel}
+                                onChange={e => {
+                                  if (e.target.checked) {
+                                    this.handleInputChange({ target: { value: rightLabel } }, field);
+                                  } else {
+                                    this.handleInputChange({ target: { value: '' } }, field);
+                                  }
+                                }}
+                                style={{ marginRight: '0.5rem' }}
+                              />
+                              {rightLabel}
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    }
+                    // Default rendering for other fields
+                    // Determine unit for this field/station
+                    let unit = '';
+                    let placeholder = t[field] || field;
+                    if (selectedStation === 'heightWeight') {
+                      if (field === 'height') { unit = 'cm'; placeholder = `${t[field] || 'Height'}`; }
+                      if (field === 'weight') { unit = 'kg'; placeholder = `${t[field] || 'Weight'}`; }
+                    } else if (selectedStation === 'sitReach' && field.startsWith('score')) {
+                      unit = 'cm'; placeholder = `${t[field] || field}`;
+                    } else if (selectedStation === 'backStretch' && field.startsWith('score')) {
+                      unit = 'cm'; placeholder = `${t[field] || field}`;
+                    } else if (selectedStation === 'speedWalking' && field.startsWith('score')) {
+                      unit = 'secs'; placeholder = `${t[field] || field}`;
+                    } else if (selectedStation === 'handGrip' && field.startsWith('score')) {
+                      unit = 'kg'; placeholder = `${t[field] || field}`;
+                    }
 
-                return (
-                  <div className="detail-item" key={field} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className="detail-label">{t[field] || field}:</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {unit ? (
-                          <input
-                            className="detail-value"
-                            type="text"
-                            value={
-                              formData[field] !== undefined && formData[field] !== null && formData[field] !== ''
-                                ? formData[field]
-                                : ''
-                            }
-                            onChange={e => this.handleInputChange(e, field, unit)}
-                            onBlur={e => this.handleInputBlur(e, field, unit)}
-                            placeholder={placeholder.replace(/\s*\([^)]*\)$/, '')}
-                            style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 100 }}
-                          />
-                        ) : (
-                          <input
-                            className="detail-value"
-                            type="text"
-                            value={formData[field] || ''}
-                            onChange={e => {
-                              this.handleInputChange(e, field);
-                            }}
-                            placeholder={placeholder}
-                            style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #ccc', minWidth: 100 }}
-                          />
+                    // Find last value for this station/field
+                    let lastValue = '';
+                    if (this.state.stations && this.state.stations.length > 0) {
+                      const lastStationObj = this.state.stations.find(s => s[selectedStation]);
+                      if (lastStationObj && lastStationObj[selectedStation] && lastStationObj[selectedStation][field]) {
+                        lastValue = lastStationObj[selectedStation][field];
+                      }
+                    }
+
+                    return (
+                      <div className="detail-item" key={field} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                          <span className="detail-label" style={{ fontWeight: 600, minWidth: '80px' }}>{t[field] || field}:</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+                            {unit ? (
+                              <input
+                                className="detail-value"
+                                type="text"
+                                value={
+                                  formData[field] !== undefined && formData[field] !== null && formData[field] !== ''
+                                    ? formData[field]
+                                    : ''
+                                }
+                                onChange={e => this.handleInputChange(e, field, unit)}
+                                onBlur={e => this.handleInputBlur(e, field, unit)}
+                                placeholder={placeholder.replace(/\s*\([^)]*\)$/, '')}
+                                style={{ padding: '0.75rem', borderRadius: 8, border: '2px solid #ddd', flex: 1, fontSize: '1rem' }}
+                              />
+                            ) : (
+                              <input
+                                className="detail-value"
+                                type="text"
+                                value={formData[field] || ''}
+                                onChange={e => {
+                                  this.handleInputChange(e, field);
+                                }}
+                                placeholder={placeholder}
+                                style={{ padding: '0.75rem', borderRadius: 8, border: '2px solid #ddd', flex: 1, fontSize: '1rem' }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                        {/* Show last value for this station/field if available */}
+                        {lastValue && (
+                          <div style={{ color: '#1976d2', fontSize: '0.9em', marginLeft: 8 }}>
+                            Last: {lastValue}
+                          </div>
                         )}
                       </div>
+                    );
+                  })}
+                  <button
+                    style={{
+                      marginTop: 24,
+                      width: '100%',
+                      padding: '1rem',
+                      borderRadius: 12,
+                      background: '#1976d2',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: '1.2rem',
+                      border: 'none',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                    }}
+                    onClick={() => {
+                      this.onEnter()
+                    }}
+                  >
+                    {language === 'en' ? 'Enter' : '提交'}
+                  </button>
                     </div>
-                    {/* Show last value for this station/field if available */}
-                    {lastValue && (
-                      <div style={{ color: '#1976d2', fontSize: '0.95em', marginLeft: 8 }}>
-                        Last: {lastValue}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              <button
-                style={{
-                  marginTop: 24,
-                  width: '100%',
-                  padding: '0.75rem',
-                  borderRadius: 8,
-                  background: '#1976d2',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '1.1rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.10)'
-                }}
-                onClick={() => {
-                  this.onEnter()
-                }}
-              >
-                {language === 'en' ? 'Enter' : '提交'}
-              </button>
-            </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         )}
         

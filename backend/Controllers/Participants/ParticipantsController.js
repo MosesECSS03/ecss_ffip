@@ -21,8 +21,13 @@ class ParticipantsController {
                 const newParticipant = {
                     ...participantData,
                     submittedAt: {
-                        date: now.toLocaleDateString('en-GB'), // dd/mm/yyyy format
-                        time: now.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' }) // 24-hour format hh:mm
+                        date: now.toLocaleDateString('en-GB', { timeZone: 'Asia/Singapore' }), // dd/mm/yyyy format in GMT+8
+                        time: now.toLocaleTimeString('en-GB', { 
+                            timeZone: 'Asia/Singapore',
+                            hour12: false, 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        }) // 24-hour format hh:mm in GMT+8
                     }
                 };
 

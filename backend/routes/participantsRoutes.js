@@ -181,33 +181,4 @@ router.post('/', async (req, res) =>
   }
 });
 
-// GET route for retrieving all participants
-router.post('/', async (req, res) => {
-  console.log('Received GET request on /participants - retrieving all participants');
-  
-  try {
-    var controller = new ParticipantsController();
-    const result = await controller.getAllParticipants();
-
-    console.log('All participants retrieved via GET:', result);
-    
-    if (result.success) {
-      res.status(200).json(result.data);
-    } else {
-      res.status(500).json({
-        status: 'error',
-        success: false,
-        message: result.error || 'Failed to retrieve participants'
-      });
-    }
-  } catch (error) {
-    console.error('Error in GET /participants:', error);
-    res.status(500).json({ 
-      status: 'error', 
-      success: false, 
-      message: 'Internal server error' 
-    });
-  }
-});
-
 module.exports = router;
