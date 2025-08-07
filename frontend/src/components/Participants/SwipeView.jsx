@@ -310,44 +310,6 @@ import { io } from 'socket.io-client';
             position: 'relative'
           }}
         >
-          {/* Navigation Header */}
-          <div style={{
-            position: 'fixed',
-            top: '0',
-            left: '0',
-            right: '0',
-            backgroundColor: '#fff',
-            padding: '10px 15px',
-            borderBottom: '1px solid #ddd',
-            zIndex: 1000,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}>
-            <button 
-              onClick={onClose}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                fontSize: '14px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px'
-              }}
-            >
-              ← Edit Form
-            </button>
-            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
-              {participant?.name || 'Participant Details'}
-            </span>
-            <div style={{ width: '80px' }}></div> {/* Spacer for centering */}
-          </div>
-
           {/* Emergency fallback if no participant */}
           {!participant && (
             <div style={{

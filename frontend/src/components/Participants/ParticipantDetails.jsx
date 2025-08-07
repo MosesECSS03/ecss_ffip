@@ -997,7 +997,7 @@ class ParticipantDetails extends Component {
       '• Reset language preferences\n' +
       '• Clear mobile/tablet device cache\n' +
       '• Remove all app data from device storage\n' +
-      '• Return to the language selection screen\n\n' +
+      '• Return to the participant form page\n\n' +
       'This action cannot be undone and will affect all data stored on this device.';
     
     if (!window.confirm(confirmMessage)) {
@@ -1272,10 +1272,9 @@ class ParticipantDetails extends Component {
       
       console.log('✅ All app data cleared successfully (enhanced for mobile/tablet)');
       
-      // 9. Enhanced application reset for mobile devices
-      // 9. Enhanced application reset for mobile devices
+      // 9. Enhanced application reset for mobile devices - redirect to participants form
       // Use replace instead of href to prevent back button issues
-      window.location.replace('/');
+      window.location.replace('/participants');
       
       // 10. Enhanced reload for mobile/tablet to ensure clean state
       setTimeout(() => {
@@ -1284,7 +1283,7 @@ class ParticipantDetails extends Component {
           console.log('🗑️ Mobile/tablet device detected, performing enhanced reload');
           // Clear any remaining browser state
           if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, null, '/');
+            window.history.replaceState(null, null, '/participants');
           }
           // Force hard reload
           window.location.reload(true);
@@ -1305,7 +1304,7 @@ class ParticipantDetails extends Component {
         alert('Data clearing completed with some issues. The app will now restart.');
       }
       
-      window.location.replace('/');
+      window.location.replace('/participants');
       setTimeout(() => {
         window.location.reload(true);
       }, 100);
