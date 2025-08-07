@@ -15,6 +15,7 @@ function HomePage() {
   const [error, setError] = useState('')
   const navigate = window.location.assign ? null : undefined // fallback for react-router-dom v6+ if needed
 
+  //ok
   // Passwords (replace with env or secure method in production)
   const PASSWORDS = {
     volunteers: 'ecss_volunteer2046',
