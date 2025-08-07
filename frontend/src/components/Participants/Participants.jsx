@@ -1333,18 +1333,13 @@ class Participants extends Component {
         <SwipeView
           participant={participantData}
           language={language}
-          onClose={() => {
-            // Allow user to go back to form to edit
-            this.setState({ 
-              hasSubmitted: false,
-              showForm: true 
-            });
-          }}
+          onClose={this.closeSwipeView}
         />
       )
     }
 
-    // Final default: Show fresh form for new users
+    // Final fallback: ALWAYS show fresh form for new users or any unhandled case
+    console.log('🔄 Fallback: Showing fresh form');
     return (
       <div>
         {/* Data Status Notification */}
