@@ -34,12 +34,20 @@ class Volunteers extends Component {
       qrValue: '',
       qrScanned: false,
       cameraError: null,
-      stations: [] // <-- add stations array to state
+      stations: [], // <-- add stations array to state
+      dataStatusMessage: '' // For showing save/load notifications
     }
     this.qrScanner = null
   }
 
+  componentDidMount() {
+    // Load saved state when component mounts
+    this.loadStateFromLocalStorage();
+  }
+
   componentWillUnmount() {
+    // Save state immediately before component unmounts
+    this.immediateSave();
     this.stopQRScanner()
   }
 
@@ -48,6 +56,160 @@ class Volunteers extends Component {
       this.qrScanner.destroy()
       this.qrScanner = null
     }
+  }
+
+  // Data persistence methods
+  saveStateToLocalStorage = (isRetry = false) => {
+    try {
+      const stateToSave = {
+        selectedStation: this.state.selectedStation,
+        formData: this.state.formData,
+        qrValue: this.state.qrValue,
+        qrScanned: this.state.qrScanned,
+        stations: this.state.stations,
+        lastUpdated: Date.now()
+      };
+      
+      // Test if localStorage is available and has space
+      const testKey = 'test_volunteers_storage_' + Date.now();
+      localStorage.setItem(testKey, 'test');
+      localStorage.removeItem(testKey);
+      
+      localStorage.setItem('volunteersAppState', JSON.stringify(stateToSave));
+      console.log('💾 Volunteers state saved to localStorage:', stateToSave);
+      
+      // Show brief notification
+      this.setState({ dataStatusMessage: '💾 Data saved' });
+      setTimeout(() => {
+        this.setState({ dataStatusMessage: '' });
+      }, 2000);
+    } catch (error) {
+      console.error('❌ Error saving volunteers state to localStorage:', error);
+      
+      // If this is not a retry and we get a storage error, try to recover
+      if (!isRetry && (error.name === 'QuotaExceededError' || error.message.includes('quota'))) {
+        console.log('🔄 Storage quota exceeded, attempting cleanup and retry...');
+        this.cleanUpLocalStorage();
+        // Try one more time after cleanup
+        this.saveStateToLocalStorage(true);
+        return;
+      }
+      
+      this.setState({ dataStatusMessage: '❌ Failed to save data' });
+      setTimeout(() => {
+        this.setState({ dataStatusMessage: '' });
+      }, 3000);
+    }
+  }
+
+  loadStateFromLocalStorage = () => {
+    try {
+      const savedState = localStorage.getItem('volunteersAppState');
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        
+        // Check if the saved state is not too old (e.g., 24 hours)
+        const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        const age = Date.now() - (parsedState.lastUpdated || 0);
+        
+        if (age < maxAge) {
+          // Merge saved state with current state
+          const newState = {
+            selectedStation: parsedState.selectedStation || '',
+            formData: parsedState.formData || {},
+            qrValue: parsedState.qrValue || '',
+            qrScanned: parsedState.qrScanned || false,
+            stations: parsedState.stations || [],
+            dataStatusMessage: '🔄 Data restored from previous session'
+          };
+          
+          this.setState(newState);
+          console.log('🔄 Volunteers state restored from localStorage:', newState);
+          
+          // Clear the notification after 3 seconds
+          setTimeout(() => {
+            this.setState({ dataStatusMessage: '' });
+          }, 3000);
+        } else {
+          console.log('⏰ Saved volunteers state is too old, starting fresh');
+          localStorage.removeItem('volunteersAppState');
+        }
+      } else {
+        console.log('📝 No saved volunteers state found, starting fresh');
+      }
+    } catch (error) {
+      console.error('❌ Error loading volunteers state from localStorage:', error);
+      
+      // If there's a parsing error or corruption, clean up
+      if (error instanceof SyntaxError || error.message.includes('JSON')) {
+        console.log('🔄 Detected corrupted volunteers data, cleaning up...');
+        localStorage.removeItem('volunteersAppState');
+        this.setState({ dataStatusMessage: '❌ Failed to restore previous data' });
+        setTimeout(() => {
+          this.setState({ dataStatusMessage: '' });
+        }, 3000);
+      }
+    }
+  }
+
+  // Debounced save function to reduce localStorage writes
+  debouncedSave = (() => {
+    let timeoutId;
+    const fn = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        this.saveStateToLocalStorage();
+      }, 500); // Wait 500ms after last change
+    };
+    
+    // Add cancel method for cleanup
+    fn.cancel = () => {
+      clearTimeout(timeoutId);
+    };
+    
+    return fn;
+  })()
+
+  // Immediate save for critical operations
+  immediateSave = () => {
+    // Cancel any pending debounced save
+    if (this.debouncedSave && this.debouncedSave.cancel) {
+      this.debouncedSave.cancel();
+    }
+    // Save immediately
+    this.saveStateToLocalStorage();
+  }
+
+  // Clean up corrupted localStorage data
+  cleanUpLocalStorage = () => {
+    try {
+      const keysToClean = ['volunteersAppState'];
+      keysToClean.forEach(key => {
+        if (localStorage.getItem(key)) {
+          localStorage.removeItem(key);
+          console.log(`🧹 Cleaned up corrupted localStorage key: ${key}`);
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error cleaning localStorage:', error);
+    }
+  }
+
+  // Add method to clear saved state
+  clearSavedState = () => {
+    localStorage.removeItem('volunteersAppState');
+    console.log('🗑️ Volunteers saved state cleared from localStorage');
+    this.setState({ 
+      dataStatusMessage: '🗑️ Saved data cleared successfully',
+      selectedStation: '',
+      formData: {},
+      qrValue: '',
+      qrScanned: false,
+      stations: []
+    });
+    setTimeout(() => {
+      this.setState({ dataStatusMessage: '' });
+    }, 2000);
   }
 
   startQRScanner = () => {
@@ -231,6 +393,9 @@ class Volunteers extends Component {
       qrScanned: false,
       cameraError: null,
       formData: {}
+    }, () => {
+      // Save state after station change
+      this.debouncedSave();
     });
   }
 
@@ -253,7 +418,10 @@ class Volunteers extends Component {
         ...prevState.formData,
         [field]: val
       }
-    }));
+    }), () => {
+      // Save state after form data change
+      this.debouncedSave();
+    });
   }
 
   handleInputBlur = (e, field, unit = '') => {
@@ -270,17 +438,26 @@ class Volunteers extends Component {
         ...prevState.formData,
         [field]: val
       }
-    }));
+    }), () => {
+      // Save state after form data change
+      this.debouncedSave();
+    });
   }
 
   handleQRInput = (e) => {
-    this.setState({ qrValue: e.target.value })
+    this.setState({ qrValue: e.target.value }, () => {
+      // Save state after QR value change
+      this.debouncedSave();
+    })
   }
 
   handleQRSubmit = (e) => {
     e.preventDefault()
     if (this.state.qrValue.trim() !== '') {
-      this.setState({ qrScanned: true })
+      this.setState({ qrScanned: true }, () => {
+        // Save state after QR scan
+        this.immediateSave();
+      })
       if (this.qrScanner) this.qrScanner.stop()
     }
   }
@@ -349,6 +526,9 @@ class Volunteers extends Component {
           qrValue: '',
           formData: {},
           cameraError: null
+        }, () => {
+          // Save state immediately after successful submission
+          this.immediateSave();
         });
       } else {
         alert(language === 'en' ? 'Failed to submit data.' : '提交数据失败。');
@@ -359,7 +539,7 @@ class Volunteers extends Component {
   }
 
   render() {
-    const { selectedStation, formData, qrValue, qrScanned, cameraError } = this.state
+    const { selectedStation, formData, qrValue, qrScanned, cameraError, dataStatusMessage } = this.state
     const { language } = this.context
     const t = translations[language]
     const stationKeys = [
@@ -374,6 +554,25 @@ class Volunteers extends Component {
     ]
     return (
       <div className="page-container" style={{ minHeight: '100vh', width: '100vw', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
+        
+        {/* Data Status Notification */}
+        {dataStatusMessage && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            padding: '10px 15px',
+            borderRadius: '5px',
+            zIndex: 1000,
+            fontSize: '14px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+          }}>
+            {dataStatusMessage}
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', width: '100%', maxWidth: 600 }}>
           <h1>{t.volunteersTitle}</h1>
         </div>
@@ -658,6 +857,25 @@ class Volunteers extends Component {
             </div>
           </div>
         )}
+        
+        {/* Clear Saved Data Button */}
+        <div style={{ marginTop: '20px', textAlign: 'center', width: '100%', maxWidth: 600 }}>
+          <button 
+            onClick={this.clearSavedState}
+            style={{
+              backgroundColor: '#dc3545',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+            title="Clear all saved volunteer form data from browser storage"
+          >
+            🗑️ Clear Saved Data
+          </button>
+        </div>
       </div>
     )
   }

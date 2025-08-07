@@ -14,8 +14,8 @@ class NavigationClass extends React.Component {
       error: '',
     };
     this.PASSWORDS = {
-      volunteers: 'ecss_volunteer2046',
-      trainers: 'ecss_trainer2046',
+      volunteers: 'ecss_v2046',
+      trainers: 'ecss_t2046',
     };
   }
 

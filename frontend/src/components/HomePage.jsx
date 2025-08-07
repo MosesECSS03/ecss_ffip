@@ -18,8 +18,8 @@ function HomePage() {
   //ok
   // Passwords (replace with env or secure method in production)
   const PASSWORDS = {
-    volunteers: 'ecss_volunteer2046',
-    trainers: 'ecss_trainer2046',
+    volunteers: 'ecss_v2046',
+    trainers: 'ecss_t2046',
   }
 
   // Handle nav button click

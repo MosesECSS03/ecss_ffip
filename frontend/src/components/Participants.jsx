@@ -21,11 +21,11 @@ class Participants extends Component {
     super(props)
     
     this.state = {
+      isLoading: true, // Add loading state
       formData: {
         participantDetails: {
           participantName: '',
           phoneNumber: '',
-          participantNric: '',
           gender: '',
           dateOfBirth: '',
           nationality: '',
@@ -119,80 +119,88 @@ class Participants extends Component {
 
   // Add method to load state from localStorage
   loadStateFromLocalStorage = () => {
-    try {
-      const savedState = localStorage.getItem('participantsAppState');
-      if (savedState) {
-        const parsedState = JSON.parse(savedState);
-        
-        // Check if the saved state is not too old (e.g., 24 hours)
-        const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-        const age = Date.now() - (parsedState.lastUpdated || 0);
-        
-        if (age < maxAge) {
-          // Merge saved state with current state, being careful about structure
-          const newState = {
-            participants: parsedState.participants || [],
-            formData: {
-              ...this.state.formData,
-              ...parsedState.formData,
-              participantDetails: {
-                ...this.state.formData.participantDetails,
-                ...(parsedState.formData?.participantDetails || {})
-              },
-              healthDeclaration: {
-                ...this.state.formData.healthDeclaration,
-                ...(parsedState.formData?.healthDeclaration || {}),
-                questions: {
-                  ...this.state.formData.healthDeclaration.questions,
-                  ...(parsedState.formData?.healthDeclaration?.questions || {})
+    return new Promise((resolve) => {
+      try {
+        const savedState = localStorage.getItem('participantsAppState');
+        if (savedState) {
+          const parsedState = JSON.parse(savedState);
+          
+          // Check if the saved state is not too old (e.g., 24 hours)
+          const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+          const age = Date.now() - (parsedState.lastUpdated || 0);
+          
+          if (age < maxAge) {
+            console.log('🔄 Loading saved form data from localStorage');
+            console.log('📝 Saved form data:', parsedState.formData);
+            
+            // Merge saved state with current state, being careful about structure
+            const newState = {
+              participants: parsedState.participants || [],
+              formData: {
+                ...this.state.formData,
+                ...parsedState.formData,
+                participantDetails: {
+                  ...this.state.formData.participantDetails,
+                  ...(parsedState.formData?.participantDetails || {})
+                },
+                healthDeclaration: {
+                  ...this.state.formData.healthDeclaration,
+                  ...(parsedState.formData?.healthDeclaration || {}),
+                  questions: {
+                    ...this.state.formData.healthDeclaration.questions,
+                    ...(parsedState.formData?.healthDeclaration?.questions || {})
+                  }
                 }
-              }
-            },
-            hasSubmitted: parsedState.hasSubmitted || false,
-            showForm: parsedState.showForm !== undefined ? parsedState.showForm : true,
-            showSwipeView: parsedState.showSwipeView || false,
-            swipeParticipantData: parsedState.swipeParticipantData || null,
-            dataStatusMessage: '🔄 Data restored from previous session'
-          };
-          
-          this.setState(newState);
-          console.log('🔄 State restored from localStorage:', newState);
-          
-          // Clear the notification after 3 seconds
+              },
+              hasSubmitted: parsedState.hasSubmitted || false,
+              showForm: parsedState.showForm !== undefined ? parsedState.showForm : true,
+              showSwipeView: parsedState.showSwipeView || false,
+              swipeParticipantData: parsedState.swipeParticipantData || null,
+              dataStatusMessage: '🔄 Form data restored from previous session'
+            };
+            
+            this.setState(newState, () => {
+              console.log('✅ State restored successfully');
+              console.log('� Restored form data:', this.state.formData.participantDetails);
+              resolve(true); // Return true to indicate data was loaded
+            });
+            
+            // Clear the notification after 3 seconds
+            setTimeout(() => {
+              this.setState({ dataStatusMessage: '' });
+            }, 3000);
+            
+          } else {
+            console.log('⏰ Saved state is too old, starting fresh');
+            localStorage.removeItem('participantsAppState');
+            resolve(false);
+          }
+        } else {
+          console.log('📝 No saved state found, starting fresh');
+          resolve(false);
+        }
+      } catch (error) {
+        console.error('❌ Error loading state from localStorage:', error);
+        
+        // If there's a parsing error or corruption, attempt recovery
+        if (error instanceof SyntaxError || error.message.includes('JSON')) {
+          console.log('🔄 Detected corrupted data, cleaning up...');
+          localStorage.removeItem('participantsAppState');
+          this.setState({ dataStatusMessage: '❌ Previous data was corrupted, starting fresh' });
           setTimeout(() => {
             this.setState({ dataStatusMessage: '' });
           }, 3000);
         } else {
-          console.log('⏰ Saved state is too old, starting fresh');
-          localStorage.removeItem('participantsAppState');
-        }
-      } else {
-        console.log('📝 No saved state found, starting fresh');
-      }
-    } catch (error) {
-      console.error('❌ Error loading state from localStorage:', error);
-      
-      // If there's a parsing error or corruption, attempt recovery
-      if (error instanceof SyntaxError || error.message.includes('JSON')) {
-        console.log('🔄 Detected corrupted data, attempting recovery...');
-        const recovered = this.recoverFromStorageError();
-        if (!recovered) {
-          // If recovery fails, just clear the corrupted data
+          // For other errors, just clear and notify
           localStorage.removeItem('participantsAppState');
           this.setState({ dataStatusMessage: '❌ Failed to restore previous data' });
           setTimeout(() => {
             this.setState({ dataStatusMessage: '' });
           }, 3000);
         }
-      } else {
-        // For other errors, just clear and notify
-        localStorage.removeItem('participantsAppState');
-        this.setState({ dataStatusMessage: '❌ Failed to restore previous data' });
-        setTimeout(() => {
-          this.setState({ dataStatusMessage: '' });
-        }, 3000);
+        resolve(false);
       }
-    }
+    });
   }
 
   // Add method to clear saved state
@@ -207,12 +215,63 @@ class Participants extends Component {
     }, 2000);
   }
 
+  // Test function to force save current state
+  testSave = () => {
+    console.log('🧪 Test Save - Current form data:', this.state.formData.participantDetails);
+    this.saveStateToLocalStorage();
+    console.log('🧪 Check localStorage after save:', localStorage.getItem('participantsAppState'));
+  }
+
+  // Test function to manually trigger save and reload
+  testDataPersistence = () => {
+    console.log('🧪 Testing data persistence...');
+    console.log('🧪 Current form data:', this.state.formData);
+    console.log('🧪 Current localStorage content:', localStorage.getItem('participantsAppState'));
+    this.immediateSave();
+    
+    // Also test loading
+    setTimeout(() => {
+      const saved = localStorage.getItem('participantsAppState');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        console.log('🧪 Saved data in localStorage:', parsed.formData);
+      }
+    }, 100);
+    
+    this.setState({ dataStatusMessage: '🧪 Test save completed - check console logs' });
+    setTimeout(() => {
+      this.setState({ dataStatusMessage: '' });
+    }, 3000);
+  }
+
   componentDidMount = async () => {
     try {
       console.log('🔌 Connecting to Socket.IO at:', API_BASE_URL);
       
+      // Debug: Check what's in localStorage before loading
+      const rawData = localStorage.getItem('participantsAppState');
+      console.log('🔍 Raw localStorage data:', rawData);
+      
+      // Add beforeunload listener to save data when user leaves/refreshes
+      window.addEventListener('beforeunload', this.handleBeforeUnload);
+      
+      // Set loading state at the beginning
+      this.setState({ 
+        isLoading: true,
+        dataStatusMessage: '🔄 Initializing...' 
+      });
+      
       // Load saved state first - this will restore form data if it exists
-      this.loadStateFromLocalStorage();
+      const loaded = await this.loadStateFromLocalStorage();
+      
+      if (loaded) {
+        console.log('✅ Data loaded successfully');
+        this.setState({ 
+          dataStatusMessage: '🔄 Form data restored from previous session'
+        });
+      } else {
+        console.log('ℹ️ No data was loaded or data was expired');
+      }
       
       // --- SOCKET.IO ---
       this.socket = io(API_BASE_URL);
@@ -264,8 +323,8 @@ class Participants extends Component {
       const hasFormData = this.hasFilledFormData();
       console.log('📝 Has form data filled:', hasFormData);
       
-      if (!hasFormData) {
-        // Only attempt to load participant data if no form data exists
+      if (!hasFormData && !loaded) {
+        // Only attempt to load participant data if no form data exists and nothing was loaded
         await this.handleParticipantUpdate();
       } else {
         console.log('📝 Form data exists, keeping form visible for completion');
@@ -274,18 +333,28 @@ class Participants extends Component {
           showForm: true,
           hasSubmitted: false,
           showSwipeView: false,
+          isLoading: false,
           isInitializing: false
         });
       }
       
-      // Complete initialization
-      this.setState({ isInitializing: false });
+      // Complete initialization and clear status message
+      this.setState({ 
+        isLoading: false,
+        isInitializing: false 
+      });
+      
+      // Clear the status message after a few seconds
+      setTimeout(() => {
+        this.setState({ dataStatusMessage: '' });
+      }, 3000);
       
     } catch (mountError) {
       console.error('❌ Error in componentDidMount:', mountError);
       // Set error state to show user-friendly message
       this.setState({ 
         submissionError: 'Failed to initialize connection. Please refresh the page.',
+        isLoading: false,
         isInitializing: false
       });
     }
@@ -398,6 +467,9 @@ class Participants extends Component {
         this.debouncedSave.cancel();
       }
       
+      // Remove beforeunload listener
+      window.removeEventListener('beforeunload', this.handleBeforeUnload);
+      
       // Immediately save state before component unmounts
       this.immediateSave();
       console.log('💾 Data saved immediately before component unmount');
@@ -409,6 +481,13 @@ class Participants extends Component {
     if (this.socket) {
       this.socket.disconnect();
     }
+  }
+
+  // Save data when user is about to leave/refresh the page
+  handleBeforeUnload = (event) => {
+    console.log('📤 Page unloading, saving data...');
+    this.saveStateToLocalStorage();
+    // Note: Can't show custom messages in modern browsers, but data will be saved
   }
   
   // Generate QR code for participant ID - Enhanced for concurrent access
@@ -605,7 +684,6 @@ class Participants extends Component {
           participantDetails: {
             participantName: '',
             phoneNumber: '',
-            icNumber: '',
             gender: '',
             dateOfBirth: '',
             nationality: '',
@@ -661,7 +739,13 @@ class Participants extends Component {
 
   handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
+    console.log('📝 Input changed:', name, '=', value);
     const nameParts = name.split('.')
+    
+    // Determine if we should save immediately (for first few characters or important fields)
+    const shouldSaveImmediately = value.length <= 3 || 
+                                  name.includes('participantName') || 
+                                  name.includes('phoneNumber');
     
     if (nameParts.length === 3) {
       // Handle nested structure like healthDeclaration.questions.healthQuestion1
@@ -678,9 +762,16 @@ class Participants extends Component {
           }
         }
       }), () => {
-        // Use debounced save to reduce localStorage writes
-        this.debouncedSave();
+        console.log('📋 State updated, form data now:', this.state.formData.participantDetails);
       })
+      
+      // Save immediately or use debounced save
+      if (shouldSaveImmediately) {
+        console.log('💾 Immediate save triggered');
+        this.saveStateToLocalStorage();
+      } else {
+        this.debouncedSave();
+      }
     } else if (nameParts.length === 2) {
       // Handle two-level structure like participantDetails.participantName
       const [mainKey, subKey] = nameParts
@@ -693,9 +784,16 @@ class Participants extends Component {
           }
         }
       }), () => {
-        // Use debounced save to reduce localStorage writes
-        this.debouncedSave();
+        console.log('📋 State updated, form data now:', this.state.formData.participantDetails);
       })
+      
+      // Save immediately or use debounced save
+      if (shouldSaveImmediately) {
+        console.log('💾 Immediate save triggered');
+        this.saveStateToLocalStorage();
+      } else {
+        this.debouncedSave();
+      }
     } else {
       // Handle flat structure for backward compatibility
       this.setState(prevState => ({
@@ -704,9 +802,16 @@ class Participants extends Component {
           [name]: type === 'checkbox' ? checked : value
         }
       }), () => {
-        // Use debounced save to reduce localStorage writes
-        this.debouncedSave();
+        console.log('📋 State updated, form data now:', this.state.formData);
       })
+      
+      // Save immediately or use debounced save
+      if (shouldSaveImmediately) {
+        console.log('💾 Immediate save triggered');
+        this.saveStateToLocalStorage();
+      } else {
+        this.debouncedSave();
+      }
     }
   }
 
@@ -715,7 +820,7 @@ class Participants extends Component {
     const { formData, participants } = this.state;
 
     if (formData.participantDetails.participantName.trim() && 
-        formData.participantDetails.participantNric.trim()) {
+        formData.participantDetails.phoneNumber.trim()) {
       const calculatedAge = this.calculateAge(formData.participantDetails.dateOfBirth);
 
       const newParticipant = {
@@ -723,7 +828,6 @@ class Participants extends Component {
         name: formData.participantDetails.participantName.trim(),
         program: 'FFT Health Declaration',
         status: 'Registered',
-        nric: formData.participantDetails.participantNric,
         age: calculatedAge,
         gender: formData.participantDetails.gender,
         dateOfBirth: this.formatDateToDDMMYYYY(formData.participantDetails.dateOfBirth),
@@ -751,7 +855,6 @@ class Participants extends Component {
             participantDetails: {
               participantName: '',
               phoneNumber: '',
-              participantNric: '',
               gender: '',
               dateOfBirth: '',
               nationality: '',
@@ -1022,15 +1125,15 @@ class Participants extends Component {
   render() {
     const { language } = this.props
     const t = translations[language]
-    const { formData, showForm, participants, showQRCode, qrCodeUrl, currentParticipantId, showTableQRCode, tableQRCodeUrl, tableQRParticipantId, showResults, selectedParticipantResults, showSwipeView, swipeParticipantData, submissionError, isInitializing } = this.state
+    const { formData, showForm, participants, showQRCode, qrCodeUrl, currentParticipantId, showTableQRCode, tableQRCodeUrl, tableQRParticipantId, showResults, selectedParticipantResults, showSwipeView, swipeParticipantData, submissionError, isInitializing, isLoading } = this.state
 
-    // Show loading during initialization to prevent flickering
-    if (isInitializing) {
+    // Show loading during initialization or data loading to prevent flickering
+    if (isInitializing || isLoading) {
       return (
         <div style={{ textAlign: 'center', padding: '40px' }}>
           <h2>Loading...</h2>
           <div style={{ fontSize: '48px', margin: '20px 0', animation: 'spin 2s linear infinite' }}>🔄</div>
-          <p>Initializing application...</p>
+          <p>{isLoading ? 'Loading saved data...' : 'Initializing application...'}</p>
         </div>
       )
     }
@@ -1242,6 +1345,7 @@ class Participants extends Component {
             language={language}
             onInputChange={this.handleInputChange}
             onSubmit={this.handleSubmit}
+            onTestSave={this.testSave}
             submissionError={submissionError}
           />
           
@@ -1304,6 +1408,7 @@ class Participants extends Component {
           language={language}
           onInputChange={this.handleInputChange}
           onSubmit={this.handleSubmit}
+          onTestSave={this.testSave}
           submissionError={submissionError}
         />
         
@@ -1318,11 +1423,28 @@ class Participants extends Component {
               padding: '8px 16px',
               borderRadius: '4px',
               cursor: 'pointer',
-              fontSize: '12px'
+              fontSize: '12px',
+              marginRight: '10px'
             }}
             title="Clear all saved form data from browser storage"
           >
             🗑️ Clear Saved Data
+          </button>
+          
+          <button 
+            onClick={this.testDataPersistence}
+            style={{
+              backgroundColor: '#17a2b8',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+            title="Test data persistence functionality"
+          >
+            🧪 Test Persistence
           </button>
         </div>
       </div>
