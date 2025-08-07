@@ -156,6 +156,7 @@
       const { currentView, qrCodeUrl } = this.state
       const hasStationData = this.hasStationData()
       const hasHeightWeight = this.hasHeightWeightData()
+      console.log("Participant Height Weight Data:", hasHeightWeight)
       const { completed: completedStations } = this.getStationSummary()
       const t = translations[language || 'en']
 

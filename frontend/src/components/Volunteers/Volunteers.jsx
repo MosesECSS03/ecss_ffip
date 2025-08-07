@@ -626,7 +626,17 @@ class Volunteers extends Component {
     ]
     
     return (
-      <div className="page-container" style={{ minHeight: '100vh', width: '100vw', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
+      <div className="page-container" style={{ 
+        minHeight: '100vh', 
+        width: '100vw', 
+        background: '#fff', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'flex-start',
+        padding: window.innerWidth <= 480 ? '10px' : '20px',
+        boxSizing: 'border-box'
+      }}>
         
         {/* Data Status Notification */}
         {dataStatusMessage && (
@@ -646,15 +656,54 @@ class Volunteers extends Component {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', width: '100%', maxWidth: 600 }}>
-          <h1>{t.volunteersTitle}</h1>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '2rem', 
+          width: '100%', 
+          maxWidth: 600,
+          padding: window.innerWidth <= 480 ? '0 10px' : '0'
+        }}>
+          <h1 style={{
+            fontSize: window.innerWidth <= 480 ? '1.5rem' : window.innerWidth <= 768 ? '1.8rem' : '2rem',
+            margin: 0,
+            textAlign: 'center',
+            width: '100%'
+          }}>
+            {t.volunteersTitle}
+          </h1>
         </div>
         
-        <div className="details-section" style={{ width: '100%', maxWidth: 600 }}>
-          <label htmlFor="station-select" className="dropdown-label" style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+        <div className="details-section" style={{ 
+          width: '100%', 
+          maxWidth: 600,
+          padding: window.innerWidth <= 480 ? '0 10px' : '0'
+        }}>
+          <label htmlFor="station-select" className="dropdown-label" style={{ 
+            fontWeight: 600, 
+            fontSize: window.innerWidth <= 480 ? '1rem' : '1.1rem',
+            display: 'block',
+            marginBottom: '8px'
+          }}>
             {t.testStation}:
           </label>
-          <select id="station-select" value={selectedStation} onChange={this.handleChange} className="dropdown-select" style={{ marginBottom: '2rem', maxWidth: 320 }}>
+          <select 
+            id="station-select" 
+            value={selectedStation} 
+            onChange={this.handleChange} 
+            className="dropdown-select" 
+            style={{ 
+              marginBottom: '2rem', 
+              width: '100%',
+              maxWidth: window.innerWidth <= 480 ? '100%' : 320,
+              padding: window.innerWidth <= 480 ? '12px' : '10px',
+              fontSize: window.innerWidth <= 480 ? '16px' : '14px',
+              borderRadius: '8px',
+              border: '2px solid #ddd',
+              boxSizing: 'border-box'
+            }}
+          >
             <option value="" disabled>{language === 'en' ? 'Select a station' : '选择测试站'}</option>
             {stationKeys.map(key => (
               <option key={key} value={key}>
@@ -666,7 +715,12 @@ class Volunteers extends Component {
         
         {/* QR scanner for all stations */}
         {selectedStation && (
-          <div className="details-section" style={{ maxWidth: 700, minHeight: formData.name ? 'auto' : 700 }}>
+          <div className="details-section" style={{ 
+            width: '100%',
+            maxWidth: 700, 
+            minHeight: formData.name ? 'auto' : (window.innerWidth <= 480 ? 500 : 700),
+            padding: window.innerWidth <= 480 ? '0 10px' : '0'
+          }}>
             
             {/* Show participant info when loaded */}
             {formData.name && (
@@ -800,7 +854,17 @@ class Volunteers extends Component {
 
             {/* Form fields when participant is loaded */}
             {formData.name && selectedStation && (
-              <div style={{ width: '100%', maxWidth: 640, margin: '0 auto', padding: '20px', borderRadius: 18, background: '#f8f9fa', border: '2px solid #28a745', boxShadow: '0 4px 32px rgba(0,0,0,0.12)' }}>
+              <div style={{ 
+                width: '100%', 
+                maxWidth: 640, 
+                margin: '0 auto', 
+                padding: window.innerWidth <= 480 ? '16px' : '20px', 
+                borderRadius: 18, 
+                background: '#f8f9fa', 
+                border: '2px solid #28a745', 
+                boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
+                boxSizing: 'border-box'
+              }}>
                 
                 {/* Check if height/weight is required but missing */}
                 {(() => {
@@ -901,10 +965,35 @@ class Volunteers extends Component {
                           };
 
                           return (
-                            <div className="detail-item" key={field} style={{ flexDirection: 'column', alignItems: 'flex-start', marginBottom: '16px' }}>
-                              <span className="detail-label" style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{language === 'en' ? 'Left/Right:' : '左/右：'}</span>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                            <div className="detail-item" key={field} style={{ 
+                              flexDirection: 'column', 
+                              alignItems: 'flex-start', 
+                              marginBottom: '16px',
+                              width: '100%'
+                            }}>
+                              <span className="detail-label" style={{ 
+                                marginBottom: '0.5rem', 
+                                fontWeight: 600,
+                                fontSize: window.innerWidth <= 480 ? '0.9rem' : '1rem'
+                              }}>
+                                {language === 'en' ? 'Left/Right:' : '左/右：'}
+                              </span>
+                              <div style={{ 
+                                display: 'flex', 
+                                flexDirection: window.innerWidth <= 480 ? 'column' : 'row',
+                                gap: window.innerWidth <= 480 ? '0.3rem' : '0.5rem',
+                                width: '100%'
+                              }}>
+                                <label style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  cursor: 'pointer', 
+                                  color: 'black',
+                                  flex: window.innerWidth <= 480 ? 'none' : 1,
+                                  fontSize: window.innerWidth <= 480 ? '0.9rem' : '1rem',
+                                  padding: window.innerWidth <= 480 ? '8px 0' : '0',
+                                  minHeight: '44px'
+                                }}>
                                   <input
                                     type="checkbox"
                                     checked={formData[field] === 'left'}
@@ -915,11 +1004,24 @@ class Volunteers extends Component {
                                         this.handleInputChange({ target: { value: '' } }, field);
                                       }
                                     }}
-                                    style={{ marginRight: '0.5rem' }}
+                                    style={{ 
+                                      marginRight: '0.5rem',
+                                      minWidth: '16px',
+                                      minHeight: '16px'
+                                    }}
                                   />
                                   {getContextLabel('left')}
                                 </label>
-                                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                                <label style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  cursor: 'pointer', 
+                                  color: 'black',
+                                  flex: window.innerWidth <= 480 ? 'none' : 1,
+                                  fontSize: window.innerWidth <= 480 ? '0.9rem' : '1rem',
+                                  padding: window.innerWidth <= 480 ? '8px 0' : '0',
+                                  minHeight: '44px'
+                                }}>
                                   <input
                                     type="checkbox"
                                     checked={formData[field] === 'right'}
@@ -930,7 +1032,11 @@ class Volunteers extends Component {
                                         this.handleInputChange({ target: { value: '' } }, field);
                                       }
                                     }}
-                                    style={{ marginRight: '0.5rem' }}
+                                    style={{ 
+                                      marginRight: '0.5rem',
+                                      minWidth: '16px',
+                                      minHeight: '16px'
+                                    }}
                                   />
                                   {getContextLabel('right')}
                                 </label>
@@ -946,10 +1052,35 @@ class Volunteers extends Component {
                           const rightLabel = stationData?.right || 'Right';
                           
                           return (
-                            <div className="detail-item" key={field} style={{ flexDirection: 'column', alignItems: 'flex-start', marginBottom: '16px' }}>
-                              <span className="detail-label" style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{t.remarks || 'Remarks'}:</span>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                            <div className="detail-item" key={field} style={{ 
+                              flexDirection: 'column', 
+                              alignItems: 'flex-start', 
+                              marginBottom: '16px',
+                              width: '100%'
+                            }}>
+                              <span className="detail-label" style={{ 
+                                marginBottom: '0.5rem', 
+                                fontWeight: 600,
+                                fontSize: window.innerWidth <= 480 ? '0.9rem' : '1rem'
+                              }}>
+                                {t.remarks || 'Remarks'}:
+                              </span>
+                              <div style={{ 
+                                display: 'flex', 
+                                flexDirection: window.innerWidth <= 480 ? 'column' : 'row',
+                                gap: window.innerWidth <= 480 ? '0.3rem' : '0.5rem',
+                                width: '100%'
+                              }}>
+                                <label style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  cursor: 'pointer', 
+                                  color: 'black',
+                                  flex: window.innerWidth <= 480 ? 'none' : 1,
+                                  fontSize: window.innerWidth <= 480 ? '0.9rem' : '1rem',
+                                  padding: window.innerWidth <= 480 ? '8px 0' : '0',
+                                  minHeight: '44px'
+                                }}>
                                   <input
                                     type="checkbox"
                                     checked={formData[field] === leftLabel}
@@ -960,11 +1091,24 @@ class Volunteers extends Component {
                                         this.handleInputChange({ target: { value: '' } }, field);
                                       }
                                     }}
-                                    style={{ marginRight: '0.5rem' }}
+                                    style={{ 
+                                      marginRight: '0.5rem',
+                                      minWidth: '16px',
+                                      minHeight: '16px'
+                                    }}
                                   />
                                   {leftLabel}
                                 </label>
-                                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                                <label style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  cursor: 'pointer', 
+                                  color: 'black',
+                                  flex: window.innerWidth <= 480 ? 'none' : 1,
+                                  fontSize: window.innerWidth <= 480 ? '0.9rem' : '1rem',
+                                  padding: window.innerWidth <= 480 ? '8px 0' : '0',
+                                  minHeight: '44px'
+                                }}>
                                   <input
                                     type="checkbox"
                                     checked={formData[field] === rightLabel}
@@ -975,7 +1119,11 @@ class Volunteers extends Component {
                                         this.handleInputChange({ target: { value: '' } }, field);
                                       }
                                     }}
-                                    style={{ marginRight: '0.5rem' }}
+                                    style={{ 
+                                      marginRight: '0.5rem',
+                                      minWidth: '16px',
+                                      minHeight: '16px'
+                                    }}
                                   />
                                   {rightLabel}
                                 </label>
@@ -1010,10 +1158,36 @@ class Volunteers extends Component {
                         }
 
                         return (
-                          <div className="detail-item" key={field} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: '16px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                              <span className="detail-label" style={{ fontWeight: 600, minWidth: '80px' }}>{t[field] || field}:</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+                          <div className="detail-item" key={field} style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'flex-start', 
+                            gap: 8, 
+                            marginBottom: '16px',
+                            width: '100%'
+                          }}>
+                            <div style={{ 
+                              display: 'flex', 
+                              flexDirection: window.innerWidth <= 768 ? 'column' : 'row',
+                              alignItems: window.innerWidth <= 768 ? 'flex-start' : 'center',
+                              gap: window.innerWidth <= 768 ? 4 : 8, 
+                              width: '100%' 
+                            }}>
+                              <span className="detail-label" style={{ 
+                                fontWeight: 600, 
+                                minWidth: window.innerWidth <= 768 ? 'auto' : '120px',
+                                fontSize: window.innerWidth <= 480 ? '0.9rem' : '1rem',
+                                marginBottom: window.innerWidth <= 768 ? '4px' : '0'
+                              }}>
+                                {t[field] || field}:
+                              </span>
+                              <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 4, 
+                                flex: 1,
+                                width: '100%'
+                              }}>
                                 {unit ? (
                                   <input
                                     className="detail-value"
@@ -1026,7 +1200,16 @@ class Volunteers extends Component {
                                     onChange={e => this.handleInputChange(e, field, unit)}
                                     onBlur={e => this.handleInputBlur(e, field, unit)}
                                     placeholder={placeholder.replace(/\s*\([^)]*\)$/, '')}
-                                    style={{ padding: '0.75rem', borderRadius: 8, border: '2px solid #ddd', flex: 1, fontSize: '1rem' }}
+                                    style={{ 
+                                      padding: window.innerWidth <= 480 ? '0.6rem' : '0.75rem', 
+                                      borderRadius: 8, 
+                                      border: '2px solid #ddd', 
+                                      flex: 1, 
+                                      fontSize: window.innerWidth <= 480 ? '0.9rem' : '1rem',
+                                      minHeight: '44px',
+                                      width: '100%',
+                                      boxSizing: 'border-box'
+                                    }}
                                   />
                                 ) : (
                                   <input
@@ -1037,13 +1220,27 @@ class Volunteers extends Component {
                                       this.handleInputChange(e, field);
                                     }}
                                     placeholder={placeholder}
-                                    style={{ padding: '0.75rem', borderRadius: 8, border: '2px solid #ddd', flex: 1, fontSize: '1rem' }}
+                                    style={{ 
+                                      padding: window.innerWidth <= 480 ? '0.6rem' : '0.75rem', 
+                                      borderRadius: 8, 
+                                      border: '2px solid #ddd', 
+                                      flex: 1, 
+                                      fontSize: window.innerWidth <= 480 ? '0.9rem' : '1rem',
+                                      minHeight: '44px',
+                                      width: '100%',
+                                      boxSizing: 'border-box'
+                                    }}
                                   />
                                 )}
                               </div>
                             </div>
                             {lastValue && (
-                              <div style={{ color: '#1976d2', fontSize: '0.9em', marginLeft: 8 }}>
+                              <div style={{ 
+                                color: '#1976d2', 
+                                fontSize: window.innerWidth <= 480 ? '0.8em' : '0.9em', 
+                                marginLeft: window.innerWidth <= 768 ? 0 : 8,
+                                width: '100%'
+                              }}>
                                 Last: {lastValue}
                               </div>
                             )}
@@ -1054,15 +1251,17 @@ class Volunteers extends Component {
                         style={{
                           marginTop: 24,
                           width: '100%',
-                          padding: '1rem',
+                          padding: window.innerWidth <= 480 ? '0.8rem' : '1rem',
                           borderRadius: 12,
                           background: '#1976d2',
                           color: '#fff',
                           fontWeight: 700,
-                          fontSize: '1.2rem',
+                          fontSize: window.innerWidth <= 480 ? '1.1rem' : '1.2rem',
                           border: 'none',
                           cursor: 'pointer',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                          minHeight: '48px',
+                          boxSizing: 'border-box'
                         }}
                         onClick={() => {
                           this.onEnter()
@@ -1079,19 +1278,31 @@ class Volunteers extends Component {
         )}
         
         {/* Action Buttons */}
-        <div style={{ marginTop: '20px', textAlign: 'center', width: '100%', maxWidth: 600, display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div style={{ 
+          marginTop: '20px', 
+          textAlign: 'center', 
+          width: '100%', 
+          maxWidth: 600, 
+          display: 'flex', 
+          gap: window.innerWidth <= 480 ? '8px' : '10px', 
+          justifyContent: 'center', 
+          flexWrap: 'wrap',
+          padding: window.innerWidth <= 480 ? '0 10px' : '0'
+        }}>
           <button 
             onClick={this.handleVolunteerDone}
             style={{
               backgroundColor: '#28a745',
               color: 'white',
               border: 'none',
-              padding: '12px 24px',
+              padding: window.innerWidth <= 480 ? '10px 16px' : '12px 24px',
               borderRadius: '6px',
               cursor: 'pointer',
-              fontSize: '16px',
+              fontSize: window.innerWidth <= 480 ? '14px' : '16px',
               fontWeight: '600',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              minHeight: '44px',
+              flex: window.innerWidth <= 480 ? '1' : 'none'
             }}
             title="Finish volunteer session and return to home"
           >
@@ -1104,10 +1315,12 @@ class Volunteers extends Component {
               backgroundColor: '#dc3545',
               color: 'white',
               border: 'none',
-              padding: '8px 16px',
+              padding: window.innerWidth <= 480 ? '6px 12px' : '8px 16px',
               borderRadius: '4px',
               cursor: 'pointer',
-              fontSize: '12px'
+              fontSize: window.innerWidth <= 480 ? '11px' : '12px',
+              minHeight: '44px',
+              flex: window.innerWidth <= 480 ? '1' : 'none'
             }}
             title="Clear all saved volunteer form data from browser storage"
           >
