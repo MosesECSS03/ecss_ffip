@@ -25,14 +25,16 @@
       }
     }
 
-    componentDidMount = () =>
+    componentDidMount = async () =>
     {
-      this.generateQR();
       const { participant } = this.props;
       console.log('Participant data1234:', participant);
       const participantId = participant?.id;
       
       console.log('Component mounted with participant ID:', participantId);
+      
+      // Generate QR code first and wait for it to complete
+      await this.generateQR();
       
       // Use participantId for data retrieval here
       if (participantId) {
@@ -199,6 +201,12 @@
       try {
         const { participant } = this.props
         console.log('Generating QR code for participant:', participant)
+        
+        if (!participant || !participant.id) {
+          console.error('No participant or participant ID found for QR generation')
+          return
+        }
+        
         const participantId = participant.id
         console.log('QR Code will use ID:', participantId)
         const qrString = participantId
@@ -211,9 +219,14 @@
             light: '#FFFFFF'
           }
         })
-        this.setState({ qrCodeUrl: qrUrl })
+        
+        console.log('QR code generated successfully')
+        this.setState({ qrCodeUrl: qrUrl }, () => {
+          console.log('QR code state updated:', this.state.qrCodeUrl ? 'Success' : 'Failed')
+        })
       } catch (error) {
         console.error('Error generating QR code:', error)
+        this.setState({ qrCodeUrl: '' })
       }
     }
 

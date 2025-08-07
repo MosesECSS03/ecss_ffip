@@ -2695,19 +2695,6 @@
   color: #856404;
 }
 
-/* No Data Message */
-.no-data {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-  font-style: italic;
-}
-
-.no-data p {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
 /* Error Message */
 .error-message {
   background: #f8d7da;

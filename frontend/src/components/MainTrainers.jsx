@@ -535,12 +535,6 @@ class MainTrainers extends Component {
                     }}
                   />
             </div>
-            
-            {participants.length === 0 && (
-              <div className="no-data">
-                <p>No participants found.</p>
-              </div>
-            )}
           </div>
         )}
       </div>
