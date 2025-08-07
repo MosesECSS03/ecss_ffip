@@ -313,7 +313,7 @@ class Volunteers extends Component {
       this.qrScanner = new QrScanner(
         this.videoNode,
         async result => {
-          if (result && result.data && !this.state.qrScanned && !this.isProcessingQR) {
+          if (result && result.data && !this.isProcessingQR) {
             // Set processing flag to prevent multiple simultaneous scans
             this.isProcessingQR = true;
             
@@ -441,7 +441,7 @@ class Volunteers extends Component {
       // Clear any existing timeouts
       clearTimeout(this._qrScannerStartTimeout);
       
-      if (node && this.state.selectedStation && !this.state.qrScanned) {
+      if (node && this.state.selectedStation) {
         // Reduce timeout for faster startup on multiple devices
         this._qrScannerStartTimeout = setTimeout(() => {
           if (!this.qrScanner && !this.isProcessingQR) {
@@ -465,7 +465,7 @@ class Volunteers extends Component {
       this.qrScanner = new QrScanner(
         videoNode,
         async result => {
-          if (result && result.data && !this.state.qrScanned && !this.isProcessingQR) {
+          if (result && result.data && !this.isProcessingQR) {
             // Set processing flag to prevent multiple simultaneous scans
             this.isProcessingQR = true;
             
@@ -580,18 +580,17 @@ class Volunteers extends Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    // Stop scanner when QR is scanned or station is deselected
-    if ((this.state.qrScanned || !this.state.selectedStation) && this.qrScanner) {
+    // Stop scanner only when station is deselected
+    if (!this.state.selectedStation && this.qrScanner) {
       this.stopQRScanner();
     }
     
-    // If switching to a new station and not scanned, start scanner if not already started
+    // If switching to a new station, start scanner if not already started
     if (
       this.videoNode &&
       this.state.selectedStation &&
-      !this.state.qrScanned &&
       !this.isProcessingQR &&
-      (prevState.selectedStation !== this.state.selectedStation || prevState.qrScanned !== this.state.qrScanned)
+      (prevState.selectedStation !== this.state.selectedStation)
     ) {
       clearTimeout(this._qrScannerStartTimeout);
       this._qrScannerStartTimeout = setTimeout(() => {
@@ -611,7 +610,7 @@ class Volunteers extends Component {
     // Clear processing flag when changing stations
     this.isProcessingQR = false;
     
-    // For any station, reset to QR scan screen with optimized state update
+    // For any station, allow QR scanner to keep running with optimized state update
     this.setState({
       selectedStation: newStation,
       qrValue: '',
@@ -747,9 +746,8 @@ class Volunteers extends Component {
       });
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
+        // Only clear form data, keep QR scanner active for next scan
         this.setState({
-          qrScanned: false,
-          qrValue: '',
           formData: {},
           cameraError: null
         }, () => {
@@ -816,7 +814,7 @@ class Volunteers extends Component {
           </select>
         </div>
         {/* QR scanner for all stations */}
-        {selectedStation && !qrScanned && (
+        {selectedStation && (
           <div className="details-section" style={{ maxWidth: 700, minHeight: 700 }}>
             <div style={{ textAlign: 'center', marginBottom: 8, color: '#1976d2', fontWeight: 600 }}>
               {cameraError ? (
@@ -836,6 +834,11 @@ class Volunteers extends Component {
                       </span>
                     )}
                   </div>
+                  {qrScanned && formData.name && (
+                    <div style={{ fontSize: '1em', color: '#28a745', marginTop: '8px', fontWeight: 'bold' }}>
+                      ✅ {language === 'en' ? `Participant: ${formData.name} | Scan again anytime` : `参与者: ${formData.name} | 可随时重新扫描`}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
