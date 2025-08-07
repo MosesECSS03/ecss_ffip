@@ -6,50 +6,72 @@ class ParticipantsController {
     }
 
     async addParticipant(participantData) {
-        try {
-            console.log('Adding participant:', participantData);
-            // Initialize the database connection
-            await this.dbConnection.initialize();
-            
-            // Create new participant entry with metadata
-            const now = new Date();
-            const newParticipant = {
-                ...participantData,
-                submittedAt: {
-                    date: now.toLocaleDateString('en-GB'), // dd/mm/yyyy format
-                    time: now.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' }) // 24-hour format hh:mm
-                }
-            };
-
-            delete newParticipant.id; // Ensure _id is not included if it exists in participantData
-            
-            const result = await this.dbConnection.insertDocument(
-                'Fitness-Test', // database name
-                'Participants', // collection name
-                newParticipant
-            );
-
-            if (result.success) {
-                return { 
-                    success: true, 
-                    data: {
-                        ...newParticipant,
-                    },
-                    message: 'Participant added successfully' 
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+            try {
+                console.log('Adding participant:', participantData, `(Attempt ${retryCount + 1})`);
+                
+                // Initialize the database connection with retry logic
+                await this.dbConnection.initialize();
+                
+                // Create new participant entry with metadata
+                const now = new Date();
+                const newParticipant = {
+                    ...participantData,
+                    submittedAt: {
+                        date: now.toLocaleDateString('en-GB'), // dd/mm/yyyy format
+                        time: now.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' }) // 24-hour format hh:mm
+                    }
                 };
-            } else {
+
+                delete newParticipant.id; // Ensure _id is not included if it exists in participantData
+                
+                const result = await this.dbConnection.insertDocument(
+                    'Fitness-Test', // database name
+                    'Participants', // collection name
+                    newParticipant
+                );
+
+                if (result.success) {
+                    return { 
+                        success: true, 
+                        data: {
+                            ...newParticipant,
+                        },
+                        message: 'Participant added successfully' 
+                    };
+                } else {
+                    return { 
+                        success: false, 
+                        error: 'Failed to save participant data' 
+                    };
+                }
+            } catch (error) {
+                console.error(`Error adding participant (attempt ${retryCount + 1}):`, error);
+                
+                // Check if it's a database connection error that we can retry
+                if (error.name === 'InvalidStateError' || error.message.includes('database connection is closing')) {
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        console.log(`Retrying database operation in 1 second... (${retryCount}/${maxRetries})`);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        continue;
+                    }
+                }
+                
                 return { 
                     success: false, 
-                    error: 'Failed to save participant data' 
+                    error: `Database error after ${retryCount + 1} attempts: ${error.message}` 
                 };
             }
-        } catch (error) {
-            console.error('Error adding participant:', error);
-            return { 
-                success: false, 
-                error: error.message 
-            };
         }
+        
+        return { 
+            success: false, 
+            error: `Failed to add participant after ${maxRetries} attempts` 
+        };
     }
 
     async getParticipant(participantID) {

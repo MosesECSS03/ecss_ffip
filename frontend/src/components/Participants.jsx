@@ -174,14 +174,35 @@ class Participants extends Component {
   // Generate QR code for participant ID
   generateQRCode = async (participantId) => {
     try {
-      const qrCodeUrl = await QRCode.toDataURL(participantId)
+      if (!participantId) {
+        console.error('No participant ID provided for QR code generation');
+        return;
+      }
+      
+      console.log('Generating QR code for participant ID:', participantId);
+      
+      const qrCodeUrl = await QRCode.toDataURL(participantId.toString(), {
+        width: 400,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        },
+        errorCorrectionLevel: 'M'
+      });
+      
       this.setState({ 
         qrCodeUrl,
         showQRCode: true,
         currentParticipantId: participantId
-      })
+      });
+      
+      console.log('QR code generated successfully');
     } catch (error) {
-      console.error('Error generating QR code:', error)
+      console.error('Error generating QR code:', error);
+      this.setState({
+        submissionError: 'Failed to generate QR code. Please try again.'
+      });
     }
   }
 
@@ -372,6 +393,66 @@ class Participants extends Component {
       console.warn('Failed to parse participantId from localStorage:', e);
     }
     return null;
+  }
+
+  // Add missing QR code close methods
+  closeQRCode = () => {
+    this.setState({
+      showQRCode: false,
+      qrCodeUrl: '',
+      currentParticipantId: null
+    });
+  }
+
+  closeTableQRCode = () => {
+    this.setState({
+      showTableQRCode: false,
+      tableQRCodeUrl: '',
+      tableQRParticipantId: null
+    });
+  }
+
+  // Add missing close swipe view method
+  closeSwipeView = () => {
+    this.setState({
+      showSwipeView: false,
+      swipeParticipantData: null
+    });
+  }
+
+  // Generate QR code for table participant
+  generateTableQRCode = async (participantId) => {
+    try {
+      if (!participantId) {
+        console.error('No participant ID provided for table QR code generation');
+        return;
+      }
+      
+      console.log('Generating table QR code for participant ID:', participantId);
+      
+      const qrCodeUrl = await QRCode.toDataURL(participantId.toString(), {
+        width: 400,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        },
+        errorCorrectionLevel: 'M'
+      });
+      
+      this.setState({
+        tableQRCodeUrl: qrCodeUrl,
+        showTableQRCode: true,
+        tableQRParticipantId: participantId
+      });
+      
+      console.log('Table QR code generated successfully');
+    } catch (error) {
+      console.error('Error generating table QR code:', error);
+      this.setState({
+        submissionError: 'Failed to generate QR code. Please try again.'
+      });
+    }
   }
 
   render() {
