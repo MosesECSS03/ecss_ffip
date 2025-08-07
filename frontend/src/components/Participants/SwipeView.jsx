@@ -51,13 +51,12 @@
           console.log("🔔 Socket event received", data);
           console.log("🔄 Triggering handleParticipantUpdate...");
           
-          // Check if this event is for the current participant to avoid unnecessary updates
-          const currentParticipantId = this.getCurrentParticipantId();
+          //6894da46a97f6e2e8660811e //6894da46a97f6e2e8660811e
           console.log("Current participant ID:", participantId);
           console.log("Event participant ID:", data.participantID);
           
           // Update only if it matches current participant and user doesn't have form data
-          if (currentParticipantId === data.participantID) {
+          if (participantId === data.participantID) {
             console.log("✅ Event matches current participant");
             //this.handleParticipantUpdate();
             this.retrieveParticipantData(participantId);
