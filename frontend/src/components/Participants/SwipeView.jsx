@@ -91,8 +91,9 @@
     generateQR = async () => {
       try {
         const { participant } = this.props
-        const participantId = participant.id || participant._id || participant.participant_id
-        const qrString = participantId ? participantId.toString() : participant.name || 'Unknown'
+        console.log('Generating QR code for participant:', participant)
+        const participantId = participant._id
+        const qrString = participantId
         
         const qrUrl = await QRCode.toDataURL(qrString, {
           width: 400,
