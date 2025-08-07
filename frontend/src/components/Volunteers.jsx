@@ -38,10 +38,14 @@ class Volunteers extends Component {
     }
     this.qrScanner = null
     this.isProcessingQR = false // Flag to prevent multiple simultaneous QR processing
+    this.scannerRetryCount = 0 // Track retry attempts
+    this.maxRetryAttempts = 5 // Maximum retry attempts before giving up
+    this.scanCooldown = false // Prevent rapid successive scans
     
     // Generate unique device ID for multi-device support
     this.deviceId = this.getOrCreateDeviceId()
-    console.log('🔧 Volunteer device initialized with ID:', this.deviceId)
+    this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    console.log('🔧 Volunteer device initialized with ID:', this.deviceId, 'Session:', this.sessionId)
   }
 
   // Generate or retrieve device ID for multi-device tracking
@@ -77,6 +81,7 @@ class Volunteers extends Component {
   componentWillUnmount() {
     // Clean up processing flags
     this.isProcessingQR = false;
+    this.scanCooldown = false;
     
     // Save state immediately before component unmounts
     this.immediateSave();
@@ -87,7 +92,54 @@ class Volunteers extends Component {
       clearTimeout(this._qrScannerStartTimeout);
     }
     
-    console.log(`📱 Volunteer component unmounted on device [${this.deviceId}]`);
+    if (this._scanCooldownTimeout) {
+      clearTimeout(this._scanCooldownTimeout);
+    }
+    
+    // Remove global error handler
+    window.removeEventListener('unhandledrejection', this.handleUnhandledRejection);
+    
+    console.log(`📱 Volunteer component unmounted on device [${this.deviceId}] session [${this.sessionId}]`);
+  }
+
+  // Handle unhandled promise rejections (camera errors, etc.)
+  handleUnhandledRejection = (event) => {
+    if (event.reason && (
+      event.reason.message?.includes('camera') ||
+      event.reason.message?.includes('getUserMedia') ||
+      event.reason.message?.includes('QR') ||
+      event.reason.name === 'NotAllowedError' ||
+      event.reason.name === 'NotFoundError' ||
+      event.reason.name === 'OverconstrainedError'
+    )) {
+      console.warn(`🛡️ Handled camera error globally for device [${this.deviceId}]:`, event.reason);
+      event.preventDefault(); // Prevent the error from appearing in console
+      
+      // Auto-recover from camera errors
+      this.handleCameraErrorRecovery(event.reason);
+    }
+  }
+
+  // Handle camera error recovery
+  handleCameraErrorRecovery = (error) => {
+    console.log(`🔧 Attempting camera error recovery for device [${this.deviceId}]:`, error.message);
+    
+    // Stop current scanner
+    this.stopQRScanner();
+    
+    // Reset retry count if it's a new type of error
+    if (error.name === 'NotAllowedError') {
+      this.setState({ cameraError: 'Camera permission denied. Please allow camera access.' });
+      return; // Don't auto-retry permission errors
+    }
+    
+    // Auto-restart scanner after a brief delay
+    setTimeout(() => {
+      if (!this.qrScanner && !this.isProcessingQR && this.videoNode && this.state.selectedStation) {
+        console.log('🔄 Auto-recovering QR scanner after camera error');
+        this.startQRScannerWithNode(this.videoNode);
+      }
+    }, 1000);
   }
 
   // Initialize performance optimizations for multi-device support
@@ -103,20 +155,54 @@ class Volunteers extends Component {
         .then(devices => {
           const videoDevices = devices.filter(device => device.kind === 'videoinput');
           console.log(`📹 Found ${videoDevices.length} camera(s) on device [${this.deviceId}]`);
+          
+          // Test camera access to prevent permission issues
+          return navigator.mediaDevices.getUserMedia({ 
+            video: { 
+              facingMode: 'environment',
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            } 
+          });
+        })
+        .then(stream => {
+          // Immediately release the test stream
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            console.log(`✅ Camera permissions verified for device [${this.deviceId}]`);
+          }
         })
         .catch(err => {
-          console.warn(`⚠️ Could not enumerate cameras on device [${this.deviceId}]:`, err.message);
+          console.warn(`⚠️ Camera permission check failed on device [${this.deviceId}]:`, err.message);
         });
     }
+    
+    // Setup global error handler for unhandled camera errors
+    window.addEventListener('unhandledrejection', this.handleUnhandledRejection);
   }
 
   stopQRScanner = () => {
-    if (this.qrScanner) {
-      this.qrScanner.destroy()
-      this.qrScanner = null
+    try {
+      if (this.qrScanner) {
+        this.qrScanner.destroy()
+        this.qrScanner = null
+      }
+    } catch (e) {
+      console.warn(`Warning during scanner cleanup for device [${this.deviceId}]:`, e.message);
     }
+    
+    // Clear any pending timeouts
+    if (this._scanCooldownTimeout) {
+      clearTimeout(this._scanCooldownTimeout);
+    }
+    
+    // Reset cooldown and processing flags
+    this.scanCooldown = false;
+    this.isProcessingQR = false;
+    
     // Clear camera error when scanner stops
     this.setState({ cameraError: null });
+    console.log(`📹 QR scanner stopped and cleaned up for device [${this.deviceId}]`);
   }
 
   // Data persistence methods
@@ -321,259 +407,195 @@ class Volunteers extends Component {
   }
 
   startQRScannerWithNode = (videoNode) => {
+    // Prevent concurrent scanner initialization
+    if (this.isProcessingQR || this.scanCooldown) {
+      console.log(`⏳ Scanner initialization blocked - processing: ${this.isProcessingQR}, cooldown: ${this.scanCooldown}`);
+      return;
+    }
+
     // Clean up any existing scanner
     if (this.qrScanner) {
-      this.qrScanner.destroy();
+      try {
+        this.qrScanner.destroy();
+      } catch (e) {
+        console.warn('Error destroying existing scanner:', e.message);
+      }
       this.qrScanner = null;
     }
+    
     this.setState({ cameraError: null });
+    console.log(`📹 Initializing QR scanner for device [${this.deviceId}] session [${this.sessionId}]`);
     
     if (videoNode) {
       this.qrScanner = new QrScanner(
         videoNode,
         async result => {
-          if (result && result.data && !this.isProcessingQR) {
-            // Set processing flag to prevent multiple simultaneous scans
-            this.isProcessingQR = true;
+          // Implement scan cooldown to prevent rapid successive scans
+          if (this.scanCooldown || !result || !result.data || this.isProcessingQR) {
+            console.log(`⏭️ Scan skipped - cooldown: ${this.scanCooldown}, processing: ${this.isProcessingQR}`);
+            return;
+          }
+
+          // Activate cooldown period
+          this.scanCooldown = true;
+          this._scanCooldownTimeout = setTimeout(() => {
+            this.scanCooldown = false;
+          }, 1000); // 1 second cooldown between scans
+
+          // Set processing flag to prevent multiple simultaneous scans
+          this.isProcessingQR = true;
+          
+          // Don't stop scanner immediately - let it continue for multi-device support
+          
+          // Generate unique scan ID for tracking across devices
+          const scanId = `scan_${this.deviceId}_${this.sessionId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          console.log(`🔍 QR Scan started [${scanId}]:`, result.data);
+          
+          try {
+            // Use AbortController for fast timeout handling
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased timeout for multi-device scenarios
             
-            // Stop scanner immediately to prevent multiple scans
-            if (this.qrScanner) {
-              this.qrScanner.stop();
-            }
+            const response = await axios.post(`${API_BASE_URL}/participants`, {
+              "purpose": "retrieveParticipant",
+              "participantID": result.data
+            }, {
+              signal: controller.signal,
+              timeout: 8000,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Scan-ID': scanId,
+                'X-Device-ID': this.deviceId || 'unknown',
+                'X-Session-ID': this.sessionId || 'unknown',
+                'X-Multi-Device': 'true' // Flag for backend to handle concurrent requests
+              }
+            });
             
-            // Generate unique scan ID for tracking
-            const scanId = `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            console.log(`🔍 QR Scan started [${scanId}]:`, result.data);
+            clearTimeout(timeoutId);
+            console.log(`✅ QR Scan completed [${scanId}]:`, response.data?.success ? 'Success' : 'Failed');
             
-            try {
-              // Use AbortController for fast timeout handling
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 5000); // Increased timeout
+            if (response.data && response.data.success && response.data.data) {
+              console.log(`📋 Participant data retrieved for scan [${scanId}]:`, response.data.data);
               
-              const response = await axios.post(`${API_BASE_URL}/participants`, {
-                "purpose": "retrieveParticipant",
-                "participantID": result.data
-              }, {
-                signal: controller.signal,
-                timeout: 5000,
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-Scan-ID': scanId,
-                  'X-Device-ID': this.deviceId || 'unknown'
-                }
+              // Populate participant personal data
+              const formData = {};
+              Object.keys(response.data.data).forEach(key => {
+                formData[key] = response.data.data[key];
               });
               
-              clearTimeout(timeoutId);
-              console.log(`✅ QR Scan completed [${scanId}]:`, response.data?.success ? 'Success' : 'Failed');
-              console.log(`📋 Full response for scan [${scanId}]:`, response.data);
+              // Check if participant has height and weight recorded
+              const hasHeight = formData.height && formData.height !== '' && formData.height !== '-';
+              const hasWeight = formData.weight && formData.weight !== '' && formData.weight !== '-';
+              formData.hasHeightWeight = hasHeight && hasWeight;
               
-              if (response.data && response.data.success && response.data.data) {
-                console.log(`📋 Participant data retrieved for scan [${scanId}]:`, response.data.data);
-                
-                // Debug: Log the specific fields we're looking for
-                console.log(`🔍 Debug - Name field: "${response.data.data.name}"`);
-                console.log(`🔍 Debug - All participant fields:`, Object.keys(response.data.data));
-                
-                // Populate participant personal data
-                const formData = {};
-                Object.keys(response.data.data).forEach(key => {
-                  formData[key] = response.data.data[key];
-                });
-                
-                // Debug: Log the formData after population
-                console.log(`🔍 Debug - FormData after population:`, formData);
-                console.log(`🔍 Debug - FormData.name: "${formData.name}"`);
-                
-                // Check if participant has height and weight recorded for non-heightWeight stations
-                const hasHeight = formData.height && formData.height !== '' && formData.height !== '-';
-                const hasWeight = formData.weight && formData.weight !== '' && formData.weight !== '-';
-                
-                // Store height/weight status in formData for later use in form validation
-                formData.hasHeightWeight = hasHeight && hasWeight;
-                
-                // Initialize empty form fields for the selected station so volunteer can enter new data
-                if (this.state.selectedStation && stationFields[this.state.selectedStation]) {
-                  stationFields[this.state.selectedStation].forEach(field => {
-                    // Only initialize if the field doesn't already have a value
-                    if (formData[field] === undefined || formData[field] === null) {
-                      formData[field] = '';
-                    }
-                  });
-                  console.log(`🔧 Initialized form fields for station [${this.state.selectedStation}]`);
-                  console.log(`🔧 Final formData before setState:`, formData);
-                }
-                
-                // Stop and hide QR scanner after successful participant data retrieval
-                this.stopQRScanner();
-                console.log(`📹 QR scanner stopped after successful scan [${scanId}]`);
-                
-                this.setState({
-                  qrValue: result.data,
-                  qrScanned: true,
-                  cameraError: null, // Clear any previous errors
-                  formData
-                }, () => {
-                  // Debug: Log the state after setState
-                  console.log(`🔍 Debug - State after setState:`, {
-                    formData: this.state.formData,
-                    selectedStation: this.state.selectedStation,
-                    qrScanned: this.state.qrScanned,
-                    hasParticipantName: !!this.state.formData.name
-                  });
-                  
-                  // Immediately save state after successful scan
-                  this.immediateSave();
-                  console.log(`💾 Data saved for scan [${scanId}]`);
-                });
-              } else {
-                console.log(`❌ Invalid response structure for scan [${scanId}]:`, response.data);
-                // Stop scanner even on invalid response
-                this.stopQRScanner();
-                console.log(`📹 QR scanner stopped after invalid response [${scanId}]`);
-                
-                const { language } = this.context;
-                const errorMessage = response.data?.message || (language === 'en' ? 'No participant found' : '找不到参与者');
-                
-                this.setState({
-                  qrValue: result.data,
-                  qrScanned: false, // Keep as false to auto-restart scanner
-                  cameraError: errorMessage,
-                  formData: {} // Ensure formData is cleared on error
-                }, () => {
-                  // Auto-restart scanner after 2 seconds
-                  setTimeout(() => {
-                    if (!this.qrScanner && !this.isProcessingQR && this.videoNode && this.state.selectedStation) {
-                      console.log('🔄 Auto-restarting QR scanner after error');
-                      this.startQRScannerWithNode(this.videoNode);
-                    }
-                  }, 2000);
+              // Initialize empty form fields for the selected station
+              if (this.state.selectedStation && stationFields[this.state.selectedStation]) {
+                stationFields[this.state.selectedStation].forEach(field => {
+                  if (formData[field] === undefined || formData[field] === null) {
+                    formData[field] = '';
+                  }
                 });
               }
-            } catch (err) {
-              console.error(`❌ QR Scan error [${scanId}]:`, err.message);
-              console.error(`❌ Full error details for scan [${scanId}]:`, err);
               
-              // Log more specific error details for debugging
-              if (err.response) {
-                console.error(`❌ Server Response Status [${scanId}]:`, err.response.status);
-                console.error(`❌ Server Response Data [${scanId}]:`, err.response.data);
-                console.error(`❌ Server Response Headers [${scanId}]:`, err.response.headers);
-              }
-              
-              // Check if we have response data even with an error (e.g., timeout after successful response)
-              if (err.response && err.response.data && err.response.data.success && err.response.data.data) {
-                console.log(`✅ Data retrieved despite error for scan [${scanId}]:`, err.response.data.data);
-                // Populate participant data even if there was a network hiccup
-                const formData = {};
-                Object.keys(err.response.data.data).forEach(key => {
-                  formData[key] = err.response.data.data[key];
-                });
-                
-                // Stop and hide QR scanner after successful participant data retrieval
-                this.stopQRScanner();
-                console.log(`📹 QR scanner stopped after successful scan despite error [${scanId}]`);
-                
-                this.setState({
-                  qrValue: result.data,
-                  qrScanned: true,
-                  cameraError: null, // Clear error since we got the data
-                  formData
-                }, () => {
-                  this.immediateSave();
-                  console.log(`💾 Data saved despite error for scan [${scanId}]`);
-                });
-                return; // Exit early since we handled the data
-              }
-              
-              // Provide more specific error messages based on the error type
-              let errorMessage = 'Network or server error';
-              let userFriendlyMessage = '';
-              
-              if (err.name === 'AbortError') {
-                errorMessage = 'Request timeout - check connection';
-                userFriendlyMessage = language === 'en' 
-                  ? 'Request timeout. Please try scanning again.' 
-                  : '请求超时。请重新扫描。';
-              } else if (err.code === 'ERR_NETWORK') {
-                errorMessage = 'Network connection failed - check backend server';
-                userFriendlyMessage = language === 'en' 
-                  ? 'Network connection failed. Please check your connection and try again.' 
-                  : '网络连接失败。请检查您的连接并重试。';
-              } else if (err.response) {
-                const status = err.response.status;
-                if (status === 500) {
-                  errorMessage = `Server internal error (500) - backend database or processing issue`;
-                  userFriendlyMessage = language === 'en' 
-                    ? 'Server error. The participant may not exist in the database or there is a backend issue. Please contact support.' 
-                    : '服务器错误。参与者可能不在数据库中或存在后端问题。请联系技术支持。';
-                } else if (status === 404) {
-                  errorMessage = `Participant not found (404)`;
-                  userFriendlyMessage = language === 'en' 
-                    ? 'Participant not found. Please check the QR code and try again.' 
-                    : '找不到参与者。请检查二维码并重试。';
-                } else if (status === 400) {
-                  errorMessage = `Bad request (400) - invalid QR code format`;
-                  userFriendlyMessage = language === 'en' 
-                    ? 'Invalid QR code format. Please scan a valid participant QR code.' 
-                    : '二维码格式无效。请扫描有效的参与者二维码。';
-                } else {
-                  errorMessage = `Server error: ${status}`;
-                  userFriendlyMessage = language === 'en' 
-                    ? `Server error (${status}). Please try again or contact support.` 
-                    : `服务器错误 (${status})。请重试或联系技术支持。`;
-                }
-              }
-              
-              console.error(`❌ Final error classification [${scanId}]: ${errorMessage}`);
-              
-              // Stop scanner on error too
+              // Stop scanner only after successful data retrieval for this device
               this.stopQRScanner();
-              console.log(`📹 QR scanner stopped after error [${scanId}]`);
-              
-              // Show user-friendly error message
-              if (userFriendlyMessage) {
-                alert(userFriendlyMessage);
-              }
+              console.log(`📹 QR scanner stopped after successful scan [${scanId}]`);
               
               this.setState({
                 qrValue: result.data,
-                qrScanned: false, // Keep as false to auto-restart scanner
+                qrScanned: true,
+                cameraError: null,
+                formData
+              }, () => {
+                // Immediately save state after successful scan
+                this.immediateSave();
+                console.log(`💾 Data saved for scan [${scanId}]`);
+              });
+            } else {
+              console.log(`❌ Invalid response structure for scan [${scanId}]:`, response.data);
+              
+              const { language } = this.context;
+              const errorMessage = response.data?.message || (language === 'en' ? 'No participant found' : '找不到参与者');
+              
+              this.setState({
+                qrValue: result.data,
+                qrScanned: false,
                 cameraError: errorMessage,
                 formData: {}
               }, () => {
-                // Auto-restart scanner after 3 seconds for network/server errors
+                // Don't stop scanner - let it continue for multi-device support
+                // Auto-restart scanner after 2 seconds
                 setTimeout(() => {
-                  if (!this.qrScanner && !this.isProcessingQR && this.videoNode && this.state.selectedStation) {
-                    console.log('🔄 Auto-restarting QR scanner after network error');
-                    this.startQRScannerWithNode(this.videoNode);
+                  if (!this.isProcessingQR && this.videoNode && this.state.selectedStation) {
+                    console.log(`🔄 Auto-restarting QR scanner after error [${scanId}]`);
+                    // Scanner should already be running, just reset error state
+                    this.setState({ cameraError: null });
                   }
-                }, 3000);
+                }, 2000);
               });
-            } finally {
-              // Always clear processing flag
-              this.isProcessingQR = false;
             }
+          } catch (err) {
+            console.error(`❌ QR Scan error [${scanId}]:`, err.message);
+            
+            // Enhanced error handling for multi-device scenarios
+            let errorMessage = 'Network or server error';
+            const { language } = this.context;
+            
+            if (err.name === 'AbortError') {
+              errorMessage = language === 'en' ? 'Request timeout - check connection' : '请求超时 - 检查连接';
+            } else if (err.code === 'ERR_NETWORK') {
+              errorMessage = language === 'en' ? 'Network connection failed' : '网络连接失败';
+            } else if (err.response?.status === 409) {
+              // Handle concurrent request conflicts
+              errorMessage = language === 'en' ? 'Participant being processed by another device' : '参与者正在被其他设备处理';
+              console.log(`⚠️ Concurrent processing detected [${scanId}] - this is normal in multi-device environments`);
+            } else if (err.response?.status === 429) {
+              // Handle rate limiting
+              errorMessage = language === 'en' ? 'Too many requests - please wait' : '请求过多 - 请稍等';
+            }
+            
+            console.error(`❌ Final error classification [${scanId}]: ${errorMessage}`);
+            
+            this.setState({
+              qrValue: result.data,
+              qrScanned: false,
+              cameraError: errorMessage,
+              formData: {}
+            }, () => {
+              // Don't stop scanner - let it continue for multi-device support
+              // Auto-clear error after 3 seconds
+              setTimeout(() => {
+                if (!this.isProcessingQR) {
+                  this.setState({ cameraError: null });
+                  console.log(`🔄 Auto-cleared error for continued scanning [${scanId}]`);
+                }
+              }, 3000);
+            });
+          } finally {
+            // Always clear processing flag
+            this.isProcessingQR = false;
           }
         },
         {
           onDecodeError: error => {
-            // Safely handle decode errors with proper error checking
+            // Safely handle decode errors - these are normal and shouldn't be logged excessively
             const errorMessage = error && error.message ? error.message : 'Unknown decode error';
-            console.log('🔍 QR Scanner decode attempt:', errorMessage);
-            // Only suppress the most common "no QR code found" messages
-            if (!errorMessage.includes('No QR code found') && !errorMessage.includes('Could not find')) {
-              console.warn('QR Scanner decode error:', errorMessage);
+            // Only log actual decode problems, not "no QR code found" messages
+            if (!errorMessage.includes('No QR code found') && 
+                !errorMessage.includes('Could not find') && 
+                !errorMessage.includes('NotFoundException')) {
+              console.warn(`QR Scanner decode error [${this.deviceId}]:`, errorMessage);
             }
           },
           highlightScanRegion: true,
           highlightCodeOutline: true,
-          // Optimize for speed and multiple device support
-          maxScansPerSecond: 10, // Increase scan rate
-          preferredCamera: 'environment', // Use rear camera
+          // Optimize for multi-device performance
+          maxScansPerSecond: 5, // Reduced to prevent overwhelming the system
+          preferredCamera: 'environment',
+          // Enhanced scan region calculation for better multi-device performance
           calculateScanRegion: (video) => {
-            // Optimize scan region for faster processing
             const smallerDimension = Math.min(video.videoWidth, video.videoHeight);
-            const scanRegionSize = Math.round(0.6 * smallerDimension);
+            const scanRegionSize = Math.round(0.7 * smallerDimension); // Slightly larger scan area
             return {
               x: Math.round((video.videoWidth - scanRegionSize) / 2),
               y: Math.round((video.videoHeight - scanRegionSize) / 2),
@@ -584,11 +606,67 @@ class Volunteers extends Component {
         }
       );
       
-      this.qrScanner.start().catch(e => {
-        console.error('QR Scanner start error:', e);
-        this.setState({ cameraError: e.message || 'Camera access denied or not available' });
-      });
+      // Enhanced scanner startup with better error handling
+      this.qrScanner.start()
+        .then(() => {
+          console.log(`✅ QR Scanner started successfully for device [${this.deviceId}]`);
+          this.scannerRetryCount = 0; // Reset retry count on successful start
+        })
+        .catch(e => {
+          console.error(`❌ QR Scanner start error for device [${this.deviceId}]:`, e);
+          
+          // Handle specific camera errors
+          let userMessage = '';
+          if (e.name === 'NotAllowedError') {
+            userMessage = 'Camera permission denied. Please allow camera access and refresh the page.';
+          } else if (e.name === 'NotFoundError') {
+            userMessage = 'No camera found. Please ensure your device has a camera.';
+          } else if (e.name === 'OverconstrainedError') {
+            userMessage = 'Camera constraints not supported. Trying alternative settings...';
+            // Retry with relaxed constraints
+            this.retryWithRelaxedConstraints();
+            return;
+          } else {
+            userMessage = `Camera error: ${e.message}`;
+          }
+          
+          this.setState({ cameraError: userMessage });
+          
+          // Auto-retry with exponential backoff
+          if (this.scannerRetryCount < this.maxRetryAttempts) {
+            this.scannerRetryCount++;
+            const retryDelay = Math.min(1000 * Math.pow(2, this.scannerRetryCount - 1), 10000); // Cap at 10 seconds
+            console.log(`� Retrying scanner start in ${retryDelay}ms (attempt ${this.scannerRetryCount}/${this.maxRetryAttempts})`);
+            
+            setTimeout(() => {
+              if (!this.qrScanner && this.videoNode && this.state.selectedStation) {
+                this.startQRScannerWithNode(this.videoNode);
+              }
+            }, retryDelay);
+          } else {
+            console.error(`❌ Max retry attempts reached for device [${this.deviceId}]`);
+            this.setState({ cameraError: 'Camera initialization failed after multiple attempts. Please refresh the page.' });
+          }
+        });
     }
+  }
+
+  // Retry scanner with relaxed camera constraints
+  retryWithRelaxedConstraints = () => {
+    console.log(`🔧 Retrying with relaxed camera constraints for device [${this.deviceId}]`);
+    
+    // Clean up current scanner
+    if (this.qrScanner) {
+      this.qrScanner.destroy();
+      this.qrScanner = null;
+    }
+    
+    setTimeout(() => {
+      if (this.videoNode && this.state.selectedStation) {
+        // The QrScanner library will automatically try different constraint combinations
+        this.startQRScannerWithNode(this.videoNode);
+      }
+    }, 1000);
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -1107,7 +1185,21 @@ class Volunteers extends Component {
               
               return formData.name && selectedStation;
             })() && (
-              <div style={{ width: '100%', maxWidth: 640, margin: '0 auto', padding: '20px', borderRadius: 18, background: '#f8f9fa', border: '2px solid #28a745', boxShadow: '0 4px 32px rgba(0,0,0,0.12)' }}>
+              <div style={{ 
+                width: '100%', 
+                maxWidth: 640, 
+                margin: '0 auto', 
+                padding: '20px', 
+                borderRadius: 18, 
+                background: '#f8f9fa', 
+                border: '2px solid #28a745', 
+                boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
+                // Mobile responsive adjustments
+                '@media (max-width: 768px)': {
+                  padding: '16px',
+                  borderRadius: '12px'
+                }
+              }}>
                 
                 {/* Check if height/weight is required but missing */}
                 {(() => {
@@ -1200,7 +1292,12 @@ class Volunteers extends Component {
                   }
                   
                   return (
-                    <div className="detail-grid" style={{ maxWidth: '100%' }}>
+                    <div className="detail-grid" style={{ 
+                      maxWidth: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '16px'
+                    }}>
                   {stationFields[selectedStation].map(field => {
                     // For sitReach, backStretch, handGrip stations with leftRight field
                     if (field === 'leftRight' && ['sitReach', 'backStretch', 'handGrip'].includes(selectedStation)) {
@@ -1219,10 +1316,36 @@ class Volunteers extends Component {
                       };
 
                       return (
-                        <div className="detail-item" key={field} style={{ flexDirection: 'column', alignItems: 'flex-start', marginBottom: '16px' }}>
-                          <span className="detail-label" style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{language === 'en' ? 'Left/Right:' : '左/右：'}</span>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                        <div className="detail-item" key={field} style={{ 
+                          display: 'flex',
+                          flexDirection: 'column', 
+                          alignItems: 'flex-start', 
+                          marginBottom: '16px',
+                          padding: '16px',
+                          border: '2px solid #ddd',
+                          borderRadius: '12px',
+                          backgroundColor: '#fff',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                        }}>
+                          <span className="detail-label" style={{ 
+                            marginBottom: '12px', 
+                            fontWeight: 600,
+                            fontSize: '1.1rem',
+                            color: '#333'
+                          }}>{language === 'en' ? 'Left/Right:' : '左/右：'}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                            <label style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              cursor: 'pointer', 
+                              color: 'black',
+                              padding: '12px',
+                              border: formData[field] === 'left' ? '2px solid #007bff' : '2px solid #e9ecef',
+                              borderRadius: '8px',
+                              backgroundColor: formData[field] === 'left' ? '#e3f2fd' : '#fff',
+                              transition: 'all 0.3s ease',
+                              fontSize: '1rem'
+                            }}>
                               <input
                                 type="checkbox"
                                 checked={formData[field] === 'left'}
@@ -1233,11 +1356,27 @@ class Volunteers extends Component {
                                     this.handleInputChange({ target: { value: '' } }, field);
                                   }
                                 }}
-                                style={{ marginRight: '0.5rem' }}
+                                style={{ 
+                                  marginRight: '12px',
+                                  width: '20px',
+                                  height: '20px',
+                                  cursor: 'pointer'
+                                }}
                               />
                               {getContextLabel('left')}
                             </label>
-                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                            <label style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              cursor: 'pointer', 
+                              color: 'black',
+                              padding: '12px',
+                              border: formData[field] === 'right' ? '2px solid #007bff' : '2px solid #e9ecef',
+                              borderRadius: '8px',
+                              backgroundColor: formData[field] === 'right' ? '#e3f2fd' : '#fff',
+                              transition: 'all 0.3s ease',
+                              fontSize: '1rem'
+                            }}>
                               <input
                                 type="checkbox"
                                 checked={formData[field] === 'right'}
@@ -1248,7 +1387,12 @@ class Volunteers extends Component {
                                     this.handleInputChange({ target: { value: '' } }, field);
                                   }
                                 }}
-                                style={{ marginRight: '0.5rem' }}
+                                style={{ 
+                                  marginRight: '12px',
+                                  width: '20px',
+                                  height: '20px',
+                                  cursor: 'pointer'
+                                }}
                               />
                               {getContextLabel('right')}
                             </label>
@@ -1263,10 +1407,36 @@ class Volunteers extends Component {
                       const rightLabel = stationData?.right || 'Right';
                       
                       return (
-                        <div className="detail-item" key={field} style={{ flexDirection: 'column', alignItems: 'flex-start', marginBottom: '16px' }}>
-                          <span className="detail-label" style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{t.remarks || 'Remarks'}:</span>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                        <div className="detail-item" key={field} style={{ 
+                          display: 'flex',
+                          flexDirection: 'column', 
+                          alignItems: 'flex-start', 
+                          marginBottom: '16px',
+                          padding: '16px',
+                          border: '2px solid #ddd',
+                          borderRadius: '12px',
+                          backgroundColor: '#fff',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                        }}>
+                          <span className="detail-label" style={{ 
+                            marginBottom: '12px', 
+                            fontWeight: 600,
+                            fontSize: '1.1rem',
+                            color: '#333'
+                          }}>{t.remarks || 'Remarks'}:</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                            <label style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              cursor: 'pointer', 
+                              color: 'black',
+                              padding: '12px',
+                              border: formData[field] === leftLabel ? '2px solid #007bff' : '2px solid #e9ecef',
+                              borderRadius: '8px',
+                              backgroundColor: formData[field] === leftLabel ? '#e3f2fd' : '#fff',
+                              transition: 'all 0.3s ease',
+                              fontSize: '1rem'
+                            }}>
                               <input
                                 type="checkbox"
                                 checked={formData[field] === leftLabel}
@@ -1277,11 +1447,27 @@ class Volunteers extends Component {
                                     this.handleInputChange({ target: { value: '' } }, field);
                                   }
                                 }}
-                                style={{ marginRight: '0.5rem' }}
+                                style={{ 
+                                  marginRight: '12px',
+                                  width: '20px',
+                                  height: '20px',
+                                  cursor: 'pointer'
+                                }}
                               />
                               {leftLabel}
                             </label>
-                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
+                            <label style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              cursor: 'pointer', 
+                              color: 'black',
+                              padding: '12px',
+                              border: formData[field] === rightLabel ? '2px solid #007bff' : '2px solid #e9ecef',
+                              borderRadius: '8px',
+                              backgroundColor: formData[field] === rightLabel ? '#e3f2fd' : '#fff',
+                              transition: 'all 0.3s ease',
+                              fontSize: '1rem'
+                            }}>
                               <input
                                 type="checkbox"
                                 checked={formData[field] === rightLabel}
@@ -1292,7 +1478,12 @@ class Volunteers extends Component {
                                     this.handleInputChange({ target: { value: '' } }, field);
                                   }
                                 }}
-                                style={{ marginRight: '0.5rem' }}
+                                style={{ 
+                                  marginRight: '12px',
+                                  width: '20px',
+                                  height: '20px',
+                                  cursor: 'pointer'
+                                }}
                               />
                               {rightLabel}
                             </label>
@@ -1327,10 +1518,40 @@ class Volunteers extends Component {
                     }
 
                     return (
-                      <div className="detail-item" key={field} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                          <span className="detail-label" style={{ fontWeight: 600, minWidth: '80px' }}>{t[field] || field}:</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+                      <div className="detail-item" key={field} style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'flex-start', 
+                        gap: 12, 
+                        marginBottom: '16px',
+                        padding: '16px',
+                        border: '2px solid #ddd',
+                        borderRadius: '12px',
+                        backgroundColor: '#fff',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                      }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 12, 
+                          width: '100%',
+                          flexDirection: window.innerWidth <= 768 ? 'column' : 'row'
+                        }}>
+                          <span className="detail-label" style={{ 
+                            fontWeight: 600, 
+                            fontSize: '1.1rem',
+                            color: '#333',
+                            minWidth: window.innerWidth <= 768 ? 'auto' : '120px',
+                            textAlign: window.innerWidth <= 768 ? 'center' : 'left',
+                            width: window.innerWidth <= 768 ? '100%' : 'auto'
+                          }}>{t[field] || field}:</span>
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 8, 
+                            flex: 1,
+                            width: window.innerWidth <= 768 ? '100%' : 'auto'
+                          }}>
                             {unit ? (
                               <input
                                 className="detail-value"
@@ -1341,9 +1562,29 @@ class Volunteers extends Component {
                                     : ''
                                 }
                                 onChange={e => this.handleInputChange(e, field, unit)}
-                                onBlur={e => this.handleInputBlur(e, field, unit)}
                                 placeholder={placeholder.replace(/\s*\([^)]*\)$/, '')}
-                                style={{ padding: '0.75rem', borderRadius: 8, border: '2px solid #ddd', flex: 1, fontSize: '1rem' }}
+                                style={{ 
+                                  padding: '16px', 
+                                  borderRadius: '8px', 
+                                  border: '2px solid #e9ecef', 
+                                  flex: 1, 
+                                  fontSize: '1.1rem',
+                                  fontWeight: '500',
+                                  transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+                                  outline: 'none',
+                                  width: '100%',
+                                  minHeight: '50px',
+                                  boxSizing: 'border-box'
+                                }}
+                                onFocus={(e) => {
+                                  e.target.style.borderColor = '#007bff';
+                                  e.target.style.boxShadow = '0 0 0 3px rgba(0, 123, 255, 0.1)';
+                                }}
+                                onBlur={(e) => {
+                                  e.target.style.borderColor = '#e9ecef';
+                                  e.target.style.boxShadow = 'none';
+                                  this.handleInputBlur(e, field, unit);
+                                }}
                               />
                             ) : (
                               <input
@@ -1354,14 +1595,44 @@ class Volunteers extends Component {
                                   this.handleInputChange(e, field);
                                 }}
                                 placeholder={placeholder}
-                                style={{ padding: '0.75rem', borderRadius: 8, border: '2px solid #ddd', flex: 1, fontSize: '1rem' }}
+                                style={{ 
+                                  padding: '16px', 
+                                  borderRadius: '8px', 
+                                  border: '2px solid #e9ecef', 
+                                  flex: 1, 
+                                  fontSize: '1.1rem',
+                                  fontWeight: '500',
+                                  transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+                                  outline: 'none',
+                                  width: '100%',
+                                  minHeight: '50px',
+                                  boxSizing: 'border-box'
+                                }}
+                                onFocus={(e) => {
+                                  e.target.style.borderColor = '#007bff';
+                                  e.target.style.boxShadow = '0 0 0 3px rgba(0, 123, 255, 0.1)';
+                                }}
+                                onBlur={(e) => {
+                                  e.target.style.borderColor = '#e9ecef';
+                                  e.target.style.boxShadow = 'none';
+                                }}
                               />
                             )}
                           </div>
                         </div>
                         {/* Show last value for this station/field if available */}
                         {lastValue && (
-                          <div style={{ color: '#1976d2', fontSize: '0.9em', marginLeft: 8 }}>
+                          <div style={{ 
+                            color: '#1976d2', 
+                            fontSize: '0.9em', 
+                            marginLeft: window.innerWidth <= 768 ? 0 : 8,
+                            textAlign: window.innerWidth <= 768 ? 'center' : 'left',
+                            width: '100%',
+                            padding: '8px',
+                            backgroundColor: '#e3f2fd',
+                            borderRadius: '6px',
+                            border: '1px solid #bbdefb'
+                          }}>
                             Last: {lastValue}
                           </div>
                         )}
@@ -1372,21 +1643,36 @@ class Volunteers extends Component {
                     style={{
                       marginTop: 24,
                       width: '100%',
-                      padding: '1rem',
+                      padding: '18px',
                       borderRadius: 12,
-                      background: '#1976d2',
+                      background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
                       color: '#fff',
                       fontWeight: 700,
-                      fontSize: '1.2rem',
+                      fontSize: '1.3rem',
                       border: 'none',
                       cursor: 'pointer',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                      boxShadow: '0 4px 15px rgba(25, 118, 210, 0.3)',
+                      transition: 'all 0.3s ease',
+                      minHeight: '60px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
                     }}
                     onClick={() => {
                       this.onEnter()
                     }}
+                    onMouseOver={(e) => {
+                      e.target.style.transform = 'translateY(-2px)';
+                      e.target.style.boxShadow = '0 6px 20px rgba(25, 118, 210, 0.4)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = '0 4px 15px rgba(25, 118, 210, 0.3)';
+                    }}
                   >
-                    {language === 'en' ? 'Enter' : '提交'}
+                    <span>✅</span>
+                    <span>{language === 'en' ? 'Submit Data' : '提交数据'}</span>
                   </button>
                     </div>
                   );
@@ -1397,7 +1683,17 @@ class Volunteers extends Component {
         )}
         
         {/* Action Buttons */}
-        <div style={{ marginTop: '20px', textAlign: 'center', width: '100%', maxWidth: 600, display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div style={{ 
+          marginTop: '20px', 
+          textAlign: 'center', 
+          width: '100%', 
+          maxWidth: 600, 
+          display: 'flex', 
+          gap: '10px', 
+          justifyContent: 'center', 
+          flexWrap: 'wrap',
+          padding: '0 16px'
+        }}>
           {/* Done Button - Finish volunteer session */}
           <button 
             onClick={this.handleVolunteerDone}
@@ -1405,16 +1701,33 @@ class Volunteers extends Component {
               backgroundColor: '#28a745',
               color: 'white',
               border: 'none',
-              padding: '12px 24px',
-              borderRadius: '6px',
+              padding: '16px 24px',
+              borderRadius: '8px',
               cursor: 'pointer',
               fontSize: '16px',
               fontWeight: '600',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              boxShadow: '0 2px 8px rgba(40, 167, 69, 0.3)',
+              transition: 'all 0.3s ease',
+              minWidth: '180px',
+              minHeight: '50px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              flex: window.innerWidth <= 768 ? '1 1 100%' : '0 1 auto'
             }}
             title="Finish volunteer session and return to home"
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = '#218838';
+              e.target.style.transform = 'translateY(-1px)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = '#28a745';
+              e.target.style.transform = 'translateY(0)';
+            }}
           >
-            ✅ {language === 'en' ? 'Done - Finish Session' : '完成 - 结束会话'}
+            <span>✅</span>
+            <span>{language === 'en' ? 'Done - Finish Session' : '完成 - 结束会话'}</span>
           </button>
           
           {/* Clear Saved Data Button */}
@@ -1424,14 +1737,33 @@ class Volunteers extends Component {
               backgroundColor: '#dc3545',
               color: 'white',
               border: 'none',
-              padding: '8px 16px',
-              borderRadius: '4px',
+              padding: '12px 20px',
+              borderRadius: '6px',
               cursor: 'pointer',
-              fontSize: '12px'
+              fontSize: '14px',
+              fontWeight: '500',
+              boxShadow: '0 2px 6px rgba(220, 53, 69, 0.3)',
+              transition: 'all 0.3s ease',
+              minWidth: '140px',
+              minHeight: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              flex: window.innerWidth <= 768 ? '1 1 100%' : '0 1 auto'
             }}
             title="Clear all saved volunteer form data from browser storage"
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = '#c82333';
+              e.target.style.transform = 'translateY(-1px)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = '#dc3545';
+              e.target.style.transform = 'translateY(0)';
+            }}
           >
-            🗑️ {language === 'en' ? 'Clear Saved Data' : '清除保存的数据'}
+            <span>🗑️</span>
+            <span>{language === 'en' ? 'Clear Saved Data' : '清除保存的数据'}</span>
           </button>
         </div>
       </div>
