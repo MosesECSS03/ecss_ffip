@@ -80,8 +80,9 @@
     // Helper method to get current participant data (updated or original)
     getCurrentParticipant = () => {
       const { updatedParticipant } = this.state;
+      const { participant } = this.props;
       // Use updated data if available, otherwise fall back to props
-      return updatedParticipant
+      return updatedParticipant || participant;
     }
 
     // Check if participant has any station data
