@@ -693,6 +693,7 @@ class Participants extends Component {
       if (backendResult && backendResult.success) {
         // Use the backend response ID for the participant
         let backendId = backendResult.data._id;
+        console.log('📥 Backend submission successful, received ID:', backendId);
         if (backendId) {
           newParticipant.id = backendId;
           console.log('✅ Using backend-generated participant ID:', backendId);

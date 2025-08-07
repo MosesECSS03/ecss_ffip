@@ -79,7 +79,8 @@ class ParticipantsController {
         };
     }
 
-    async getParticipant(participantID) {
+    async getParticipant(participantID)
+     {
         // Implement concurrent access protection
         const requestId = Date.now() + Math.random().toString(36);
         console.log(`[${requestId}] Starting participant retrieval for ID:`, participantID);
