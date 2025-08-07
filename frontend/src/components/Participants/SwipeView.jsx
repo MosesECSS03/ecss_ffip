@@ -57,7 +57,7 @@
 
         const response = await axios.post(`${API_BASE_URL}/participants`, {
           purpose: 'retrieveParticipant',
-          participantId: participantId
+          participantID: participantId
         });
         
         if (response.data && response.data.success) {
