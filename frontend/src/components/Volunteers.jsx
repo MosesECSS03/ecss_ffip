@@ -417,7 +417,8 @@ class Volunteers extends Component {
                   console.log(`🔍 Debug - State after setState:`, {
                     formData: this.state.formData,
                     selectedStation: this.state.selectedStation,
-                    qrScanned: this.state.qrScanned
+                    qrScanned: this.state.qrScanned,
+                    hasParticipantName: !!this.state.formData.name
                   });
                   
                   // Immediately save state after successful scan
@@ -430,11 +431,22 @@ class Volunteers extends Component {
                 this.stopQRScanner();
                 console.log(`📹 QR scanner stopped after invalid response [${scanId}]`);
                 
+                const { language } = this.context;
+                const errorMessage = response.data?.message || (language === 'en' ? 'No participant found' : '找不到参与者');
+                
                 this.setState({
                   qrValue: result.data,
-                  qrScanned: true,
-                  cameraError: response.data?.message || 'No participant found',
-                  formData: {}
+                  qrScanned: false, // Keep as false to auto-restart scanner
+                  cameraError: errorMessage,
+                  formData: {} // Ensure formData is cleared on error
+                }, () => {
+                  // Auto-restart scanner after 2 seconds
+                  setTimeout(() => {
+                    if (!this.qrScanner && !this.isProcessingQR && this.videoNode && this.state.selectedStation) {
+                      console.log('🔄 Auto-restarting QR scanner after error');
+                      this.startQRScannerWithNode(this.videoNode);
+                    }
+                  }, 2000);
                 });
               }
             } catch (err) {
@@ -525,9 +537,17 @@ class Volunteers extends Component {
               
               this.setState({
                 qrValue: result.data,
-                qrScanned: true,
+                qrScanned: false, // Keep as false to auto-restart scanner
                 cameraError: errorMessage,
                 formData: {}
+              }, () => {
+                // Auto-restart scanner after 3 seconds for network/server errors
+                setTimeout(() => {
+                  if (!this.qrScanner && !this.isProcessingQR && this.videoNode && this.state.selectedStation) {
+                    console.log('🔄 Auto-restarting QR scanner after network error');
+                    this.startQRScannerWithNode(this.videoNode);
+                  }
+                }, 3000);
               });
             } finally {
               // Always clear processing flag
@@ -994,93 +1014,27 @@ class Volunteers extends Component {
               </div>
             )}
             
-            {/* Show error state with retry option */}
-            {!formData.name && qrScanned && cameraError && (
+            {/* Show simple error status when scanning fails (auto-restart) */}
+            {!formData.name && !qrScanned && cameraError && (
               <div style={{ 
                 textAlign: 'center', 
                 marginBottom: 16, 
-                padding: '20px', 
-                backgroundColor: '#f8d7da', 
-                border: '2px solid #dc3545',
+                padding: '16px', 
+                backgroundColor: '#fff3cd', 
+                border: '2px solid #ffc107',
                 borderRadius: '8px',
-                color: '#721c24'
+                color: '#856404'
               }}>
-                <h3 style={{ margin: '0 0 12px 0', color: '#dc3545' }}>
-                  ❌ {language === 'en' ? 'Scan Error' : '扫描错误'}
+                <h3 style={{ margin: '0 0 8px 0', color: '#ffc107' }}>
+                  ⚠️ {language === 'en' ? 'Scan Issue' : '扫描问题'}
                 </h3>
-                <div style={{ fontSize: '1.1em', marginBottom: '16px' }}>
-                  {language === 'en' ? 'QR Code: ' : '二维码：'}<strong>{qrValue}</strong>
-                </div>
-                <div style={{ fontSize: '1em', marginBottom: '16px', color: '#721c24' }}>
+                <div style={{ fontSize: '0.9em', marginBottom: '8px', color: '#856404' }}>
                   {cameraError}
                 </div>
-                <button 
-                  onClick={() => {
-                    // Clear error state and restart scanner
-                    this.isProcessingQR = false;
-                    this.stopQRScanner();
-                    
-                    this.setState({ 
-                      qrScanned: false, 
-                      qrValue: '', 
-                      cameraError: null,
-                      formData: {}
-                    }, () => {
-                      // Restart scanner after clearing error
-                      if (this.videoNode && this.state.selectedStation) {
-                        setTimeout(() => {
-                          if (!this.qrScanner && !this.isProcessingQR) {
-                            console.log('📹 Restarting QR scanner after error retry');
-                            this.startQRScannerWithNode(this.videoNode);
-                          }
-                        }, 500);
-                      }
-                    });
-                  }}
-                  style={{
-                    padding: '12px 24px',
-                    backgroundColor: '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '1em',
-                    fontWeight: '600',
-                    marginRight: '10px'
-                  }}
-                >
-                  {language === 'en' ? '🔄 Try Again' : '🔄 重试'}
-                </button>
-                <button 
-                  onClick={() => {
-                    // Manual QR entry option
-                    const manualQR = prompt(
-                      language === 'en' 
-                        ? 'Enter participant ID manually:' 
-                        : '手动输入参与者ID：',
-                      qrValue || ''
-                    );
-                    if (manualQR && manualQR.trim()) {
-                      // Trigger manual scan processing
-                      this.setState({ qrValue: manualQR.trim() }, () => {
-                        // Manually trigger the scan processing
-                        this.handleManualQREntry(manualQR.trim());
-                      });
-                    }
-                  }}
-                  style={{
-                    padding: '12px 24px',
-                    backgroundColor: '#28a745',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '1em',
-                    fontWeight: '600'
-                  }}
-                >
-                  {language === 'en' ? '✏️ Manual Entry' : '✏️ 手动输入'}
-                </button>
+                <div style={{ fontSize: '0.8em', color: '#666', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                  <span>🔄</span>
+                  <span>{language === 'en' ? 'Auto-restarting scanner...' : '自动重启扫描器...'}</span>
+                </div>
               </div>
             )}
             
@@ -1091,6 +1045,15 @@ class Volunteers extends Component {
                   <span style={{ color: '#d32f2f' }}>
                     {language === 'en' ? 'Camera Error: ' : '摄像头错误：'}{cameraError}
                   </span>
+                ) : cameraError ? (
+                  <div style={{ color: '#ff9800' }}>
+                    <div style={{ marginBottom: '4px' }}>
+                      {language === 'en' ? '⚠️ Scan issue detected' : '⚠️ 检测到扫描问题'}
+                    </div>
+                    <div style={{ fontSize: '0.8em' }}>
+                      {language === 'en' ? '🔄 Auto-restarting scanner...' : '🔄 自动重启扫描器...'}
+                    </div>
+                  </div>
                 ) : (
                   <div>
                     <span>
