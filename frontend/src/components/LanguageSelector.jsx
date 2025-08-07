@@ -10,11 +10,8 @@ function LanguageSelector({ onLanguageSelected }) {
   const handleLanguageSelect = (lang) => {
     setSelectedLang(lang)
     console.log('📱 Language selected:', lang)
-  }
-
-  const handleContinue = () => {
-    console.log('📱 Continue clicked with language:', selectedLang)
-    setLanguage(selectedLang)
+    // Immediately set the language and proceed
+    setLanguage(lang)
     onLanguageSelected()
   }
 
@@ -61,19 +58,7 @@ function LanguageSelector({ onLanguageSelected }) {
             {translations.zh.chooseLanguage}
           </p>
           
-          {/* Mobile debug info */}
-          <div style={{
-            fontSize: '12px',
-            color: '#666',
-            margin: '10px 0',
-            padding: '10px',
-            backgroundColor: '#f8f9fa',
-            borderRadius: '5px',
-            border: '1px solid #dee2e6'
-          }}>
-            Mobile Debug: {window.innerWidth}x{window.innerHeight} | Touch: {'ontouchstart' in window ? 'Yes' : 'No'}
-          </div>
-          
+        
           <div className="language-options">
             <button
               className={`language-option ${selectedLang === 'en' ? 'selected' : ''}`}
@@ -101,25 +86,6 @@ function LanguageSelector({ onLanguageSelected }) {
               <div className="language-name">中文</div>
             </button>
           </div>
-          
-          <button 
-            className="continue-button" 
-            onClick={handleContinue}
-            style={{
-              minHeight: '48px',
-              padding: '1rem 2rem',
-              fontSize: '1.1rem',
-              touchAction: 'manipulation',
-              backgroundColor: 'rgb(102, 126, 234)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '50px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            {selectedLang === 'en' ? translations.en.continue : translations.zh.continue}
-          </button>
         </div>
       </div>
     </div>

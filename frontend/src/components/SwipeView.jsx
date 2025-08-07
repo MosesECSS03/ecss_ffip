@@ -19,16 +19,6 @@ class SwipeView extends Component {
     this.generateQR();
     document.addEventListener('keydown', this.handleKeyDown)
     
-    // Mobile debugging
-    console.log('📱 SwipeView mounted:', {
-      participant: this.props.participant,
-      hasParticipant: !!this.props.participant,
-      viewport: `${window.innerWidth}x${window.innerHeight}`,
-      isMobile: window.innerWidth <= 768,
-      hasStationData: this.hasStationData(),
-      hasHeightWeight: this.hasHeightWeightData()
-    })
-    
     // Listen for survey-updated event
   }
 

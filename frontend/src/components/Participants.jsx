@@ -1292,20 +1292,6 @@ class Participants extends Component {
             <p style={{ color: '#666', margin: '0' }}>
               {isLoading ? 'Retrieving your saved information...' : 'Setting up the application...'}
             </p>
-            
-            {/* Mobile debug in loading screen */}
-            <div style={{
-              fontSize: '12px',
-              color: '#999',
-              marginTop: '20px',
-              padding: '10px',
-              backgroundColor: '#f1f1f1',
-              borderRadius: '5px'
-            }}>
-              📱 Mobile: {window.innerWidth}x{window.innerHeight} | 
-              Loading: {isLoading ? 'Data' : 'App'} | 
-              HasSubmitted: {this.state.hasSubmitted ? 'Yes' : 'No'}
-            </div>
           </div>
         </div>
       )
