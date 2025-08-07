@@ -192,6 +192,10 @@ class Participants extends Component {
       if (forceFormView === 'true' || wasRecentlyCleared) {
         console.log('🆕 Fresh start detected via localStorage flag, forcing clean form view');
         
+        // Clear any saved state that might interfere
+        localStorage.removeItem('participantsAppState');
+        localStorage.removeItem('participantId');
+        
         // Remove the flag after processing (but keep it for a short time for refreshes)
         if (!wasRecentlyCleared) {
           localStorage.removeItem('ecss_ffip_force_form_view');
@@ -205,6 +209,7 @@ class Participants extends Component {
           showSwipeView: false,
           hasSubmitted: false,
           swipeParticipantData: null,
+          participants: [], // Clear any participants array
           formData: {
             participantDetails: {
               participantName: '',
@@ -273,6 +278,48 @@ class Participants extends Component {
         dataStatusMessage: '🔄 Initializing...' 
       });
       
+      // Check again for force form view flag (in case it was set after clearing)
+      const forceFormViewAgain = localStorage.getItem('ecss_ffip_force_form_view');
+      const lastClearedAgain = localStorage.getItem('ecss_ffip_last_cleared');
+      const wasRecentlyClearedAgain = lastClearedAgain && (Date.now() - parseInt(lastClearedAgain)) < (5 * 60 * 1000);
+      
+      if (forceFormViewAgain === 'true' || wasRecentlyClearedAgain) {
+        console.log('🆕 Force form view flag detected again, overriding any saved state');
+        
+        // Clear any saved state that might interfere
+        localStorage.removeItem('participantsAppState');
+        localStorage.removeItem('participantId');
+        
+        // Force fresh state regardless of any saved data
+        this.setState({
+          isLoading: false,
+          isInitializing: false,
+          showForm: true,
+          showSwipeView: false,
+          hasSubmitted: false,
+          swipeParticipantData: null,
+          participants: [], // Clear any participants array
+          formData: {
+            participantDetails: {
+              participantName: '',
+              phoneNumber: '',
+              gender: '',
+              dateOfBirth: ''
+            },
+            healthDeclaration: {
+              questions: {
+                healthQuestion1: '',
+                healthQuestion2: '',
+                healthQuestion3: '',
+                healthQuestion4: ''
+              }
+            }
+          },
+          dataStatusMessage: '✅ Ready for new participant'
+        });
+        return; // Exit early
+      }
+
       // Load saved state first
       const loaded = await this.loadStateFromLocalStorage();
       
