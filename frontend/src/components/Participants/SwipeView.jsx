@@ -19,7 +19,8 @@
         currentView: 'details',
         qrCodeUrl: '',
         touchStart: 0,
-        touchEnd: 0
+        touchEnd: 0,
+        updatedParticipant: null
       }
     }
 
@@ -61,9 +62,9 @@
         });
         
         if (response.data && response.data.success) {
-          console.log('Retrieved participant data:', response.data);
+          console.log('Retrieved participant data:', response.data.data);
           // You can update state with the retrieved data if needed
-          // this.setState({ updatedParticipant: response.data.participant });
+          this.setState({ updatedParticipant: response.data.data });
         } else {
           console.warn('Failed to retrieve participant data:', response.data.message);
         }
@@ -76,9 +77,16 @@
       }
     }
 
+    // Helper method to get current participant data (updated or original)
+    getCurrentParticipant = () => {
+      const { updatedParticipant } = this.state;
+      // Use updated data if available, otherwise fall back to props
+      return updatedParticipant
+    }
+
     // Check if participant has any station data
     hasStationData = () => {
-      const { participant } = this.props
+      const participant = this.getCurrentParticipant()
       return participant.stations && 
         Array.isArray(participant.stations) &&
         participant.stations.length > 0
@@ -86,7 +94,7 @@
 
     // Check if participant has height and weight data
     hasHeightWeightData = () => {
-      const { participant } = this.props
+      const participant = this.getCurrentParticipant()
       console.log("Checking Height and Weight Data:", participant)
       return participant.height && participant.weight && 
             participant.height !== '' && participant.weight !== '' &&
@@ -95,7 +103,7 @@
 
     // Get station summary from the stations array
     getStationSummary = () => {
-      const { participant } = this.props
+      const participant = this.getCurrentParticipant()
       if (!participant.stations || !Array.isArray(participant.stations)) {
         return { completed: [], incomplete: [] }
       }
@@ -202,8 +210,9 @@
     }
 
     render() {
-      const { participant, language, onClose } = this.props
+      const { language, onClose } = this.props
       const { currentView, qrCodeUrl } = this.state
+      const participant = this.getCurrentParticipant()
       const hasStationData = this.hasStationData()
       const hasHeightWeight = this.hasHeightWeightData()
       console.log("Participant Height Weight Data:", hasHeightWeight)
