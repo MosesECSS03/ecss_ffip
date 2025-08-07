@@ -40,6 +40,7 @@
     // Check if participant has height and weight data
     hasHeightWeightData = () => {
       const { participant } = this.props
+      console.log("Checking Height and Weight Data:", participant)
       return participant.height && participant.weight && 
             participant.height !== '' && participant.weight !== '' &&
             participant.height !== '-' && participant.weight !== '-'
