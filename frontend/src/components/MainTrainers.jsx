@@ -454,8 +454,13 @@ class MainTrainers extends Component {
     const { participants, loading, error, columnDefs, defaultColDef, rowHeight, headerHeight } = this.state
 
     return (
-      <div className="page-container desktop-only">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div className="page-container desktop-only" style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexShrink: 0 }}>
           <h1>All Participants Results</h1>
           <button 
             onClick={this.exportToExcel}
@@ -490,12 +495,21 @@ class MainTrainers extends Component {
           </button>
         </div>
         
-        {loading && <p>Loading participants...</p>}
-        {error && <p className="error-message">{error}</p>}
+        {loading && <p style={{ flexShrink: 0 }}>Loading participants...</p>}
+        {error && <p className="error-message" style={{ flexShrink: 0 }}>{error}</p>}
         
         {!loading && !error && (
-          <div className="participants-table-container">
-            <div className="ag-theme-alpine" style={{ height: '600px', width: '100%' }}>
+          <div className="participants-table-container" style={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column',
+            minHeight: 0 
+          }}>
+            <div className="ag-theme-alpine" style={{ 
+              height: 'calc(100vh - 200px)', 
+              width: '100%',
+              minHeight: '400px'
+            }}>
                   <AgGridReact
                     columnDefs={columnDefs}
                     rowData={participants}
