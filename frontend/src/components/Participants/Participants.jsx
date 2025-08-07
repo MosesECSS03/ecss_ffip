@@ -24,19 +24,7 @@ class Participants extends Component {
           participantName: '',
           phoneNumber: '',
           gender: '',
-          dateOfBirth: '',
-          nationality: '',
-          email: '',
-          homeAddress: '',
-          relationshipStatus: '',
-          children: '',
-          profession: '',
-          educationLevel: '',
-          ethnicGroup: '',
-          religion: '',
-          stateOfOrigin: '',
-          experienceWithIT: '',
-          comfortWithTechnology: ''
+          dateOfBirth: ''
         },
         healthDeclaration: {
           questions: {
@@ -566,19 +554,7 @@ class Participants extends Component {
             participantName: '',
             phoneNumber: '',
             gender: '',
-            dateOfBirth: '',
-            nationality: '',
-            email: '',
-            homeAddress: '',
-            relationshipStatus: '',
-            children: '',
-            profession: '',
-            educationLevel: '',
-            ethnicGroup: '',
-            religion: '',
-            stateOfOrigin: '',
-            experienceWithIT: '',
-            comfortWithTechnology: ''
+            dateOfBirth: ''
           },
           healthDeclaration: {
             questions: {
@@ -716,7 +692,7 @@ class Participants extends Component {
 
       if (backendResult && backendResult.success) {
         // Use the backend response ID for the participant
-        let backendId = backendResult.data && (backendResult.data._id || backendResult.data.id);
+        let backendId = backendResult.data._id;
         if (backendId) {
           newParticipant.id = backendId;
           console.log('✅ Using backend-generated participant ID:', backendId);
@@ -779,6 +755,7 @@ class Participants extends Component {
   submitToBackend = async (participantData) => {
     try {
       const response = await axios.post(`${API_BASE_URL}/participants`, {"purpose": "new", participantData})
+      console.log('📤 Submitted participant data to backend:', response.data)
       // Handle the backend response structure
       if (response.data && response.data.success) {
         return { 
@@ -828,11 +805,11 @@ class Participants extends Component {
     try {
       const saved = localStorage.getItem('participantId');
       console.log('🔄 Retrieving participant ID from localStorage...');
-     /* if (saved) {
+      if (saved) {
         const parsed = JSON.parse(saved);
         console.log('🆔 Retrieved participant ID from localStorage:', parsed?.participantId);
         return parsed?.participantId;
-      }*/
+      }
     } catch (e) {
       console.warn('Failed to parse participantId from localStorage:', e);
       // Clear corrupted data
@@ -928,19 +905,7 @@ class Participants extends Component {
           participantName: '',
           phoneNumber: '',
           gender: '',
-          dateOfBirth: '',
-          nationality: '',
-          email: '',
-          homeAddress: '',
-          relationshipStatus: '',
-          children: '',
-          profession: '',
-          educationLevel: '',
-          ethnicGroup: '',
-          religion: '',
-          stateOfOrigin: '',
-          experienceWithIT: '',
-          comfortWithTechnology: ''
+          dateOfBirth: ''
         },
         healthDeclaration: {
           questions: {
