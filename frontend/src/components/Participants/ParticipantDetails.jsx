@@ -1285,7 +1285,7 @@ class ParticipantDetails extends Component {
       } else {
         console.log('⚠️ No onClose callback found, redirecting to language selection');
         // Fallback: redirect to root for language selection → home → participants → form flow
-        window.location.replace(window.location.origin);
+        window.location.replace("/");
       }
       
     } catch (error) {
@@ -1311,7 +1311,7 @@ class ParticipantDetails extends Component {
       } else {
         console.log('⚠️ No onClose callback found, redirecting to language selection');
         // Fallback: redirect to root for language selection → home → participants → form flow
-        window.location.replace(window.location.origin);
+        window.location.replace("/");
       }
     }
   }
