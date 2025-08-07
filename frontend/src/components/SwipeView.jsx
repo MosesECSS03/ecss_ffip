@@ -194,22 +194,6 @@ class SwipeView extends Component {
           position: 'relative'
         }}
       >
-        {/* Mobile Debug Info */}
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: '#ff6b6b',
-          color: 'white',
-          padding: '8px',
-          fontSize: '12px',
-          zIndex: 9999,
-          textAlign: 'center'
-        }}>
-          📱 SwipeView - Current: {currentView} | Participant: {participant?.name || 'No name'} | QR: {qrCodeUrl ? 'Ready' : 'Loading'}
-        </div>
-
         {/* Emergency fallback if no participant */}
         {!participant && (
           <div style={{
@@ -343,35 +327,8 @@ class SwipeView extends Component {
             )}
 
             {currentView === 'qr' && participant && (
-              <div className="qr-code-view" style={{
-                padding: '20px',
-                textAlign: 'center',
-                backgroundColor: 'white',
-                borderRadius: '10px',
-                margin: '20px',
-                minHeight: '60vh'
-              }}>
-                <h2 className="qr-modal-title">{t.presentQRCode}</h2>
-                <p className="qr-modal-subtitle">{t.qrCodeSubtitle}</p>
-                
-                {/* Mobile debug for QR */}
-                <div style={{
-                  fontSize: '12px',
-                  color: '#666',
-                  margin: '10px 0',
-                  padding: '10px',
-                  backgroundColor: '#f8f9fa',
-                  borderRadius: '5px'
-                }}>
-                  📱 QR Debug: {qrCodeUrl ? 'Generated' : 'Missing'} | Participant: {participant?.name || 'Unknown'}
-                </div>
-                
-                <div className="qr-code-container" style={{
-                  margin: '20px 0',
-                  padding: '20px',
-                  backgroundColor: '#f9f9f9',
-                  borderRadius: '10px'
-                }}>
+              <>                
+                <>
                   {qrCodeUrl ? (
                     <img 
                       src={qrCodeUrl} 
@@ -398,7 +355,7 @@ class SwipeView extends Component {
                       </div>
                     </div>
                   )}
-                </div>
+                </>
                 
                 <div className="qr-modal-description">
                   <p>{t.qrCodeDescription}</p>
@@ -407,44 +364,7 @@ class SwipeView extends Component {
                 <div className="swipe-instructions">
                   <p className="swipe-instructions-text">{t.swipeInstructionsDetails}</p>
                 </div>
-                
-                {/* Mobile navigation buttons */}
-                <div style={{
-                  display: 'flex',
-                  gap: '10px',
-                  justifyContent: 'center',
-                  marginTop: '20px'
-                }}>
-                  <button 
-                    onClick={() => this.setCurrentView('details')}
-                    style={{
-                      padding: '12px 24px',
-                      backgroundColor: '#667eea',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '25px',
-                      fontSize: '16px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {language === 'en' ? 'View Details' : '查看详情'}
-                  </button>
-                  <button 
-                    onClick={onClose}
-                    style={{
-                      padding: '12px 24px',
-                      backgroundColor: '#6c757d',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '25px',
-                      fontSize: '16px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {language === 'en' ? 'Close' : '关闭'}
-                  </button>
-                </div>
-              </div>
+              </>
             )}
 
             {currentView === 'stations' && (

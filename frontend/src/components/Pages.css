@@ -1148,11 +1148,12 @@
 
 .qr-code-image {
   width: 100%;
-  max-width: 800px;
   height: auto;
   border: 5px solid #e9ecef;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  margin-left: 5%;
+  margin-right: auto;
 }
 
 .qr-modal-description {
@@ -1161,6 +1162,7 @@
   margin-bottom: 3rem;
   line-height: 1.5;
   text-align: center;
+  
 }
 
 .qr-modal-actions {
@@ -1432,7 +1434,7 @@
 /* Participant Details View */
 .participant-details-view {
   max-width: 100%;
-  margin-top: 7rem;
+ /* margin-top: 7rem;*/
 }
 
 .participant-name {
@@ -2016,7 +2018,8 @@
   top: 0;
   left: 0;
   background-color: white;
-  padding: 2rem;
+  padding-left: 2rem;
+  padding-right: auto;
   gap: 1.5rem;
 }
 

@@ -344,7 +344,7 @@
     padding: 1.2rem 0.2rem 1rem 0.2rem;
     border-radius: 18px;
   }
-  .password-popup-overlay {
+  . {
     align-items: flex-start;
     padding-top: 10vh;
   }
