@@ -61,7 +61,7 @@
         });
         
         if (response.data && response.data.success) {
-          console.log('Retrieved participant data:', response.data.participant);
+          console.log('Retrieved participant data:', response.data);
           // You can update state with the retrieved data if needed
           // this.setState({ updatedParticipant: response.data.participant });
         } else {
