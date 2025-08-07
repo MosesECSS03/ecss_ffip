@@ -1185,21 +1185,7 @@ class Volunteers extends Component {
               
               return formData.name && selectedStation;
             })() && (
-              <div style={{ 
-                width: '100%', 
-                maxWidth: 640, 
-                margin: '0 auto', 
-                padding: '20px', 
-                borderRadius: 18, 
-                background: '#f8f9fa', 
-                border: '2px solid #28a745', 
-                boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
-                // Mobile responsive adjustments
-                '@media (max-width: 768px)': {
-                  padding: '16px',
-                  borderRadius: '12px'
-                }
-              }}>
+              <div style={{ width: '100%', maxWidth: 640, margin: '0 auto', padding: '20px', borderRadius: 18, background: '#f8f9fa', border: '2px solid #28a745', boxShadow: '0 4px 32px rgba(0,0,0,0.12)' }}>
                 
                 {/* Check if height/weight is required but missing */}
                 {(() => {
@@ -1292,12 +1278,7 @@ class Volunteers extends Component {
                   }
                   
                   return (
-                    <div className="detail-grid" style={{ 
-                      maxWidth: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '16px'
-                    }}>
+                    <div className="detail-grid" style={{ maxWidth: '100%' }}>
                   {stationFields[selectedStation].map(field => {
                     // For sitReach, backStretch, handGrip stations with leftRight field
                     if (field === 'leftRight' && ['sitReach', 'backStretch', 'handGrip'].includes(selectedStation)) {
@@ -1316,36 +1297,10 @@ class Volunteers extends Component {
                       };
 
                       return (
-                        <div className="detail-item" key={field} style={{ 
-                          display: 'flex',
-                          flexDirection: 'column', 
-                          alignItems: 'flex-start', 
-                          marginBottom: '16px',
-                          padding: '16px',
-                          border: '2px solid #ddd',
-                          borderRadius: '12px',
-                          backgroundColor: '#fff',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                        }}>
-                          <span className="detail-label" style={{ 
-                            marginBottom: '12px', 
-                            fontWeight: 600,
-                            fontSize: '1.1rem',
-                            color: '#333'
-                          }}>{language === 'en' ? 'Left/Right:' : '左/右：'}</span>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-                            <label style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              cursor: 'pointer', 
-                              color: 'black',
-                              padding: '12px',
-                              border: formData[field] === 'left' ? '2px solid #007bff' : '2px solid #e9ecef',
-                              borderRadius: '8px',
-                              backgroundColor: formData[field] === 'left' ? '#e3f2fd' : '#fff',
-                              transition: 'all 0.3s ease',
-                              fontSize: '1rem'
-                            }}>
+                        <div className="detail-item" key={field} style={{ flexDirection: 'column', alignItems: 'flex-start', marginBottom: '16px' }}>
+                          <span className="detail-label" style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{language === 'en' ? 'Left/Right:' : '左/右：'}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
                               <input
                                 type="checkbox"
                                 checked={formData[field] === 'left'}
@@ -1356,27 +1311,11 @@ class Volunteers extends Component {
                                     this.handleInputChange({ target: { value: '' } }, field);
                                   }
                                 }}
-                                style={{ 
-                                  marginRight: '12px',
-                                  width: '20px',
-                                  height: '20px',
-                                  cursor: 'pointer'
-                                }}
+                                style={{ marginRight: '0.5rem' }}
                               />
                               {getContextLabel('left')}
                             </label>
-                            <label style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              cursor: 'pointer', 
-                              color: 'black',
-                              padding: '12px',
-                              border: formData[field] === 'right' ? '2px solid #007bff' : '2px solid #e9ecef',
-                              borderRadius: '8px',
-                              backgroundColor: formData[field] === 'right' ? '#e3f2fd' : '#fff',
-                              transition: 'all 0.3s ease',
-                              fontSize: '1rem'
-                            }}>
+                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
                               <input
                                 type="checkbox"
                                 checked={formData[field] === 'right'}
@@ -1387,12 +1326,7 @@ class Volunteers extends Component {
                                     this.handleInputChange({ target: { value: '' } }, field);
                                   }
                                 }}
-                                style={{ 
-                                  marginRight: '12px',
-                                  width: '20px',
-                                  height: '20px',
-                                  cursor: 'pointer'
-                                }}
+                                style={{ marginRight: '0.5rem' }}
                               />
                               {getContextLabel('right')}
                             </label>
@@ -1407,36 +1341,10 @@ class Volunteers extends Component {
                       const rightLabel = stationData?.right || 'Right';
                       
                       return (
-                        <div className="detail-item" key={field} style={{ 
-                          display: 'flex',
-                          flexDirection: 'column', 
-                          alignItems: 'flex-start', 
-                          marginBottom: '16px',
-                          padding: '16px',
-                          border: '2px solid #ddd',
-                          borderRadius: '12px',
-                          backgroundColor: '#fff',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                        }}>
-                          <span className="detail-label" style={{ 
-                            marginBottom: '12px', 
-                            fontWeight: 600,
-                            fontSize: '1.1rem',
-                            color: '#333'
-                          }}>{t.remarks || 'Remarks'}:</span>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-                            <label style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              cursor: 'pointer', 
-                              color: 'black',
-                              padding: '12px',
-                              border: formData[field] === leftLabel ? '2px solid #007bff' : '2px solid #e9ecef',
-                              borderRadius: '8px',
-                              backgroundColor: formData[field] === leftLabel ? '#e3f2fd' : '#fff',
-                              transition: 'all 0.3s ease',
-                              fontSize: '1rem'
-                            }}>
+                        <div className="detail-item" key={field} style={{ flexDirection: 'column', alignItems: 'flex-start', marginBottom: '16px' }}>
+                          <span className="detail-label" style={{ marginBottom: '0.5rem', fontWeight: 600 }}>{t.remarks || 'Remarks'}:</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
                               <input
                                 type="checkbox"
                                 checked={formData[field] === leftLabel}
@@ -1447,27 +1355,11 @@ class Volunteers extends Component {
                                     this.handleInputChange({ target: { value: '' } }, field);
                                   }
                                 }}
-                                style={{ 
-                                  marginRight: '12px',
-                                  width: '20px',
-                                  height: '20px',
-                                  cursor: 'pointer'
-                                }}
+                                style={{ marginRight: '0.5rem' }}
                               />
                               {leftLabel}
                             </label>
-                            <label style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              cursor: 'pointer', 
-                              color: 'black',
-                              padding: '12px',
-                              border: formData[field] === rightLabel ? '2px solid #007bff' : '2px solid #e9ecef',
-                              borderRadius: '8px',
-                              backgroundColor: formData[field] === rightLabel ? '#e3f2fd' : '#fff',
-                              transition: 'all 0.3s ease',
-                              fontSize: '1rem'
-                            }}>
+                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'black' }}>
                               <input
                                 type="checkbox"
                                 checked={formData[field] === rightLabel}
@@ -1478,12 +1370,7 @@ class Volunteers extends Component {
                                     this.handleInputChange({ target: { value: '' } }, field);
                                   }
                                 }}
-                                style={{ 
-                                  marginRight: '12px',
-                                  width: '20px',
-                                  height: '20px',
-                                  cursor: 'pointer'
-                                }}
+                                style={{ marginRight: '0.5rem' }}
                               />
                               {rightLabel}
                             </label>
@@ -1518,40 +1405,10 @@ class Volunteers extends Component {
                     }
 
                     return (
-                      <div className="detail-item" key={field} style={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'flex-start', 
-                        gap: 12, 
-                        marginBottom: '16px',
-                        padding: '16px',
-                        border: '2px solid #ddd',
-                        borderRadius: '12px',
-                        backgroundColor: '#fff',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                      }}>
-                        <div style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 12, 
-                          width: '100%',
-                          flexDirection: window.innerWidth <= 768 ? 'column' : 'row'
-                        }}>
-                          <span className="detail-label" style={{ 
-                            fontWeight: 600, 
-                            fontSize: '1.1rem',
-                            color: '#333',
-                            minWidth: window.innerWidth <= 768 ? 'auto' : '120px',
-                            textAlign: window.innerWidth <= 768 ? 'center' : 'left',
-                            width: window.innerWidth <= 768 ? '100%' : 'auto'
-                          }}>{t[field] || field}:</span>
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 8, 
-                            flex: 1,
-                            width: window.innerWidth <= 768 ? '100%' : 'auto'
-                          }}>
+                      <div className="detail-item" key={field} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                          <span className="detail-label" style={{ fontWeight: 600, minWidth: '80px' }}>{t[field] || field}:</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
                             {unit ? (
                               <input
                                 className="detail-value"
@@ -1562,29 +1419,9 @@ class Volunteers extends Component {
                                     : ''
                                 }
                                 onChange={e => this.handleInputChange(e, field, unit)}
+                                onBlur={e => this.handleInputBlur(e, field, unit)}
                                 placeholder={placeholder.replace(/\s*\([^)]*\)$/, '')}
-                                style={{ 
-                                  padding: '16px', 
-                                  borderRadius: '8px', 
-                                  border: '2px solid #e9ecef', 
-                                  flex: 1, 
-                                  fontSize: '1.1rem',
-                                  fontWeight: '500',
-                                  transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
-                                  outline: 'none',
-                                  width: '100%',
-                                  minHeight: '50px',
-                                  boxSizing: 'border-box'
-                                }}
-                                onFocus={(e) => {
-                                  e.target.style.borderColor = '#007bff';
-                                  e.target.style.boxShadow = '0 0 0 3px rgba(0, 123, 255, 0.1)';
-                                }}
-                                onBlur={(e) => {
-                                  e.target.style.borderColor = '#e9ecef';
-                                  e.target.style.boxShadow = 'none';
-                                  this.handleInputBlur(e, field, unit);
-                                }}
+                                style={{ padding: '0.75rem', borderRadius: 8, border: '2px solid #ddd', flex: 1, fontSize: '1rem' }}
                               />
                             ) : (
                               <input
@@ -1595,44 +1432,14 @@ class Volunteers extends Component {
                                   this.handleInputChange(e, field);
                                 }}
                                 placeholder={placeholder}
-                                style={{ 
-                                  padding: '16px', 
-                                  borderRadius: '8px', 
-                                  border: '2px solid #e9ecef', 
-                                  flex: 1, 
-                                  fontSize: '1.1rem',
-                                  fontWeight: '500',
-                                  transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
-                                  outline: 'none',
-                                  width: '100%',
-                                  minHeight: '50px',
-                                  boxSizing: 'border-box'
-                                }}
-                                onFocus={(e) => {
-                                  e.target.style.borderColor = '#007bff';
-                                  e.target.style.boxShadow = '0 0 0 3px rgba(0, 123, 255, 0.1)';
-                                }}
-                                onBlur={(e) => {
-                                  e.target.style.borderColor = '#e9ecef';
-                                  e.target.style.boxShadow = 'none';
-                                }}
+                                style={{ padding: '0.75rem', borderRadius: 8, border: '2px solid #ddd', flex: 1, fontSize: '1rem' }}
                               />
                             )}
                           </div>
                         </div>
                         {/* Show last value for this station/field if available */}
                         {lastValue && (
-                          <div style={{ 
-                            color: '#1976d2', 
-                            fontSize: '0.9em', 
-                            marginLeft: window.innerWidth <= 768 ? 0 : 8,
-                            textAlign: window.innerWidth <= 768 ? 'center' : 'left',
-                            width: '100%',
-                            padding: '8px',
-                            backgroundColor: '#e3f2fd',
-                            borderRadius: '6px',
-                            border: '1px solid #bbdefb'
-                          }}>
+                          <div style={{ color: '#1976d2', fontSize: '0.9em', marginLeft: 8 }}>
                             Last: {lastValue}
                           </div>
                         )}
@@ -1643,36 +1450,21 @@ class Volunteers extends Component {
                     style={{
                       marginTop: 24,
                       width: '100%',
-                      padding: '18px',
+                      padding: '1rem',
                       borderRadius: 12,
-                      background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+                      background: '#1976d2',
                       color: '#fff',
                       fontWeight: 700,
-                      fontSize: '1.3rem',
+                      fontSize: '1.2rem',
                       border: 'none',
                       cursor: 'pointer',
-                      boxShadow: '0 4px 15px rgba(25, 118, 210, 0.3)',
-                      transition: 'all 0.3s ease',
-                      minHeight: '60px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                     }}
                     onClick={() => {
                       this.onEnter()
                     }}
-                    onMouseOver={(e) => {
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 6px 20px rgba(25, 118, 210, 0.4)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.target.style.transform = 'translateY(0)';
-                      e.target.style.boxShadow = '0 4px 15px rgba(25, 118, 210, 0.3)';
-                    }}
                   >
-                    <span>✅</span>
-                    <span>{language === 'en' ? 'Submit Data' : '提交数据'}</span>
+                    {language === 'en' ? 'Enter' : '提交'}
                   </button>
                     </div>
                   );
@@ -1683,17 +1475,7 @@ class Volunteers extends Component {
         )}
         
         {/* Action Buttons */}
-        <div style={{ 
-          marginTop: '20px', 
-          textAlign: 'center', 
-          width: '100%', 
-          maxWidth: 600, 
-          display: 'flex', 
-          gap: '10px', 
-          justifyContent: 'center', 
-          flexWrap: 'wrap',
-          padding: '0 16px'
-        }}>
+        <div style={{ marginTop: '20px', textAlign: 'center', width: '100%', maxWidth: 600, display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
           {/* Done Button - Finish volunteer session */}
           <button 
             onClick={this.handleVolunteerDone}
@@ -1701,33 +1483,16 @@ class Volunteers extends Component {
               backgroundColor: '#28a745',
               color: 'white',
               border: 'none',
-              padding: '16px 24px',
-              borderRadius: '8px',
+              padding: '12px 24px',
+              borderRadius: '6px',
               cursor: 'pointer',
               fontSize: '16px',
               fontWeight: '600',
-              boxShadow: '0 2px 8px rgba(40, 167, 69, 0.3)',
-              transition: 'all 0.3s ease',
-              minWidth: '180px',
-              minHeight: '50px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              flex: window.innerWidth <= 768 ? '1 1 100%' : '0 1 auto'
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
             }}
             title="Finish volunteer session and return to home"
-            onMouseOver={(e) => {
-              e.target.style.backgroundColor = '#218838';
-              e.target.style.transform = 'translateY(-1px)';
-            }}
-            onMouseOut={(e) => {
-              e.target.style.backgroundColor = '#28a745';
-              e.target.style.transform = 'translateY(0)';
-            }}
           >
-            <span>✅</span>
-            <span>{language === 'en' ? 'Done - Finish Session' : '完成 - 结束会话'}</span>
+            ✅ {language === 'en' ? 'Done - Finish Session' : '完成 - 结束会话'}
           </button>
           
           {/* Clear Saved Data Button */}
@@ -1737,33 +1502,14 @@ class Volunteers extends Component {
               backgroundColor: '#dc3545',
               color: 'white',
               border: 'none',
-              padding: '12px 20px',
-              borderRadius: '6px',
+              padding: '8px 16px',
+              borderRadius: '4px',
               cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              boxShadow: '0 2px 6px rgba(220, 53, 69, 0.3)',
-              transition: 'all 0.3s ease',
-              minWidth: '140px',
-              minHeight: '44px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              flex: window.innerWidth <= 768 ? '1 1 100%' : '0 1 auto'
+              fontSize: '12px'
             }}
             title="Clear all saved volunteer form data from browser storage"
-            onMouseOver={(e) => {
-              e.target.style.backgroundColor = '#c82333';
-              e.target.style.transform = 'translateY(-1px)';
-            }}
-            onMouseOut={(e) => {
-              e.target.style.backgroundColor = '#dc3545';
-              e.target.style.transform = 'translateY(0)';
-            }}
           >
-            <span>🗑️</span>
-            <span>{language === 'en' ? 'Clear Saved Data' : '清除保存的数据'}</span>
+            🗑️ {language === 'en' ? 'Clear Saved Data' : '清除保存的数据'}
           </button>
         </div>
       </div>

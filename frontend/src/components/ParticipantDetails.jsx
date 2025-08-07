@@ -1,8 +1,76 @@
 import React, { Component } from 'react'
 import { translations } from '../utils/translations'
 import './Pages.css'
+import io from 'socket.io-client'
+
+const API_BASE_URL =
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:3001'
+    : 'https://ecss-fft.azurewebsites.net';
 
 class ParticipantDetails extends Component {
+  constructor(props) {
+    super(props)
+    this.state = {
+      liveHeight: props.participant?.height || '',
+      liveWeight: props.participant?.weight || '',
+      liveBMI: props.participant?.bmi || ''
+    }
+    this.socket = null
+  }
+
+  componentDidMount() {
+    // Initialize socket connection
+    this.socket = io(API_BASE_URL)
+    
+    this.socket.on('connect', () => {
+      console.log('🔌 Socket connected for ParticipantDetails')
+    })
+
+    // Listen for participant updates
+    this.socket.on('participant-updated', (data) => {
+      console.log('📊 Received participant update:', data)
+      
+      // Check if this update is for the current participant
+      if (data.participantID === this.props.participant?.id) {
+        const { participant } = data
+        
+        // Update live values if they exist in the update
+        if (participant) {
+          this.setState({
+            liveHeight: participant.height || this.state.liveHeight,
+            liveWeight: participant.weight || this.state.liveWeight,
+            liveBMI: participant.bmi || this.state.liveBMI
+          })
+          
+          console.log('✅ Updated live values:', {
+            height: participant.height,
+            weight: participant.weight, 
+            bmi: participant.bmi
+          })
+        }
+      }
+    })
+  }
+
+  componentDidUpdate(prevProps) {
+    // Update state if participant data changes
+    if (prevProps.participant !== this.props.participant) {
+      const { participant } = this.props
+      this.setState({
+        liveHeight: participant?.height || '',
+        liveWeight: participant?.weight || '',
+        liveBMI: participant?.bmi || ''
+      })
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.socket) {
+      this.socket.disconnect()
+    }
+  }
+
   hasValue = (value) => {
     return value && value.toString().trim() !== '' && value !== 'Pending' && value !== '-'
   }
@@ -1030,22 +1098,31 @@ class ParticipantDetails extends Component {
                 <span className="personal-info-value">{fallbackT[participant.gender.toLowerCase()] || participant.gender}</span>
               </div>
             )}
-            {this.hasValue(participant.height) && (
+            {/* Live Height Field */}
+            {(this.hasValue(participant.height) || this.state.liveHeight) && (
               <div className="personal-info-card">
                 <span className="personal-info-label">{fallbackT.height}</span>
-                <span className="personal-info-value">{participant.height}</span>
+                <span className="personal-info-value">
+                  {this.state.liveHeight || participant.height}
+                </span>
               </div>
             )}
-            {this.hasValue(participant.weight) && (
+            {/* Live Weight Field */}
+            {(this.hasValue(participant.weight) || this.state.liveWeight) && (
               <div className="personal-info-card">
                 <span className="personal-info-label">{fallbackT.weight}</span>
-                <span className="personal-info-value">{participant.weight}</span>
+                <span className="personal-info-value">
+                  {this.state.liveWeight || participant.weight}
+                </span>
               </div>
             )}
-            {this.hasValue(participant.bmi) && (
+            {/* Live BMI Field */}
+            {(this.hasValue(participant.bmi) || this.state.liveBMI) && (
               <div className="personal-info-card">
                 <span className="personal-info-label">{fallbackT.bmi}</span>
-                <span className="personal-info-value">{participant.bmi}</span>
+                <span className="personal-info-value">
+                  {this.state.liveBMI || participant.bmi}
+                </span>
               </div>
             )}
           </div>

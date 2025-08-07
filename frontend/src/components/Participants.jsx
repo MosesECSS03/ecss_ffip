@@ -1675,8 +1675,3 @@ const ParticipantsWrapper = (props) => {
 
 export default ParticipantsWrapper;
 
-/*
-Retrieve participants from backend (example: retrieve all, or retrieve a specific one by ID)
-    // this.retrieveParticipants() // For all participants
-    // this.retrieveParticipant('PARTICIPANT_ID_HERE') // For a specific participant by ID
-*/
