@@ -7,6 +7,7 @@ import HomePage from './components/HomePage'
 import Volunteers from './components/Volunteers'
 import Participants from './components/Participants'
 import MainTrainers from './components/MainTrainers'
+import dataManager, { DATA_KEYS } from './utils/dataManager'
 import './App.css'
 
 class App extends Component {
@@ -18,11 +19,22 @@ class App extends Component {
   }
 
   componentDidMount() {
-    // Check if language was already selected in localStorage
-    const savedLanguage = localStorage.getItem('selectedLanguage')
+    // Test data manager on app start
+    dataManager.test()
+    
+    // Check if language was already selected using new data manager
+    const savedLanguage = dataManager.load(DATA_KEYS.LANGUAGE_PREFERENCE)
     if (savedLanguage) {
       this.setState({ languageSelected: true })
+      console.log('🌐 Language already selected:', savedLanguage)
     }
+    
+    // Clean up expired data on app start
+    dataManager.cleanup()
+    
+    // Log storage info for debugging
+    const storageInfo = dataManager.getStorageInfo()
+    console.log('💾 Storage info:', storageInfo)
   }
 
   handleLanguageSelected = () => {

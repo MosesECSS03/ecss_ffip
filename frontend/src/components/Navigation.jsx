@@ -66,13 +66,12 @@ class NavigationClass extends React.Component {
             >
               {t.participants}
             </Link>
-            <a
-              href="/volunteers"
+            <Link
+              to="/volunteers"
               className={`nav-link ${location.pathname === '/volunteers' ? 'active' : ''}`}
-              onClick={e => this.handleProtectedNav('volunteers', e)}
             >
               {t.volunteers}
-            </a>
+            </Link>
             {language !== 'zh' && (
               <a
                 href="/trainers"

@@ -194,21 +194,49 @@ class Volunteers extends Component {
     }
   }
 
-  // Add method to clear saved state
+    // Add method to clear saved state
   clearSavedState = () => {
     localStorage.removeItem('volunteersAppState');
     console.log('🗑️ Volunteers saved state cleared from localStorage');
     this.setState({ 
-      dataStatusMessage: '🗑️ Saved data cleared successfully',
-      selectedStation: '',
-      formData: {},
-      qrValue: '',
-      qrScanned: false,
-      stations: []
+      dataStatusMessage: '🗑️ Saved data cleared successfully' 
     });
     setTimeout(() => {
       this.setState({ dataStatusMessage: '' });
     }, 2000);
+  }
+
+  // Handle volunteer session completion
+  handleVolunteerDone = () => {
+    const { language } = this.context;
+    
+    // Confirm with the volunteer
+    const confirmMessage = language === 'en' 
+      ? 'Are you sure you want to finish your volunteer session?' 
+      : '您确定要结束志愿者会话吗？';
+    
+    if (window.confirm(confirmMessage)) {
+      try {
+        // Clear all volunteer data
+        this.clearSavedState();
+        
+        // Show completion message
+        const completeMessage = language === 'en' 
+          ? 'Thank you for volunteering! Your session is complete.' 
+          : '感谢您的志愿服务！您的会话已完成。';
+        
+        alert(completeMessage);
+        
+        // Navigate back to home page
+        window.location.href = '/';
+      } catch (error) {
+        console.error('❌ Error finishing volunteer session:', error);
+        const errorMessage = language === 'en' 
+          ? 'Error finishing session. Please try again.' 
+          : '完成会话时出错。请重试。';
+        alert(errorMessage);
+      }
+    }
   }
 
   startQRScanner = () => {
@@ -623,7 +651,7 @@ class Volunteers extends Component {
         )}
         {selectedStation && qrScanned && (
           <div className="details-section">
-            {/* Show completed stations */}
+            {/* Show completed stations only if there are actually completed stations */}
             {this.state.stations.length > 0 && (
               <div style={{ marginBottom: 16, color: '#1976d2', fontWeight: 600 }}>
                 {language === 'en' ? 'Completed Stations:' : '已完成站点：'}
@@ -642,7 +670,7 @@ class Volunteers extends Component {
             <div style={{ textAlign: 'center', marginBottom: 12, color: '#388e3c', fontWeight: 600 }}>
               {/* Always show participant info section as heightWeight, even for manual entry */}
               {(() => {
-                const infoFields = ['name', 'age', 'gender', 'dateOfBirth', 'submittedAt', 'phoneNumber'];
+                const infoFields = ['name', 'age', 'gender', 'dateOfBirth', 'phoneNumber'];
                 return (
                   <>
                     {infoFields.map(field => {
@@ -660,6 +688,11 @@ class Volunteers extends Component {
                         } else {
                           value = JSON.stringify(value);
                         }
+                      }
+                      
+                      // Capitalize gender values (Male/Female instead of male/female)
+                      if (field === 'gender' && typeof value === 'string') {
+                        value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
                       }
                       
                       // Capitalize first letter of field label
@@ -868,8 +901,28 @@ class Volunteers extends Component {
           </div>
         )}
         
-        {/* Clear Saved Data Button */}
-        <div style={{ marginTop: '20px', textAlign: 'center', width: '100%', maxWidth: 600 }}>
+        {/* Action Buttons */}
+        <div style={{ marginTop: '20px', textAlign: 'center', width: '100%', maxWidth: 600, display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {/* Done Button - Finish volunteer session */}
+          <button 
+            onClick={this.handleVolunteerDone}
+            style={{
+              backgroundColor: '#28a745',
+              color: 'white',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '600',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}
+            title="Finish volunteer session and return to home"
+          >
+            ✅ {language === 'en' ? 'Done - Finish Session' : '完成 - 结束会话'}
+          </button>
+          
+          {/* Clear Saved Data Button */}
           <button 
             onClick={this.clearSavedState}
             style={{
@@ -883,7 +936,7 @@ class Volunteers extends Component {
             }}
             title="Clear all saved volunteer form data from browser storage"
           >
-            🗑️ Clear Saved Data
+            🗑️ {language === 'en' ? 'Clear Saved Data' : '清除保存的数据'}
           </button>
         </div>
       </div>
