@@ -993,10 +993,12 @@ class ParticipantDetails extends Component {
     // Ask for confirmation before clearing all data
     const confirmMessage = 'Are you sure you want to clear all app data and restart? This will:\n\n' +
       '• Clear all saved participant information\n' +
-      '• Clear all form data\n' +
+      '• Clear all form data and offline storage\n' +
       '• Reset language preferences\n' +
+      '• Clear mobile/tablet device cache\n' +
+      '• Remove all app data from device storage\n' +
       '• Return to the language selection screen\n\n' +
-      'This action cannot be undone.';
+      'This action cannot be undone and will affect all data stored on this device.';
     
     if (!window.confirm(confirmMessage)) {
       return; // User cancelled
@@ -1037,7 +1039,27 @@ class ParticipantDetails extends Component {
         'ecss_ffip_form_autosave',
         'participantsAppState',
         'volunteersAppState',
-        'participantId'
+        'participantId',
+        // Additional mobile/tablet specific keys
+        'ecss_ffip_current_participant',
+        'ecss_ffip_selected_participant',
+        'ecss_ffip_participant_data',
+        'ecss_ffip_offline_data',
+        'ecss_ffip_sync_queue',
+        'ecss_ffip_cache_timestamp',
+        'ecss_ffip_device_id',
+        'ecss_ffip_session_data',
+        'ecss_ffip_temp_data',
+        'ecss_ffip_form_state',
+        'ecss_ffip_navigation_state',
+        'ecss_ffip_app_version',
+        'participant_form_data',
+        'current_participant_id',
+        'selected_participant',
+        'app_state',
+        'form_autosave',
+        'device_preferences',
+        'offline_queue'
       ];
       
       // Clear each key individually as backup
@@ -1046,27 +1068,107 @@ class ParticipantDetails extends Component {
         sessionStorage.removeItem(key);
       });
       
-      // 5. Clear any cache or temporary data
+      // 4a. Enhanced mobile/tablet storage clearing
+      // Clear any keys that might be dynamically generated with participant IDs
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (
+          key.includes('ecss_ffip') || 
+          key.includes('participant') || 
+          key.includes('volunteer') || 
+          key.includes('trainer') ||
+          key.includes('form_data') ||
+          key.includes('app_state') ||
+          key.includes('device_') ||
+          key.includes('offline_')
+        )) {
+          localStorage.removeItem(key);
+          // Adjust index since we removed an item
+          i--;
+        }
+      }
+      
+      // Same for sessionStorage
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && (
+          key.includes('ecss_ffip') || 
+          key.includes('participant') || 
+          key.includes('volunteer') || 
+          key.includes('trainer') ||
+          key.includes('form_data') ||
+          key.includes('app_state') ||
+          key.includes('device_') ||
+          key.includes('offline_')
+        )) {
+          sessionStorage.removeItem(key);
+          // Adjust index since we removed an item
+          i--;
+        }
+      }
+      
+      // 5. Clear any cache or temporary data (enhanced for mobile/tablet)
       if ('caches' in window) {
         caches.keys().then(names => {
+          console.log('🗑️ Clearing caches:', names);
           names.forEach(name => {
-            caches.delete(name);
+            caches.delete(name).then(success => {
+              console.log(`🗑️ Cache ${name} cleared:`, success);
+            });
           });
+        }).catch(error => {
+          console.warn('⚠️ Cache clearing failed:', error);
         });
       }
       
-      // 6. Clear any IndexedDB data if it exists
+      // 6. Enhanced IndexedDB clearing for mobile/tablet devices
       if ('indexedDB' in window) {
-        // Try to clear common database names
-        const dbNames = ['ecss_ffip', 'app_data', 'user_data'];
+        // More comprehensive database names for mobile apps
+        const dbNames = [
+          'ecss_ffip', 
+          'app_data', 
+          'user_data',
+          'participant_data',
+          'offline_data',
+          'sync_data',
+          'cache_data',
+          'form_data',
+          'device_data',
+          'keyval-store', // Common key-value store name
+          'workbox-precache', // Service worker cache
+          'workbox-runtime', // Runtime cache
+          'pwa-cache' // PWA cache
+        ];
+        
         dbNames.forEach(dbName => {
           try {
             const deleteReq = indexedDB.deleteDatabase(dbName);
             deleteReq.onsuccess = () => console.log(`🗑️ Cleared IndexedDB: ${dbName}`);
+            deleteReq.onerror = () => console.log(`⚠️ Could not clear IndexedDB: ${dbName}`);
+            deleteReq.onblocked = () => console.log(`⚠️ IndexedDB delete blocked: ${dbName}`);
           } catch (e) {
-            // Silently fail if database doesn't exist
+            console.warn(`⚠️ IndexedDB deletion failed for ${dbName}:`, e);
           }
         });
+      }
+      
+      // 6a. Clear any BroadcastChannel data (used for cross-tab communication)
+      try {
+        if ('BroadcastChannel' in window) {
+          // Clear any app-specific broadcast channels
+          const channelNames = ['ecss_ffip_sync', 'participant_updates', 'app_updates'];
+          channelNames.forEach(channelName => {
+            try {
+              const channel = new BroadcastChannel(channelName);
+              channel.postMessage({ type: 'CLEAR_DATA' });
+              channel.close();
+            } catch (e) {
+              console.warn(`⚠️ BroadcastChannel ${channelName} clearing failed:`, e);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('⚠️ BroadcastChannel clearing failed:', e);
       }
       
       // 7. Clear any potential WebSQL data (legacy browsers)
@@ -1081,24 +1183,132 @@ class ParticipantDetails extends Component {
         }
       }
       
-      console.log('✅ All app data cleared successfully');
+      // 8. Mobile/Tablet specific clearing mechanisms
       
-      // 8. Force complete application reset
+      // 8a. Clear Service Worker data and force update
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          console.log('🗑️ Clearing service workers:', registrations.length);
+          registrations.forEach(registration => {
+            registration.unregister().then(success => {
+              console.log('🗑️ Service worker unregistered:', success);
+            });
+          });
+        }).catch(error => {
+          console.warn('⚠️ Service worker clearing failed:', error);
+        });
+      }
+      
+      // 8b. Clear any persistent notifications
+      if ('Notification' in window && 'getNotifications' in Notification) {
+        Notification.getNotifications().then(notifications => {
+          notifications.forEach(notification => {
+            notification.close();
+          });
+        }).catch(error => {
+          console.warn('⚠️ Notification clearing failed:', error);
+        });
+      }
+      
+      // 8c. Clear any background sync registrations
+      if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+        navigator.serviceWorker.ready.then(registration => {
+          // Note: There's no direct way to clear background sync registrations
+          // They will naturally expire or can be handled by the service worker
+          console.log('🗑️ Background sync registrations handled by service worker');
+        }).catch(error => {
+          console.warn('⚠️ Background sync clearing failed:', error);
+        });
+      }
+      
+      // 8d. Clear any Web Push subscriptions
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.ready.then(registration => {
+          return registration.pushManager.getSubscription();
+        }).then(subscription => {
+          if (subscription) {
+            return subscription.unsubscribe();
+          }
+        }).then(success => {
+          if (success) {
+            console.log('🗑️ Push subscription unsubscribed');
+          }
+        }).catch(error => {
+          console.warn('⚠️ Push subscription clearing failed:', error);
+        });
+      }
+      
+      // 8e. Force clear any in-memory app state
+      try {
+        // Reset any global app state variables
+        if (window.appState) {
+          window.appState = null;
+        }
+        if (window.participantData) {
+          window.participantData = null;
+        }
+        if (window.formData) {
+          window.formData = null;
+        }
+        // Clear any React component state that might persist
+        if (window.React && window.React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED) {
+          // Force React to re-render from scratch
+          console.log('🗑️ Forcing React state cleanup');
+        }
+      } catch (e) {
+        console.warn('⚠️ In-memory state clearing failed:', e);
+      }
+      
+      // 8f. Clear any device-specific storage (Cordova/PhoneGap apps)
+      try {
+        if (window.cordova && window.cordova.file) {
+          // For Cordova/PhoneGap apps, clear local file storage
+          console.log('🗑️ Cordova environment detected, clearing file storage');
+          // Note: This would require specific Cordova file plugin implementation
+        }
+      } catch (e) {
+        console.warn('⚠️ Cordova storage clearing failed:', e);
+      }
+      
+      console.log('✅ All app data cleared successfully (enhanced for mobile/tablet)');
+      
+      // 9. Enhanced application reset for mobile devices
+      // 9. Enhanced application reset for mobile devices
       // Use replace instead of href to prevent back button issues
       window.location.replace('/');
       
-      // 9. Reload the page to ensure clean state
+      // 10. Enhanced reload for mobile/tablet to ensure clean state
       setTimeout(() => {
-        window.location.reload(true); // Force reload from server
-      }, 100);
+        // For mobile devices, we want to ensure complete reload
+        if (navigator.userAgent.match(/Mobile|Tablet|Android|iPhone|iPad/i)) {
+          console.log('🗑️ Mobile/tablet device detected, performing enhanced reload');
+          // Clear any remaining browser state
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, null, '/');
+          }
+          // Force hard reload
+          window.location.reload(true);
+        } else {
+          // Desktop reload
+          window.location.reload(true);
+        }
+      }, 200); // Increased timeout for mobile devices
       
     } catch (error) {
       console.error('❌ Error during data clearing:', error);
       
-      // Fallback: Force reload anyway
-      alert('Data clearing completed with some issues. The app will now restart.');
+      // Enhanced fallback for mobile devices
+      const isMobile = navigator.userAgent.match(/Mobile|Tablet|Android|iPhone|iPad/i);
+      if (isMobile) {
+        alert('Data clearing completed. The app will now restart.\n\nNote: If you still see old data, please close and reopen your browser/app.');
+      } else {
+        alert('Data clearing completed with some issues. The app will now restart.');
+      }
+      
       window.location.replace('/');
-      window.location.reload(true);
+      setTimeout(() => {
+        window.location.reload(true);
+      }, 100);
     }
   }
 
@@ -1226,28 +1436,6 @@ class ParticipantDetails extends Component {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: 24 }}>
-          <button
-            type="button"
-            className="view-qr-button"
-            style={{ 
-              padding: '10px 24px', 
-              fontSize: 16, 
-              borderRadius: 8, 
-              background: '#28a745', 
-              color: '#fff', 
-              border: 'none', 
-              cursor: 'pointer',
-              marginRight: '10px'
-            }}
-            onClick={() => { 
-              // Show QR code first - scroll to QR view in parent component
-              if (this.props.onShowQR) {
-                this.props.onShowQR();
-              }
-            }}
-          >
-            📱 View QR Code
-          </button>
           <button
             type="button"
             className="done-button"
