@@ -55,7 +55,7 @@
       try {
         console.log('Retrieving data for participant:', participantId);
 
-        const response = await axios.post(`${API_BASE_URL}/participants/`, {
+        const response = await axios.post(`${API_BASE_URL}/participants`, {
           purpose: 'retrieveParticipant',
           participantId: participantId
         });
