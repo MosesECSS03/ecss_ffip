@@ -1135,7 +1135,7 @@ class Participants extends Component {
         height: formData.participantDetails.height,
         weight: formData.participantDetails.weight,
         submittedAt: new Date().toISOString(),
-        id: this.getCurrentParticipantId() || `fallback_${Date.now()}`
+        id: this.getCurrentParticipantId()
       };
       
       return (
@@ -1222,7 +1222,7 @@ class Participants extends Component {
         height: formData.participantDetails.height,
         weight: formData.participantDetails.weight,
         submittedAt: new Date().toISOString(),
-        id: this.getCurrentParticipantId() || `fallback_${Date.now()}`
+        id: this.getCurrentParticipantId()
       };
       
       return (
