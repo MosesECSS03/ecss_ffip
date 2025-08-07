@@ -29,7 +29,7 @@
     {
       await this.generateQR();
       const { participant } = this.props;
-      console.log('Participant data:', participant);
+      console.log('Participant data1234:', participant);
       const participantId = participant?.id;
       
       console.log('Component mounted with participant ID:', participantId);
