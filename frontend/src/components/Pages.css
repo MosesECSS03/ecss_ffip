@@ -2033,6 +2033,18 @@
   box-sizing: border-box;
 }
 
+/* Responsive design for mobile and tablet devices */
+@media (max-width: 1024px) {
+  .swipe-view-content {
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    margin: 0 auto;
+    max-width: 100%;
+    padding: 1.5rem;
+  }
+}
+
 /* Responsive design for inline SwipeView */
 @media (max-width: 768px) {
   .swipe-view-inline {
@@ -2044,6 +2056,18 @@
   .swipe-view-inline .swipe-view-content {
     min-height: 350px;
     padding: 15px 0;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    margin: 0 auto;
+  }
+  
+  .swipe-view-content {
+    padding: 1rem;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    margin: 0 auto;
   }
   
   .swipe-view-inline .close-button {
