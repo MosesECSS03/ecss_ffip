@@ -169,18 +169,37 @@ The app shows notifications for:
    - Form fields with data should have a light green border
    
 3. **Test persistence**:
-   - Click "🧪 Test Persistence" button to force save current data
    - **Refresh the page** (F5 or Cmd+R)
    - **Verify**: All your entered data should reappear in the form fields
    
-4. **Navigate away and back**:
+4. **Complete and submit the form**:
+   - Fill in all required fields
+   - Complete the health declaration
+   - Submit the form
+   
+5. **Test submitted state persistence**:
+   - **Refresh the page** after submission
+   - **Verify**: You should see your participant details (QR code view) instead of the form
+   - This confirms you've already submitted and don't need to fill the form again
+   
+6. **Navigate away and back**:
    - Go to another page (like /volunteers)
    - Come back to /participants
-   - **Verify**: Data should still be there
+   - **Verify**: 
+     - If you submitted: Shows your details/QR code
+     - If you haven't submitted: Shows the form with your saved data
    
-5. **Clear and restart**:
+7. **Clear and restart**:
    - Click "🗑️ Clear Saved Data" to reset
    - **Verify**: Form should be empty again
+
+### Smart View Logic
+The app automatically determines what to show based on your progress:
+
+- **Fresh User**: Shows empty registration form
+- **Partial Progress**: Shows form with your saved data to continue
+- **Already Submitted**: Shows your participant details and QR code (no need to fill form again)
+- **Want to Edit**: Click close on details view to return to editable form
 
 ### If Fields Don't Show Restored Data
 1. **Check browser console** (F12 → Console tab) for:

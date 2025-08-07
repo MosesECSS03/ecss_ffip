@@ -646,7 +646,13 @@ class Volunteers extends Component {
                 return (
                   <>
                     {infoFields.map(field => {
-                      let value = formData[field] || '-';
+                      let value = formData[field];
+                      
+                      // Skip fields that are empty or "-"
+                      if (!value || value === '-') {
+                        return null;
+                      }
+                      
                       // Fix: If value is an object (e.g., {date, time}), render as string
                       if (typeof value === 'object' && value !== null) {
                         if ('date' in value && 'time' in value) {
@@ -655,9 +661,14 @@ class Volunteers extends Component {
                           value = JSON.stringify(value);
                         }
                       }
+                      
+                      // Capitalize first letter of field label
+                      const fieldLabel = t[field] || field;
+                      const capitalizedLabel = fieldLabel.charAt(0).toUpperCase() + fieldLabel.slice(1);
+                      
                       return (
                         <div key={field}>
-                          {t[field] || field}: {value}
+                          {capitalizedLabel}: {value}
                         </div>
                       );
                     })}

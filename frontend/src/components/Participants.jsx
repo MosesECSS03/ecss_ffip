@@ -255,9 +255,25 @@ class Participants extends Component {
     try {
       console.log('🔌 Connecting to Socket.IO at:', API_BASE_URL);
       
+      // Mobile browser check
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      console.log('📱 Mobile device detected:', isMobile);
+      
       // Debug: Check what's in localStorage before loading
       const rawData = localStorage.getItem('participantsAppState');
       console.log('🔍 Raw localStorage data:', rawData);
+      console.log('🔍 localStorage length:', rawData ? rawData.length : 'null');
+      
+      // Test localStorage availability on mobile
+      try {
+        const testKey = 'mobile_test_' + Date.now();
+        localStorage.setItem(testKey, 'test');
+        const testValue = localStorage.getItem(testKey);
+        localStorage.removeItem(testKey);
+        console.log('✅ localStorage test successful:', testValue === 'test');
+      } catch (storageError) {
+        console.error('❌ localStorage test failed:', storageError);
+      }
       
       // Add beforeunload listener to save data when user leaves/refreshes
       window.addEventListener('beforeunload', this.handleBeforeUnload);
@@ -273,8 +289,41 @@ class Participants extends Component {
       
       if (loaded) {
         console.log('✅ Data loaded successfully');
+        
+        // Determine the appropriate initial view based on loaded data
+        console.log('🔍 Checking loaded state - hasSubmitted:', this.state.hasSubmitted, 'hasFormData:', this.hasFilledFormData());
+        
+        if (this.state.hasSubmitted && this.hasFilledFormData()) {
+          console.log('📱 User has submitted form, showing details view');
+          // User has submitted, don't show form by default
+          this.setState({ 
+            showForm: false,
+            isLoading: false,
+            dataStatusMessage: '✅ Welcome back! Your details are saved.' 
+          });
+        } else if (this.hasFilledFormData()) {
+          console.log('📱 User has form data but not submitted, showing form');
+          // User has partial data, show form to continue
+          this.setState({ 
+            showForm: true,
+            isLoading: false,
+            dataStatusMessage: '📝 Continue filling your form' 
+          });
+        } else {
+          console.log('📱 No relevant data, showing fresh form');
+          this.setState({ 
+            showForm: true,
+            isLoading: false 
+          });
+        }
+        
       } else {
         console.log('ℹ️ No data was loaded or data was expired');
+        // No saved data, show fresh form
+        this.setState({ 
+          showForm: true,
+          isLoading: false 
+        });
       }
       
       // --- SOCKET.IO ---
@@ -1131,6 +1180,17 @@ class Participants extends Component {
     const t = translations[language]
     const { formData, showForm, participants, showQRCode, qrCodeUrl, currentParticipantId, showTableQRCode, tableQRCodeUrl, tableQRParticipantId, showResults, selectedParticipantResults, showSwipeView, swipeParticipantData, submissionError, isInitializing, isLoading } = this.state
 
+    // Debug logging for render decisions
+    console.log('🔍 Render Decision Debug:', {
+      hasSubmitted: this.state.hasSubmitted,
+      hasFilledFormData: this.hasFilledFormData(),
+      showForm: showForm,
+      showSwipeView: showSwipeView,
+      swipeParticipantData: !!swipeParticipantData,
+      isInitializing: isInitializing,
+      isLoading: isLoading
+    });
+
     // Show loading during initialization or data loading to prevent flickering
     if (isInitializing || isLoading) {
       return (
@@ -1322,8 +1382,38 @@ class Participants extends Component {
       )
     }
 
-    // Priority 2: Show form if explicitly requested or if user has form data in progress
-    if (showForm || this.hasFilledFormData()) {
+    // Priority 2: If user has submitted form, show the swipe view automatically
+    if (this.state.hasSubmitted && this.hasFilledFormData()) {
+      // Create participant data from current form data for swipe view
+      const participantData = {
+        name: formData.participantDetails.participantName || 'Participant',
+        age: this.calculateAge(formData.participantDetails.dateOfBirth),
+        gender: formData.participantDetails.gender,
+        dateOfBirth: formData.participantDetails.dateOfBirth,
+        phoneNumber: formData.participantDetails.phoneNumber,
+        height: formData.participantDetails.height,
+        weight: formData.participantDetails.weight,
+        submittedAt: new Date().toISOString(),
+        id: this.getCurrentParticipantId() || Date.now().toString()
+      };
+      
+      return (
+        <SwipeView
+          participant={participantData}
+          language={language}
+          onClose={() => {
+            // Allow user to go back to form to edit
+            this.setState({ 
+              hasSubmitted: false,
+              showForm: true 
+            });
+          }}
+        />
+      )
+    }
+
+    // Priority 3: Show form if explicitly requested, if user has form data but not submitted
+    if (showForm || (this.hasFilledFormData() && !this.state.hasSubmitted)) {
       return (
         <div>
           {/* Data Status Notification */}
@@ -1385,7 +1475,37 @@ class Participants extends Component {
       )
     }
 
-    // Default: Show fresh form for new users
+    // Default: Check if user has submitted but we don't have swipe data yet
+    if (this.state.hasSubmitted && this.hasFilledFormData()) {
+      // Create participant data from current form data for swipe view
+      const participantData = {
+        name: formData.participantDetails.participantName || 'Participant',
+        age: this.calculateAge(formData.participantDetails.dateOfBirth),
+        gender: formData.participantDetails.gender,
+        dateOfBirth: formData.participantDetails.dateOfBirth,
+        phoneNumber: formData.participantDetails.phoneNumber,
+        height: formData.participantDetails.height,
+        weight: formData.participantDetails.weight,
+        submittedAt: new Date().toISOString(),
+        id: this.getCurrentParticipantId() || Date.now().toString()
+      };
+      
+      return (
+        <SwipeView
+          participant={participantData}
+          language={language}
+          onClose={() => {
+            // Allow user to go back to form to edit
+            this.setState({ 
+              hasSubmitted: false,
+              showForm: true 
+            });
+          }}
+        />
+      )
+    }
+
+    // Final default: Show fresh form for new users
     return (
       <div>
         {/* Data Status Notification */}
