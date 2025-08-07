@@ -33,7 +33,7 @@ import { io } from 'socket.io-client';
     console.log('Component mounted with participant ID:', participantId);
     
     // Generate QR code first and wait for it to complete
-    await this.generateQR();
+    await this.generateQR(participantId);
     
     // Use participantId for data retrieval here
     if (participantId) {
@@ -200,17 +200,8 @@ import { io } from 'socket.io-client';
     }
 
     // Generate QR code
-    generateQR = async () => {
+    generateQR = async (participantId) => {
       try {
-        const { participant } = this.props
-        console.log('Generating QR code for participant:', participant)
-        
-        if (!participant || !participant.id) {
-          console.error('No participant or participant ID found for QR generation')
-          return
-        }
-        
-        const participantId = participant.id
         console.log('QR Code will use ID:', participantId)
         const qrString = participantId
         
