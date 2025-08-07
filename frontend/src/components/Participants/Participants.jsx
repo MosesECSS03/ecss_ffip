@@ -210,7 +210,7 @@ class Participants extends Component {
           this.setState({ 
             showForm: false,
             showSwipeView: true,
-            swipeParticipantData: this.state.formData.participantDetails,
+            swipeParticipantData: participantData,
             isLoading: false,
             dataStatusMessage: '✅ Welcome back! Your details are saved.' 
           });

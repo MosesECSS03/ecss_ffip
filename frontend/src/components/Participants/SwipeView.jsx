@@ -28,15 +28,15 @@
       await this.generateQR();
       const { participant } = this.props;
       console.log('Participant data:', participant);
-     // const participantId = participant?.id;
+      const participantId = participant?.id;
       
-      //console.log('Component mounted with participant ID:', participantId);
+      console.log('Component mounted with participant ID:', participantId);
       
       // Use participantId for data retrieval here
-      //if (participantId) {
+      if (participantId) {
         // You can add your data retrieval logic here
-        //this.retrieveParticipantData(participantId);
-      //}
+        this.retrieveParticipantData(participantId);
+      }
       
       document.addEventListener('keydown', this.handleKeyDown)
       
