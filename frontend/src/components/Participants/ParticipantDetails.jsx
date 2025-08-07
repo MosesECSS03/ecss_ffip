@@ -1225,17 +1225,47 @@ class ParticipantDetails extends Component {
           <p className="swipe-instructions-text">{fallbackT.swipeInstructions}</p>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: 24 }}>
+          <button
+            type="button"
+            className="view-qr-button"
+            style={{ 
+              padding: '10px 24px', 
+              fontSize: 16, 
+              borderRadius: 8, 
+              background: '#28a745', 
+              color: '#fff', 
+              border: 'none', 
+              cursor: 'pointer',
+              marginRight: '10px'
+            }}
+            onClick={() => { 
+              // Show QR code first - scroll to QR view in parent component
+              if (this.props.onShowQR) {
+                this.props.onShowQR();
+              }
+            }}
+          >
+            📱 View QR Code
+          </button>
           <button
             type="button"
             className="done-button"
-            style={{ padding: '10px 32px', fontSize: 18, borderRadius: 8, background: '#1976d2', color: '#fff', border: 'none', cursor: 'pointer' }}
+            style={{ 
+              padding: '10px 32px', 
+              fontSize: 16, 
+              borderRadius: 8, 
+              background: '#dc3545', 
+              color: '#fff', 
+              border: 'none', 
+              cursor: 'pointer'
+            }}
             onClick={() => { 
-              // Comprehensive data clearing
+              // Comprehensive data clearing with confirmation
               this.clearAllAppData();
             }}
           >
-            Done
+            🗑️ Clear All & Exit
           </button>
         </div>
       </div>
