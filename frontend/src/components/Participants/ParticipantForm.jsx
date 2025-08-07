@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
-import { translations } from '../utils/translations'
-import './Pages.css'
+import { translations } from '../../utils/translations'
+import '../Pages.css'
 import axios from 'axios';
 
 const API_BASE_URL =

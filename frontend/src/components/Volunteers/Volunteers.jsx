@@ -747,31 +747,7 @@ class Volunteers extends Component {
               </div>
             )}
             
-            {/* Show error status when scanning fails */}
-            {!formData.name && !qrScanned && cameraError && (
-              <div style={{ 
-                textAlign: 'center', 
-                marginBottom: 16, 
-                padding: '16px', 
-                backgroundColor: '#fff3cd', 
-                border: '2px solid #ffc107',
-                borderRadius: '8px',
-                color: '#856404'
-              }}>
-                <h3 style={{ margin: '0 0 8px 0', color: '#ffc107' }}>
-                  ⚠️ {language === 'en' ? 'Scan Issue' : '扫描问题'}
-                </h3>
-                <div style={{ fontSize: '0.9em', marginBottom: '8px', color: '#856404' }}>
-                  {cameraError}
-                </div>
-                {this.scannerRetryCount < this.maxRetryAttempts && (
-                  <div style={{ fontSize: '0.8em', color: '#666', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                    <span>🔄</span>
-                    <span>{language === 'en' ? 'Auto-restarting scanner...' : '自动重启扫描器...'}</span>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Removed scan issue display - simplified UI */}
             
             {/* Camera status when no participant is loaded */}
             {!formData.name && !qrScanned && (

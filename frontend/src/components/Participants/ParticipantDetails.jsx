@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
-import { translations } from '../utils/translations'
-import './Pages.css'
+import { translations } from '../../utils/translations'
+import '../Pages.css'
 import io from 'socket.io-client'
 
 const API_BASE_URL =
