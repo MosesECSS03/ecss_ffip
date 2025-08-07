@@ -1,6 +1,6 @@
 /* HomePage Styles */
 .homepage {
-  min-height: 100vh;
+  height: 100vh;
   min-height: -webkit-fill-available;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
@@ -14,6 +14,7 @@
 
 .homepage-container {
   max-width: 1200px;
+  height: 100vh;
   width: 100%;
   text-align: center;
 }
