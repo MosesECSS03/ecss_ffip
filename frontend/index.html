@@ -20,53 +20,109 @@
     <title>ECSS FFT Test</title>
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      OneSignalDeferred.push(async function(OneSignal) {
-        try {
-          await OneSignal.init({
-            appId: "6eeef348-a40d-48a8-845e-8d604951d5f2",
-            allowLocalhostAsSecureOrigin: true,
-            notifyButton: {
-              enable: true,
-            },
-            promptOptions: {
-              slidedown: {
-                prompts: [
-                  { type: "push", autoPrompt: true }
-                ]
+      // Check if device is mobile or tablet
+      function isMobileOrTablet() {
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+        const isTablet = /(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(userAgent);
+        const smallScreen = window.innerWidth <= 1024;
+        return isMobile || isTablet || smallScreen;
+      }
+
+      // Only initialize OneSignal on desktop devices
+      if (!isMobileOrTablet()) {
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function(OneSignal) {
+          try {
+            await OneSignal.init({
+              appId: "6eeef348-a40d-48a8-845e-8d604951d5f2",
+              allowLocalhostAsSecureOrigin: true,
+              notifyButton: {
+                enable: true,
+              },
+              promptOptions: {
+                slidedown: {
+                  prompts: [
+                    { type: "push", autoPrompt: true }
+                  ]
+                }
+              }
+            });
+            console.log("OneSignal initialized successfully on desktop");
+
+            // Force the prompt if not already subscribed
+            const permission = await OneSignal.Notification.permission;
+            if (permission !== "granted") {
+              // Try optIn (for browsers that support it)
+              if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
+                await OneSignal.User.PushSubscription.optIn();
+              }
+              // Fallback: show slidedown prompt (works on most browsers, including Safari)
+              if (OneSignal.showSlidedownPrompt) {
+                OneSignal.showSlidedownPrompt();
               }
             }
-          });
-          console.log("OneSignal initialized successfully");
-
-          // Force the prompt if not already subscribed
-          const permission = await OneSignal.Notification.permission;
-          if (permission !== "granted") {
-            // Try optIn (for browsers that support it)
-            if (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optIn) {
-              await OneSignal.User.PushSubscription.optIn();
-            }
-            // Fallback: show slidedown prompt (works on most browsers, including Safari)
-            if (OneSignal.showSlidedownPrompt) {
-              OneSignal.showSlidedownPrompt();
-            }
+          } catch (error) {
+            console.error("OneSignal init error:", error);
           }
-        } catch (error) {
-          console.error("OneSignal init error:", error);
-        }
-        // Set tag for current path for notification filtering
-        const currentPath = window.location.pathname;
-        console.log('Setting OneSignal path tag:', currentPath);
-        await OneSignal.User.addTag('current_path', currentPath);
-        // Track path changes
-        const originalPushState = history.pushState;
-        history.pushState = function() {
-          originalPushState.apply(this, arguments);
-          const newPath = window.location.pathname;
-          console.log('Path changed, updating OneSignal tag:', newPath);
-          OneSignal.User.addTag('current_path', newPath);
-        };
-      });
+          // Set tag for current path for notification filtering
+          const currentPath = window.location.pathname;
+          console.log('Setting OneSignal path tag:', currentPath);
+          await OneSignal.User.addTag('current_path', currentPath);
+          // Track path changes
+          const originalPushState = history.pushState;
+          history.pushState = function() {
+            originalPushState.apply(this, arguments);
+            const newPath = window.location.pathname;
+            console.log('Path changed, updating OneSignal tag:', newPath);
+            OneSignal.User.addTag('current_path', newPath);
+          };
+        });
+      } else {
+        console.log("OneSignal disabled on mobile/tablet device");
+        // Completely disable OneSignal on mobile/tablet
+        window.OneSignal = undefined;
+        window.OneSignalDeferred = [];
+        
+        // Hide any OneSignal elements that might appear
+        document.addEventListener('DOMContentLoaded', function() {
+          const hideOneSignalElements = () => {
+            const selectors = [
+              '#onesignal-bell-launcher-button',
+              '.onesignal-bell-launcher',
+              '.onesignal-slidedown-container',
+              '.onesignal-popover-container',
+              '.onesignal-modal-container',
+              '[id*="onesignal"]',
+              '[class*="onesignal"]',
+              '[id*="OneSignal"]',
+              '[class*="OneSignal"]'
+            ];
+            
+            selectors.forEach(selector => {
+              const elements = document.querySelectorAll(selector);
+              elements.forEach(el => {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+                el.remove();
+              });
+            });
+          };
+          
+          // Hide immediately and also watch for new elements
+          hideOneSignalElements();
+          
+          // Use MutationObserver to catch any OneSignal elements that get added later
+          const observer = new MutationObserver(() => {
+            hideOneSignalElements();
+          });
+          
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true
+          });
+        });
+      }
     </script>
     
     <!-- Service Worker Registration for PWA -->

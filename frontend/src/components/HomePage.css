@@ -413,15 +413,38 @@
 
 /* ===== RESPONSIVE DESIGN ===== */
 
-/* Hide OneSignal bell on mobile and tablet */
+/* Hide OneSignal completely on mobile and tablet */
 @media (max-width: 1024px) {
+  /* Hide all OneSignal elements */
   #onesignal-bell-launcher-button,
   .onesignal-bell-launcher,
-  [id*="onesignal-bell"],
-  [class*="onesignal-bell"] {
+  .onesignal-slidedown-container,
+  .onesignal-popover-container,
+  .onesignal-modal-container,
+  .onesignal-notification-permission-container,
+  [id*="onesignal"],
+  [class*="onesignal"],
+  [id*="OneSignal"],
+  [class*="OneSignal"] {
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  /* Hide notification prompts */
+  .notification-permission-request,
+  .push-notification-prompt,
+  [role="dialog"][aria-label*="notification"],
+  [role="dialog"][aria-label*="push"] {
+    display: none !important;
+    visibility: hidden !important;
   }
 }
 
