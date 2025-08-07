@@ -28,13 +28,10 @@ import { io } from 'socket.io-client';
 
     componentDidMount = async () => {
     const { participant } = this.props;
-    console.log('Participant data1234:', participant);
     const participantId = participant?.id;
     
-    console.log('Component mounted with participant ID:', participantId);
-    
-    // Generate QR code first and wait for it to complete
-    await this.generateQR(participantId);
+    // Generate QR code in parallel (don't wait for it)
+    this.generateQR(participantId); // Remove await here
     
     // Use participantId for data retrieval here
     if (participantId) {
@@ -70,13 +67,7 @@ import { io } from 'socket.io-client';
         } catch (socketEventError) {
           console.error('❌ Error handling socket event:', socketEventError);
         }
-      });
-      
-      // Listen for survey-updated event
-      this.socket.on('survey-updated', (data) => {
-        console.log("Survey updated:", data);
-        // Handle survey updates if needed
-      });
+      })
     }
 
     componentWillUnmount() {
@@ -204,9 +195,21 @@ import { io } from 'socket.io-client';
     generateQR = async (participantId) => {
       try {
         console.log('🔄 Generating QR Code for participant ID:', participantId)
+        
+        // Check if participantId is valid
+        if (!participantId) {
+          console.error('❌ No participant ID provided for QR generation')
+          this.setState({ 
+            qrCodeUrl: '',
+            isGeneratingQR: false 
+          })
+          return
+        }
+        
         this.setState({ isGeneratingQR: true })
         
-        const qrString = participantId
+        const qrString = String(participantId) // Ensure it's a string
+        console.log('📝 QR String to encode:', qrString)
         
         const qrUrl = await QRCode.toDataURL(qrString, {
           width: 400,
@@ -217,12 +220,13 @@ import { io } from 'socket.io-client';
           }
         })
         
-        console.log('✅ QR code generated successfully')
+        console.log('✅ QR code generated successfully, length:', qrUrl.length)
         this.setState({ 
           qrCodeUrl: qrUrl,
           isGeneratingQR: false 
         }, () => {
-          console.log('📱 QR code state updated:', this.state.qrCodeUrl ? 'Success' : 'Failed')
+          console.log('📱 QR code state updated - URL exists:', !!this.state.qrCodeUrl)
+          console.log('📱 Is generating:', this.state.isGeneratingQR)
         })
       } catch (error) {
         console.error('❌ Error generating QR code:', error)
@@ -282,7 +286,15 @@ import { io } from 'socket.io-client';
       const participant = this.getCurrentParticipant()
       const hasStationData = this.hasStationData()
       const hasHeightWeight = this.hasHeightWeightData()
-      console.log("Participant Height Weight Data:", hasHeightWeight)
+      
+      // Debug logging
+      console.log('🎨 SwipeView render - Current state:', {
+        currentView,
+        hasQrCodeUrl: !!qrCodeUrl,
+        isGeneratingQR,
+        participantId: participant?.id
+      })
+      
       const { completed: completedStations } = this.getStationSummary()
       const t = translations[language || 'en']
 
@@ -438,36 +450,6 @@ import { io } from 'socket.io-client';
                       </div>
                     </div>
                   )}
-                  
-                  {/* Swipe hint for QR code */}
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '20px',
-                    margin: '20px 10px',
-                    backgroundColor: '#e8f5e8',
-                    borderRadius: '15px',
-                    border: '2px dashed #28a745'
-                  }}>
-                    <div style={{ fontSize: '24px', marginBottom: '10px' }}>📱</div>
-                    <p style={{ 
-                      color: '#28a745', 
-                      fontWeight: 'bold',
-                      margin: '0 0 5px 0',
-                      fontSize: '16px'
-                    }}>
-                      {language === 'en' ? 'QR Code Ready!' : '二维码已准备好！'}
-                    </p>
-                    <p style={{ 
-                      color: '#666', 
-                      fontSize: '14px',
-                      margin: '0'
-                    }}>
-                      {language === 'en' 
-                        ? '👈 Swipe left to view your QR code for the stations'
-                        : '👈 向左滑动查看您的测试站二维码'
-                      }
-                    </p>
-                  </div>
                   
                 </div>
               )}
