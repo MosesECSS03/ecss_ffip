@@ -1296,14 +1296,18 @@ class ParticipantDetails extends Component {
       localStorage.setItem('ecss_ffip_force_form_view', 'true');
       localStorage.setItem('ecss_ffip_last_cleared', Date.now().toString());
       
-      // 11. Use onClose to return to Participants with clean form
+      // 11. Use onClose to close swipe view, then redirect to home page
       if (this.props.onClose && typeof this.props.onClose === 'function') {
-        console.log('🔄 Using onClose to return to clean participants form...');
+        console.log('🔄 Using onClose to close swipe view, then redirecting to home...');
         this.props.onClose();
+        // Small delay to ensure onClose completes, then redirect to home
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
       } else {
-        console.log('⚠️ No onClose callback found, redirecting to language selection');
-        // Fallback: redirect to root for language selection → home → participants → form flow
-        window.location.replace("/");
+        console.log('⚠️ No onClose callback found, redirecting to home page directly');
+        // Fallback: redirect directly to home page
+        window.location.href = '/';
       }
       
     } catch (error) {
@@ -1327,11 +1331,15 @@ class ParticipantDetails extends Component {
       localStorage.setItem('ecss_ffip_last_cleared', Date.now().toString());
       
       if (this.props.onClose && typeof this.props.onClose === 'function') {
-        console.log('🔄 Error fallback: Using onClose to return to participants form...');
+        console.log('🔄 Error fallback: Using onClose to close swipe view, then redirecting to home...');
         this.props.onClose();
+        // Small delay to ensure onClose completes, then redirect to home
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
       } else {
-        console.log('🔄 Error fallback: Redirecting to language selection');
-        window.location.replace("/");
+        console.log('🔄 Error fallback: Redirecting to home page directly');
+        window.location.href = '/';
       }
     }
   }
