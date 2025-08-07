@@ -1277,16 +1277,10 @@ class ParticipantDetails extends Component {
       localStorage.removeItem('selectedLanguage');
       localStorage.removeItem('language');
       
-      // 10. Use onClose callback to return to participants form page
-      // This will ensure the user sees the form instead of going to home page
-      if (this.props.onClose && typeof this.props.onClose === 'function') {
-        console.log('🔄 Calling onClose to return to participants form...');
-        this.props.onClose();
-      } else {
-        console.log('⚠️ No onClose callback found, redirecting to language selection');
-        // Fallback: redirect to root for language selection → home → participants → form flow
-        window.location.replace("/");
-      }
+      // 10. Redirect to root to start the full navigation flow
+      // This forces: Language Selection → Home → Participants → Form
+      console.log('🔄 Redirecting to language selection to start fresh navigation flow');
+      window.location.replace("/");
       
     } catch (error) {
       console.error('❌ Error during data clearing:', error);
@@ -1304,15 +1298,9 @@ class ParticipantDetails extends Component {
       localStorage.removeItem('selectedLanguage');
       localStorage.removeItem('language');
       
-      // Use onClose callback to return to participants form page
-      if (this.props.onClose && typeof this.props.onClose === 'function') {
-        console.log('🔄 Calling onClose to return to participants form...');
-        this.props.onClose();
-      } else {
-        console.log('⚠️ No onClose callback found, redirecting to language selection');
-        // Fallback: redirect to root for language selection → home → participants → form flow
-        window.location.replace("/");
-      }
+      // Redirect to root for full navigation flow
+      console.log('🔄 Error fallback: Redirecting to language selection');
+      window.location.replace("/");
     }
   }
 
