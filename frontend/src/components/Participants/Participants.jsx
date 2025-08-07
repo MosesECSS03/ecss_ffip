@@ -204,7 +204,7 @@ class Participants extends Component {
             dateOfBirth: this.state.formData.participantDetails.dateOfBirth,
             phoneNumber: this.state.formData.participantDetails.phoneNumber,
             submittedAt: new Date().toISOString(),
-            _id: this.getCurrentParticipantId()
+            id: this.getCurrentParticipantId()
           };
           
           this.setState({ 
@@ -241,19 +241,6 @@ class Participants extends Component {
       
       // --- SOCKET.IO ---
       this.socket = io(API_BASE_URL);
-
-      // Add connection event listeners for debugging
-      this.socket.on('connect', () => {
-        console.log('✅ Socket connected to server with ID:', this.socket.id);
-      });
-
-      this.socket.on('disconnect', () => {
-        console.log('❌ Socket disconnected from server');
-      });
-
-      this.socket.on('connect_error', (error) => {
-        console.error('🚫 Socket connection error:', error);
-      });
 
       // Listen for participant updates and refresh data live
       this.socket.on('participant-updated', (data) => {
