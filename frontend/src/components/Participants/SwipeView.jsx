@@ -1,10 +1,10 @@
-  import React, { Component } from 'react'
-  import QRCode from 'qrcode'
-  import axios from 'axios'
-  import ParticipantDetails from './ParticipantDetails'
-  import { translations } from '../../utils/translations'
-  import '../Pages.css'
-  import { io } from 'socket.io-client'
+import React, { Component } from 'react';
+import QRCode from 'qrcode';
+import axios from 'axios';
+import ParticipantDetails from './ParticipantDetails';
+import { translations } from '../../utils/translations';
+import '../Pages.css';
+import { io } from 'socket.io-client';
 
 
   const API_BASE_URL =
@@ -25,24 +25,23 @@
       }
     }
 
-    componentDidMount = async () =>
-    {
-      const { participant } = this.props;
-      console.log('Participant data1234:', participant);
-      const participantId = participant?.id;
-      
-      console.log('Component mounted with participant ID:', participantId);
-      
-      // Generate QR code first and wait for it to complete
-      await this.generateQR();
-      
-      // Use participantId for data retrieval here
-      if (participantId) {
-        // You can add your data retrieval logic here
-        this.retrieveParticipantData(participantId);
-      }
-      
-      document.addEventListener('keydown', this.handleKeyDown)
+    componentDidMount = async () => {
+    const { participant } = this.props;
+    console.log('Participant data1234:', participant);
+    const participantId = participant?.id;
+    
+    console.log('Component mounted with participant ID:', participantId);
+    
+    // Generate QR code first and wait for it to complete
+    await this.generateQR();
+    
+    // Use participantId for data retrieval here
+    if (participantId) {
+      // You can add your data retrieval logic here
+      this.retrieveParticipantData(participantId);
+    }
+    
+    document.addEventListener('keydown', this.handleKeyDown);
       
       // --- SOCKET.IO ---
       this.socket = io(API_BASE_URL);
@@ -73,6 +72,10 @@
       });
       
       // Listen for survey-updated event
+      this.socket.on('survey-updated', (data) => {
+        console.log("Survey updated:", data);
+        // Handle survey updates if needed
+      });
     }
 
     componentWillUnmount() {
