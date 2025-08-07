@@ -1073,7 +1073,12 @@ class ParticipantDetails extends Component {
             type="button"
             className="done-button"
             style={{ padding: '10px 32px', fontSize: 18, borderRadius: 8, background: '#1976d2', color: '#fff', border: 'none', cursor: 'pointer' }}
-            onClick={() => { localStorage.clear(); }}
+            onClick={() => { 
+              localStorage.clear(); 
+              if (onClose) {
+                onClose();
+              }
+            }}
           >
             Done
           </button>

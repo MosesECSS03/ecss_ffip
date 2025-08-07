@@ -50,7 +50,7 @@ class Participants extends Component {
           }
         }
       },
-      showForm: true,
+      showForm: false, // Start with false to prevent flickering
       hasSubmitted: false,
       participants: [],
       qrCodeUrl: '',
@@ -66,7 +66,8 @@ class Participants extends Component {
       submissionError: null,
       dataStatusMessage: '', // For showing save/load notifications
       isGeneratingQR: false, // Loading state for QR generation
-      qrGenerationError: null // Error state for QR generation
+      qrGenerationError: null, // Error state for QR generation
+      isInitializing: true // Add initialization state
     }
     this.socket = null;
   }
@@ -272,15 +273,20 @@ class Participants extends Component {
         this.setState({
           showForm: true,
           hasSubmitted: false,
-          showSwipeView: false
+          showSwipeView: false,
+          isInitializing: false
         });
       }
+      
+      // Complete initialization
+      this.setState({ isInitializing: false });
       
     } catch (mountError) {
       console.error('❌ Error in componentDidMount:', mountError);
       // Set error state to show user-friendly message
       this.setState({ 
-        submissionError: 'Failed to initialize connection. Please refresh the page.' 
+        submissionError: 'Failed to initialize connection. Please refresh the page.',
+        isInitializing: false
       });
     }
   }
@@ -332,7 +338,8 @@ class Participants extends Component {
             hasSubmitted: true,
             showSwipeView: true,
             swipeParticipantData: response.data.data,
-            submissionError: null
+            submissionError: null,
+            isInitializing: false
           }, () => {
             // Immediately save state after successful participant retrieval
             this.immediateSave();
@@ -364,7 +371,8 @@ class Participants extends Component {
         hasSubmitted: false,
         showSwipeView: false,
         swipeParticipantData: null,
-        submissionError: null
+        submissionError: null,
+        isInitializing: false
       });
     } else {
       console.log('📝 No form data or participant found, showing fresh form');
@@ -374,7 +382,8 @@ class Participants extends Component {
         hasSubmitted: false,
         showSwipeView: false,
         swipeParticipantData: null,
-        submissionError: null
+        submissionError: null,
+        isInitializing: false
       });
     }
     
@@ -922,10 +931,17 @@ class Participants extends Component {
 
   // Add missing close swipe view method
   closeSwipeView = () => {
+    // Clear all participant data and navigation state
     this.setState({
       showSwipeView: false,
-      swipeParticipantData: null
+      swipeParticipantData: null,
+      showForm: true,
+      hasSubmitted: false,
+      participants: []
     });
+    
+    // Navigate back to HomePage
+    window.location.href = '/';
   }
 
   // Generate QR code for table participant - Optimized for performance
@@ -1006,7 +1022,18 @@ class Participants extends Component {
   render() {
     const { language } = this.props
     const t = translations[language]
-    const { formData, showForm, participants, showQRCode, qrCodeUrl, currentParticipantId, showTableQRCode, tableQRCodeUrl, tableQRParticipantId, showResults, selectedParticipantResults, showSwipeView, swipeParticipantData, submissionError } = this.state
+    const { formData, showForm, participants, showQRCode, qrCodeUrl, currentParticipantId, showTableQRCode, tableQRCodeUrl, tableQRParticipantId, showResults, selectedParticipantResults, showSwipeView, swipeParticipantData, submissionError, isInitializing } = this.state
+
+    // Show loading during initialization to prevent flickering
+    if (isInitializing) {
+      return (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <h2>Loading...</h2>
+          <div style={{ fontSize: '48px', margin: '20px 0', animation: 'spin 2s linear infinite' }}>🔄</div>
+          <p>Initializing application...</p>
+        </div>
+      )
+    }
 
     // Show QR Code modal for table participant
     if (showTableQRCode && tableQRCodeUrl) {
@@ -1177,58 +1204,7 @@ class Participants extends Component {
       )
     }
 
-    if (showForm) {
-      return (
-        <div>
-          {/* Data Status Notification */}
-          {this.state.dataStatusMessage && (
-            <div style={{
-              position: 'fixed',
-              top: '20px',
-              right: '20px',
-              backgroundColor: '#007bff',
-              color: 'white',
-              padding: '10px 15px',
-              borderRadius: '5px',
-              zIndex: 1000,
-              fontSize: '14px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-            }}>
-              {this.state.dataStatusMessage}
-            </div>
-          )}
-          
-          <ParticipantForm
-            formData={formData}
-            language={language}
-            onInputChange={this.handleInputChange}
-            onSubmit={this.handleSubmit}
-            submissionError={submissionError}
-          />
-          
-          {/* Clear Saved Data Button */}
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            <button 
-              onClick={this.clearSavedState}
-              style={{
-                backgroundColor: '#dc3545',
-                color: 'white',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px'
-              }}
-              title="Clear all saved form data from browser storage"
-            >
-              🗑️ Clear Saved Data
-            </button>
-          </div>
-        </div>
-      )
-    }
-
-    // Show swipe view if enabled or if there are participants and not showing form
+    // Priority 1: Show swipe view if participant has completed registration
     if (showSwipeView && swipeParticipantData) {
       return (
         <SwipeView
@@ -1239,8 +1215,8 @@ class Participants extends Component {
       )
     }
 
-    // If no participants and not showing form, show form by default
-    if (participants.length === 0 && !showForm) {
+    // Priority 2: Show form if explicitly requested or if user has form data in progress
+    if (showForm || this.hasFilledFormData()) {
       return (
         <div>
           {/* Data Status Notification */}
@@ -1291,10 +1267,63 @@ class Participants extends Component {
       )
     }
 
+    // Priority 3: Show loading state while checking for existing participant
+    if (this.isUpdatingParticipants) {
+      return (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <h2>Loading...</h2>
+          <div style={{ fontSize: '48px', margin: '20px 0', animation: 'spin 2s linear infinite' }}>🔄</div>
+          <p>Checking for existing registration...</p>
+        </div>
+      )
+    }
+
+    // Default: Show fresh form for new users
     return (
-      <div className="page-container senior-friendly-page">
-        <div className="senior-results-wrapper">
-          <h1 className="senior-title">{t.participantsTitle}</h1>
+      <div>
+        {/* Data Status Notification */}
+        {this.state.dataStatusMessage && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            padding: '10px 15px',
+            borderRadius: '5px',
+            zIndex: 1000,
+            fontSize: '14px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+          }}>
+            {this.state.dataStatusMessage}
+          </div>
+        )}
+        
+        <ParticipantForm
+          formData={formData}
+          language={language}
+          onInputChange={this.handleInputChange}
+          onSubmit={this.handleSubmit}
+          submissionError={submissionError}
+        />
+        
+        {/* Clear Saved Data Button */}
+        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          <button 
+            onClick={this.clearSavedState}
+            style={{
+              backgroundColor: '#dc3545',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+            title="Clear all saved form data from browser storage"
+          >
+            🗑️ Clear Saved Data
+          </button>
         </div>
       </div>
     )
