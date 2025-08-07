@@ -135,7 +135,7 @@ class QRCodeModal extends Component {
         })
         
         setTimeout(() => {
-          this.setState({ statusMessage: '' })
+          this.setState({ statusMessage: '' }) //ok
         }, 3000)
         
       } catch (fallbackError) {
