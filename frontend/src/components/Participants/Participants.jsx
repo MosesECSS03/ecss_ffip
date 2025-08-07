@@ -197,15 +197,7 @@ class Participants extends Component {
         // Determine the appropriate initial view based on loaded data
         if (this.state.hasSubmitted && this.hasFilledFormData()) {
           // User has submitted, show swipe view with their data
-          const participantData = {
-            name: this.state.formData.participantDetails.participantName || 'Participant',
-            age: this.calculateAge(this.state.formData.participantDetails.dateOfBirth),
-            gender: this.state.formData.participantDetails.gender,
-            dateOfBirth: this.state.formData.participantDetails.dateOfBirth,
-            phoneNumber: this.state.formData.participantDetails.phoneNumber,
-            submittedAt: new Date().toISOString(),
-            id: this.getCurrentParticipantId()
-          };
+          const participantData = this.state.formData.participantDetails
           
           this.setState({ 
             showForm: false,
