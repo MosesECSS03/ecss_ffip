@@ -45,6 +45,7 @@ router.post('/', async (req, res) =>
     else if(req.body.purpose === 'retrieveParticipant') 
     {   
       var participantID = req.body.participantID;
+      console.log('🔍 Retrieving participant with ID:', participantID);
 
       var controller = new ParticipantsController();
       const result = await controller.getParticipant(participantID);

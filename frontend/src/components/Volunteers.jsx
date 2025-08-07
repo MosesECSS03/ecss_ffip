@@ -456,6 +456,15 @@ class Volunteers extends Component {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased timeout for multi-device scenarios
             
+            // 🔍 ENHANCED REQUEST LOGGING FOR SPECIFIC QR CODE
+            console.log(`🚀 STARTING REQUEST FOR QR: ${result.data}`);
+            console.log(`🚀 Backend URL: ${API_BASE_URL}/participants`);
+            console.log(`🚀 Request payload:`, {
+              "purpose": "retrieveParticipant",
+              "participantID": result.data
+            });
+            console.log(`🚀 Scan ID: ${scanId}`);
+            
             const response = await axios.post(`${API_BASE_URL}/participants`, {
               "purpose": "retrieveParticipant",
               "participantID": result.data
@@ -472,7 +481,19 @@ class Volunteers extends Component {
             });
             
             clearTimeout(timeoutId);
+            
+            // 🔍 COMPREHENSIVE RESPONSE LOGGING
             console.log(`✅ QR Scan completed [${scanId}]:`, response.data?.success ? 'Success' : 'Failed');
+            console.log(`📦 FULL RESPONSE for QR ${result.data}:`, response);
+            console.log(`📦 Response status:`, response.status);
+            console.log(`📦 Response headers:`, response.headers);
+            console.log(`📦 Response data:`, JSON.stringify(response.data, null, 2));
+            
+            if (response.data) {
+              console.log(`📋 response.data.success:`, response.data.success);
+              console.log(`📋 response.data.data exists:`, !!response.data.data);
+              console.log(`📋 response.data.message:`, response.data.message);
+            }
             
             if (response.data && response.data.success && response.data.data) {
               console.log(`📋 Participant data retrieved for scan [${scanId}]:`, response.data.data);
@@ -535,7 +556,17 @@ class Volunteers extends Component {
               });
             }
           } catch (err) {
-            console.error(`❌ QR Scan error [${scanId}]:`, err.message);
+            // 🔍 COMPREHENSIVE ERROR LOGGING FOR QR SCAN
+            console.error(`❌ QR Scan error [${scanId}] for QR: ${result.data}:`, err);
+            console.error(`❌ Error details:`, {
+              message: err.message,
+              name: err.name,
+              code: err.code,
+              status: err.response?.status,
+              statusText: err.response?.statusText,
+              responseData: err.response?.data,
+              stack: err.stack
+            });
             
             // Enhanced error handling for multi-device scenarios
             let errorMessage = 'Network or server error';
@@ -543,8 +574,10 @@ class Volunteers extends Component {
             
             if (err.name === 'AbortError') {
               errorMessage = language === 'en' ? 'Request timeout - check connection' : '请求超时 - 检查连接';
+              console.error(`⏰ Request timed out for QR: ${result.data}`);
             } else if (err.code === 'ERR_NETWORK') {
               errorMessage = language === 'en' ? 'Network connection failed' : '网络连接失败';
+              console.error(`🌐 Network error for QR: ${result.data}`);
             } else if (err.response?.status === 409) {
               // Handle concurrent request conflicts
               errorMessage = language === 'en' ? 'Participant being processed by another device' : '参与者正在被其他设备处理';

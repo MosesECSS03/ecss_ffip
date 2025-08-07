@@ -467,11 +467,26 @@ class Participants extends Component {
           signal: controller.signal,
           timeout: 15000
         });
+        console.log(`🔄 Retrieving participant with ${participantId}:`, participantId);
 
         clearTimeout(timeoutId);
         console.log('🔄 Retrieved participant from backend:', response.data);
         console.log('🔍 Full participant object structure:', response.data.data);
         console.log('🔍 Participant keys:', Object.keys(response.data.data || {}));
+        
+        // 🔍 COMPREHENSIVE KEY-VALUE LOGGING - Show EVERYTHING from backend
+        console.log('🌟 ============ ALL BACKEND DATA ============');
+        console.log('🌟 Complete response.data structure:', JSON.stringify(response.data, null, 2));
+        
+        if (response.data.data) {
+          console.log('🌟 ============ ALL PARTICIPANT FIELDS ============');
+          Object.keys(response.data.data).forEach(key => {
+            const value = response.data.data[key];
+            console.log(`🌟 ${key}:`, value, `(type: ${typeof value})`);
+          });
+          console.log('🌟 ============================================');
+        }
+        
         console.log('🔍 Height value:', response.data.data?.height);
         console.log('🔍 Weight value:', response.data.data?.weight);
         console.log('🔍 BMI value:', response.data.data?.bmi);
