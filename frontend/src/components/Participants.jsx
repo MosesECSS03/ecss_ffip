@@ -24,10 +24,22 @@ class Participants extends Component {
       formData: {
         participantDetails: {
           participantName: '',
+          phoneNumber: '',
           participantNric: '',
           gender: '',
           dateOfBirth: '',
-          phoneNumber: ''
+          nationality: '',
+          email: '',
+          homeAddress: '',
+          relationshipStatus: '',
+          children: '',
+          profession: '',
+          educationLevel: '',
+          ethnicGroup: '',
+          religion: '',
+          stateOfOrigin: '',
+          experienceWithIT: '',
+          comfortWithTechnology: ''
         },
         healthDeclaration: {
           questions: {
@@ -60,18 +72,25 @@ class Participants extends Component {
   }
   
   // Add method to save state to localStorage
-  saveStateToLocalStorage = () => {
+  saveStateToLocalStorage = (isRetry = false) => {
     try {
       const stateToSave = {
         participants: this.state.participants,
-        selectedLanguage: this.state.selectedLanguage,
-        currentStep: this.state.currentStep,
         formData: this.state.formData,
-        currentParticipantIndex: this.state.currentParticipantIndex,
+        hasSubmitted: this.state.hasSubmitted,
+        showForm: this.state.showForm,
+        showSwipeView: this.state.showSwipeView,
+        swipeParticipantData: this.state.swipeParticipantData,
         lastUpdated: Date.now()
       };
+      
+      // Test if localStorage is available and has space
+      const testKey = 'test_storage_' + Date.now();
+      localStorage.setItem(testKey, 'test');
+      localStorage.removeItem(testKey);
+      
       localStorage.setItem('participantsAppState', JSON.stringify(stateToSave));
-      console.log('💾 State saved to localStorage');
+      console.log('💾 State saved to localStorage:', stateToSave);
       
       // Show brief notification
       this.setState({ dataStatusMessage: '💾 Data saved' });
@@ -80,6 +99,16 @@ class Participants extends Component {
       }, 2000);
     } catch (error) {
       console.error('❌ Error saving state to localStorage:', error);
+      
+      // If this is not a retry and we get a storage error, try to recover
+      if (!isRetry && (error.name === 'QuotaExceededError' || error.message.includes('quota'))) {
+        console.log('🔄 Storage quota exceeded, attempting cleanup and retry...');
+        this.cleanUpLocalStorage();
+        // Try one more time after cleanup
+        this.saveStateToLocalStorage(true);
+        return;
+      }
+      
       this.setState({ dataStatusMessage: '❌ Failed to save data' });
       setTimeout(() => {
         this.setState({ dataStatusMessage: '' });
@@ -99,15 +128,34 @@ class Participants extends Component {
         const age = Date.now() - (parsedState.lastUpdated || 0);
         
         if (age < maxAge) {
-          this.setState({
+          // Merge saved state with current state, being careful about structure
+          const newState = {
             participants: parsedState.participants || [],
-            selectedLanguage: parsedState.selectedLanguage || 'english',
-            currentStep: parsedState.currentStep || 1,
-            formData: parsedState.formData || {},
-            currentParticipantIndex: parsedState.currentParticipantIndex || 0,
+            formData: {
+              ...this.state.formData,
+              ...parsedState.formData,
+              participantDetails: {
+                ...this.state.formData.participantDetails,
+                ...(parsedState.formData?.participantDetails || {})
+              },
+              healthDeclaration: {
+                ...this.state.formData.healthDeclaration,
+                ...(parsedState.formData?.healthDeclaration || {}),
+                questions: {
+                  ...this.state.formData.healthDeclaration.questions,
+                  ...(parsedState.formData?.healthDeclaration?.questions || {})
+                }
+              }
+            },
+            hasSubmitted: parsedState.hasSubmitted || false,
+            showForm: parsedState.showForm !== undefined ? parsedState.showForm : true,
+            showSwipeView: parsedState.showSwipeView || false,
+            swipeParticipantData: parsedState.swipeParticipantData || null,
             dataStatusMessage: '🔄 Data restored from previous session'
-          });
-          console.log('🔄 State restored from localStorage');
+          };
+          
+          this.setState(newState);
+          console.log('🔄 State restored from localStorage:', newState);
           
           // Clear the notification after 3 seconds
           setTimeout(() => {
@@ -117,15 +165,32 @@ class Participants extends Component {
           console.log('⏰ Saved state is too old, starting fresh');
           localStorage.removeItem('participantsAppState');
         }
+      } else {
+        console.log('📝 No saved state found, starting fresh');
       }
     } catch (error) {
       console.error('❌ Error loading state from localStorage:', error);
-      // If there's an error, clear the corrupted data
-      localStorage.removeItem('participantsAppState');
-      this.setState({ dataStatusMessage: '❌ Failed to restore previous data' });
-      setTimeout(() => {
-        this.setState({ dataStatusMessage: '' });
-      }, 3000);
+      
+      // If there's a parsing error or corruption, attempt recovery
+      if (error instanceof SyntaxError || error.message.includes('JSON')) {
+        console.log('🔄 Detected corrupted data, attempting recovery...');
+        const recovered = this.recoverFromStorageError();
+        if (!recovered) {
+          // If recovery fails, just clear the corrupted data
+          localStorage.removeItem('participantsAppState');
+          this.setState({ dataStatusMessage: '❌ Failed to restore previous data' });
+          setTimeout(() => {
+            this.setState({ dataStatusMessage: '' });
+          }, 3000);
+        }
+      } else {
+        // For other errors, just clear and notify
+        localStorage.removeItem('participantsAppState');
+        this.setState({ dataStatusMessage: '❌ Failed to restore previous data' });
+        setTimeout(() => {
+          this.setState({ dataStatusMessage: '' });
+        }, 3000);
+      }
     }
   }
 
@@ -145,7 +210,7 @@ class Participants extends Component {
     try {
       console.log('🔌 Connecting to Socket.IO at:', API_BASE_URL);
       
-      // Load saved state first
+      // Load saved state first - this will restore form data if it exists
       this.loadStateFromLocalStorage();
       
       // --- SOCKET.IO ---
@@ -175,22 +240,41 @@ class Participants extends Component {
           console.log("Current participant ID:", currentParticipantId);
           console.log("Event participant ID:", data.participantID);
           
-          // Update regardless, but log if it's for the current participant
+          // Update only if it matches current participant and user doesn't have form data
           if (currentParticipantId === data.participantID) {
-            console.log("✅ Event matches current participant - updating UI");
+            console.log("✅ Event matches current participant");
+            
+            // Don't override form data if user is currently filling it
+            if (!this.hasFilledFormData()) {
+              console.log("🔄 No form data, updating from socket event");
+              this.handleParticipantUpdate();
+            } else {
+              console.log("📝 User has form data, not updating from socket event");
+            }
           } else {
-            console.log("ℹ️ Event for different participant, but updating anyway");
+            console.log("ℹ️ Event for different participant, ignoring update");
           }
-          
-          // Call handleParticipantUpdate - this will refresh the data from backend
-          this.handleParticipantUpdate();
         } catch (socketEventError) {
           console.error('❌ Error handling socket event:', socketEventError);
         }
       });
 
-      // Initial load of participant data
-      await this.handleParticipantUpdate();
+      // Only check for existing participant if user hasn't filled out form data
+      const hasFormData = this.hasFilledFormData();
+      console.log('📝 Has form data filled:', hasFormData);
+      
+      if (!hasFormData) {
+        // Only attempt to load participant data if no form data exists
+        await this.handleParticipantUpdate();
+      } else {
+        console.log('📝 Form data exists, keeping form visible for completion');
+        // Ensure form stays visible with the saved data
+        this.setState({
+          showForm: true,
+          hasSubmitted: false,
+          showSwipeView: false
+        });
+      }
       
     } catch (mountError) {
       console.error('❌ Error in componentDidMount:', mountError);
@@ -241,6 +325,7 @@ class Participants extends Component {
         console.log('🔄 Retrieved participant from backend:', response.data);
 
         if (response.data && response.data.success && response.data.data) {
+          // User has successfully submitted before, show swipe view
           this.setState({
             participants: [response.data.data],
             showForm: false,
@@ -249,41 +334,71 @@ class Participants extends Component {
             swipeParticipantData: response.data.data,
             submissionError: null
           }, () => {
-            // Save state after successful participant update
-            this.saveStateToLocalStorage();
+            // Immediately save state after successful participant retrieval
+            this.immediateSave();
           });
+          this.isUpdatingParticipants = false;
           return;
         }
       } catch (err) {
         console.error('Error retrieving participant from backend:', err);
         
-        // Handle specific error types
+        // Handle specific error types but don't override form state
         if (err.name === 'AbortError') {
-          this.setState({ submissionError: 'Request timeout. Please check your connection and try again.' });
+          console.log('Request timeout - participant may not exist yet');
         } else if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
-          this.setState({ submissionError: 'Connection timeout. Please try again.' });
+          console.log('Connection timeout - will show form');
         } else {
-          this.setState({ submissionError: 'Failed to retrieve participant. Please try again.' });
+          console.log('Failed to retrieve participant - will show form');
         }
       }
     }
 
-    // If no participant or failed fetch, show form
-    this.setState({
-      showForm: true,
-      hasSubmitted: false,
-      showSwipeView: false,
-      swipeParticipantData: null,
-      submissionError: null
-    });
+    // Check if user has form data filled - if so, keep the form visible
+    const hasFormData = this.hasFilledFormData();
+    
+    if (hasFormData) {
+      console.log('📝 User has filled form data, keeping form visible');
+      this.setState({
+        showForm: true,
+        hasSubmitted: false,
+        showSwipeView: false,
+        swipeParticipantData: null,
+        submissionError: null
+      });
+    } else {
+      console.log('📝 No form data or participant found, showing fresh form');
+      // Only reset to fresh form if no data exists
+      this.setState({
+        showForm: true,
+        hasSubmitted: false,
+        showSwipeView: false,
+        swipeParticipantData: null,
+        submissionError: null
+      });
+    }
     
     // Clean up the update flag
     this.isUpdatingParticipants = false;
   }
 
   componentWillUnmount() {
+    try {
+      // Cancel any pending debounced saves first
+      if (this.debouncedSave && this.debouncedSave.cancel) {
+        this.debouncedSave.cancel();
+      }
+      
+      // Immediately save state before component unmounts
+      this.immediateSave();
+      console.log('💾 Data saved immediately before component unmount');
+    } catch (error) {
+      console.error('❌ Failed to save data on unmount:', error);
+    }
+    
+    // Disconnect socket
     if (this.socket) {
-      this.socket.disconnect()
+      this.socket.disconnect();
     }
   }
   
@@ -438,13 +553,102 @@ class Participants extends Component {
   // Debounced save function to reduce localStorage writes
   debouncedSave = (() => {
     let timeoutId;
-    return () => {
+    const fn = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         this.saveStateToLocalStorage();
       }, 500); // Wait 500ms after last change
     };
+    
+    // Add cancel method for cleanup
+    fn.cancel = () => {
+      clearTimeout(timeoutId);
+    };
+    
+    return fn;
   })()
+
+  // Clean up corrupted localStorage data
+  cleanUpLocalStorage = () => {
+    try {
+      const keysToClean = ['participants_state', 'participantId'];
+      keysToClean.forEach(key => {
+        if (localStorage.getItem(key)) {
+          localStorage.removeItem(key);
+          console.log(`🧹 Cleaned up corrupted localStorage key: ${key}`);
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error cleaning localStorage:', error);
+    }
+  }
+
+  // Recovery function for localStorage issues
+  recoverFromStorageError = () => {
+    try {
+      console.log('🔄 Attempting to recover from storage error...');
+      this.cleanUpLocalStorage();
+      
+      // Reset to a clean state
+      this.setState({
+        participants: [],
+        formData: {
+          participantDetails: {
+            participantName: '',
+            phoneNumber: '',
+            icNumber: '',
+            gender: '',
+            dateOfBirth: '',
+            nationality: '',
+            email: '',
+            homeAddress: '',
+            relationshipStatus: '',
+            children: '',
+            profession: '',
+            educationLevel: '',
+            ethnicGroup: '',
+            religion: '',
+            stateOfOrigin: '',
+            experienceWithIT: '',
+            comfortWithTechnology: ''
+          },
+          healthDeclaration: {
+            questions: {
+              healthQuestion1: '',
+              healthQuestion2: '',
+              healthQuestion3: '',
+              healthQuestion4: ''
+            }
+          }
+        },
+        hasSubmitted: false,
+        showForm: true,
+        showSwipeView: false,
+        swipeParticipantData: null,
+        dataStatusMessage: '🔄 Data recovered - starting fresh'
+      }, () => {
+        // Clear the recovery message after a few seconds
+        setTimeout(() => {
+          this.setState({ dataStatusMessage: '' });
+        }, 3000);
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to recover from storage error:', error);
+      return false;
+    }
+  }
+
+  // Immediate save for critical operations
+  immediateSave = () => {
+    // Cancel any pending debounced save
+    if (this.debouncedSave && this.debouncedSave.cancel) {
+      this.debouncedSave.cancel();
+    }
+    // Save immediately
+    this.saveStateToLocalStorage();
+  }
 
   handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -537,10 +741,22 @@ class Participants extends Component {
           formData: {
             participantDetails: {
               participantName: '',
+              phoneNumber: '',
               participantNric: '',
               gender: '',
               dateOfBirth: '',
-              phoneNumber: ''
+              nationality: '',
+              email: '',
+              homeAddress: '',
+              relationshipStatus: '',
+              children: '',
+              profession: '',
+              educationLevel: '',
+              ethnicGroup: '',
+              religion: '',
+              stateOfOrigin: '',
+              experienceWithIT: '',
+              comfortWithTechnology: ''
             },
             healthDeclaration: {
               questions: {
@@ -559,8 +775,8 @@ class Participants extends Component {
             localStorage.setItem('participantId', JSON.stringify({ participantId: backendId }));
             console.log('Stored participantId in localStorage:', backendId);
           }
-          // Save complete state to localStorage
-          this.saveStateToLocalStorage();
+          // Immediately save complete state to localStorage after form submission
+          this.immediateSave();
           // Show swipe view with the new participant after state is updated
           this.showSwipeView(newParticipant.id);
         });
@@ -604,8 +820,22 @@ class Participants extends Component {
     })
   }
 
-  // If loadStateFromLocalStorage is referenced anywhere, define it as a no-op to avoid errors
-  loadStateFromLocalStorage = () => {}
+  // Check if user has filled out form data
+  hasFilledFormData = () => {
+    const { formData } = this.state;
+    
+    // Check if any participant details are filled
+    const hasParticipantData = Object.values(formData.participantDetails).some(value => 
+      value && value.toString().trim() !== ''
+    );
+    
+    // Check if any health questions are answered
+    const hasHealthData = Object.values(formData.healthDeclaration.questions).some(value => 
+      value && value.toString().trim() !== ''
+    );
+    
+    return hasParticipantData || hasHealthData;
+  }
 
   // Add the missing getCurrentParticipantId method
   getCurrentParticipantId = () => {
