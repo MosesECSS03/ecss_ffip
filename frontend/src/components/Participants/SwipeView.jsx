@@ -93,6 +93,7 @@
         const { participant } = this.props
         console.log('Generating QR code for participant:', participant)
         const participantId = participant.id
+        console.log('QR Code will use ID:', participantId)
         const qrString = participantId
         
         const qrUrl = await QRCode.toDataURL(qrString, {
@@ -157,7 +158,7 @@
       const { currentView, qrCodeUrl } = this.state
       const hasStationData = this.hasStationData()
       const hasHeightWeight = this.hasHeightWeightData()
-     // console.log("Participant Height Weight Data:", hasHeightWeight)
+      console.log("Participant Height Weight Data:", hasHeightWeight)
       const { completed: completedStations } = this.getStationSummary()
       const t = translations[language || 'en']
 
