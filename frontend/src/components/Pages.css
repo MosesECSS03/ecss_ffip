@@ -5,6 +5,12 @@
   margin: 0 auto;
 }
 
+/* Spinning animation for QR code loading */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 .page-container h1 {
   color: #333;
   text-align: center;

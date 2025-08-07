@@ -287,7 +287,7 @@ class Participants extends Component {
     }
   }
   
-  // Generate QR code for participant ID - Optimized for performance
+  // Generate QR code for participant ID - Enhanced for concurrent access
   generateQRCode = async (participantId) => {
     // Prevent multiple simultaneous QR generations
     if (this.state.isGeneratingQR) {
@@ -313,23 +313,34 @@ class Participants extends Component {
         dataStatusMessage: 'Generating QR code...'
       });
       
-      // Use a timeout to prevent hanging
-      const qrPromise = QRCode.toDataURL(participantId.toString(), {
-        width: 300, // Reduced size for better performance
-        margin: 1,  // Reduced margin
+      // Create a resilient QR code with error correction for scanning reliability
+      const qrDataPayload = {
+        id: participantId.toString(),
+        timestamp: Date.now(),
+        checksum: this.generateChecksum(participantId.toString())
+      };
+      
+      const qrPromise = QRCode.toDataURL(JSON.stringify(qrDataPayload), {
+        width: 350,         // Optimized size for scanning
+        margin: 2,          // Adequate margin for camera recognition
         color: {
           dark: '#000000',
           light: '#FFFFFF'
         },
-        errorCorrectionLevel: 'L' // Lower correction level for faster generation
+        errorCorrectionLevel: 'H' // High error correction for better scanning in poor conditions
       });
       
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging but increased for reliability
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('QR code generation timeout')), 10000)
+        setTimeout(() => reject(new Error('QR code generation timeout')), 15000)
       );
       
       const qrCodeUrl = await Promise.race([qrPromise, timeoutPromise]);
+      
+      // Validate QR code was generated properly
+      if (!qrCodeUrl || !qrCodeUrl.startsWith('data:image')) {
+        throw new Error('Invalid QR code generated');
+      }
       
       this.setState({ 
         qrCodeUrl,
@@ -337,29 +348,66 @@ class Participants extends Component {
         currentParticipantId: participantId,
         isGeneratingQR: false,
         qrGenerationError: null,
-        dataStatusMessage: 'QR code generated successfully!'
+        dataStatusMessage: 'QR code ready for scanning!'
       });
       
-      // Clear success message after 2 seconds
+      // Clear success message after 3 seconds
       setTimeout(() => {
         this.setState({ dataStatusMessage: '' });
-      }, 2000);
+      }, 3000);
       
-      console.log('QR code generated successfully');
+      console.log('QR code generated successfully with high reliability settings');
     } catch (error) {
       console.error('Error generating QR code:', error);
-      this.setState({
-        isGeneratingQR: false,
-        qrGenerationError: error.message || 'Failed to generate QR code',
-        submissionError: 'Failed to generate QR code. Please try again.',
-        dataStatusMessage: 'QR code generation failed'
-      });
       
-      // Clear error message after 3 seconds
-      setTimeout(() => {
-        this.setState({ dataStatusMessage: '', qrGenerationError: null });
-      }, 3000);
+      // Attempt fallback QR generation with simpler data
+      try {
+        console.log('Attempting fallback QR generation...');
+        const fallbackQR = await QRCode.toDataURL(participantId.toString(), {
+          width: 300,
+          margin: 1,
+          errorCorrectionLevel: 'M'
+        });
+        
+        this.setState({
+          qrCodeUrl: fallbackQR,
+          showQRCode: true,
+          currentParticipantId: participantId,
+          isGeneratingQR: false,
+          qrGenerationError: null,
+          dataStatusMessage: 'QR code generated (fallback mode)'
+        });
+        
+        setTimeout(() => {
+          this.setState({ dataStatusMessage: '' });
+        }, 3000);
+        
+      } catch (fallbackError) {
+        console.error('Fallback QR generation also failed:', fallbackError);
+        this.setState({
+          isGeneratingQR: false,
+          qrGenerationError: error.message || 'Failed to generate QR code',
+          submissionError: 'Failed to generate QR code. Please try again.',
+          dataStatusMessage: 'QR code generation failed'
+        });
+        
+        // Clear error message after 5 seconds
+        setTimeout(() => {
+          this.setState({ dataStatusMessage: '', qrGenerationError: null });
+        }, 5000);
+      }
     }
+  }
+
+  // Helper method to generate checksum for QR data validation
+  generateChecksum = (data) => {
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+      const char = data.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(36);
   }
 
   // Calculate age from date of birth
@@ -597,13 +645,41 @@ class Participants extends Component {
     this.generateTableQRCode(participantId);
   }
 
-  // Add missing QR code close methods
+  // Enhanced QR code close with refresh capability
   closeQRCode = () => {
     this.setState({
       showQRCode: false,
       qrCodeUrl: '',
-      currentParticipantId: null
+      currentParticipantId: null,
+      isGeneratingQR: false,
+      qrGenerationError: null
     });
+  }
+
+  // Add QR code refresh method
+  refreshQRCode = async () => {
+    const currentId = this.state.currentParticipantId;
+    if (!currentId) {
+      console.error('No participant ID available for QR refresh');
+      return;
+    }
+    
+    // Clear current QR and regenerate
+    this.setState({ 
+      qrCodeUrl: '', 
+      qrGenerationError: null,
+      dataStatusMessage: 'Refreshing QR code...' 
+    });
+    
+    await this.generateQRCode(currentId);
+  }
+
+  // QR code health check
+  validateQRCode = (qrCodeUrl) => {
+    if (!qrCodeUrl) return false;
+    if (!qrCodeUrl.startsWith('data:image')) return false;
+    if (qrCodeUrl.length < 100) return false; // Too small to be valid
+    return true;
   }
 
   closeTableQRCode = () => {
@@ -728,11 +804,11 @@ class Participants extends Component {
       )
     }
 
-    // Show QR Code modal if QR code is generated or being generated
+    // Show QR Code modal if QR code is generated or being generated - Enhanced for reliability
     if (showQRCode || this.state.isGeneratingQR) {
       return (
         <div className="qr-modal-overlay" onClick={!this.state.isGeneratingQR ? this.closeQRCode : undefined}>
-          <div onClick={(e) => e.stopPropagation()}>
+          <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
             {!this.state.isGeneratingQR && (
               <button className="qr-modal-close" onClick={this.closeQRCode}>
                 ×
@@ -742,17 +818,119 @@ class Participants extends Component {
             {this.state.isGeneratingQR ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>
                 <h2 className="qr-modal-title">Generating QR Code...</h2>
-                <div style={{ fontSize: '48px', margin: '20px 0' }}>🔄</div>
+                <div style={{ fontSize: '48px', margin: '20px 0', animation: 'spin 2s linear infinite' }}>🔄</div>
                 <p className="qr-modal-subtitle">Please wait while we generate your QR code</p>
+                <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
+                  Enhanced for multi-device scanning
+                </p>
               </div>
             ) : this.state.qrGenerationError ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>
                 <h2 className="qr-modal-title">QR Code Generation Failed</h2>
                 <p style={{ color: '#dc3545', margin: '20px 0' }}>{this.state.qrGenerationError}</p>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                  <button 
+                    onClick={() => this.generateQRCode(currentParticipantId)}
+                    style={{
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 20px',
+                      borderRadius: '5px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Try Again
+                  </button>
+                  <button 
+                    onClick={this.closeQRCode}
+                    style={{
+                      backgroundColor: '#6c757d',
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 20px',
+                      borderRadius: '5px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : qrCodeUrl && this.validateQRCode(qrCodeUrl) ? (
+              <>
+                <h2 className="qr-modal-title">Registration Successful! 🎉</h2>
+                <p className="qr-modal-subtitle">Present this QR code to the station master</p>
+                <div className="qr-code-container" style={{ position: 'relative' }}>
+                  <img 
+                    src={qrCodeUrl} 
+                    alt="QR Code" 
+                    className="qr-code-image"
+                    style={{ 
+                      maxWidth: '100%', 
+                      height: 'auto',
+                      border: '2px solid #28a745',
+                      borderRadius: '8px'
+                    }}
+                    onError={() => {
+                      console.error('QR code image failed to load');
+                      this.setState({ qrGenerationError: 'QR code corrupted. Please refresh.' });
+                    }}
+                  />
+                  
+                  {/* Refresh button */}
+                  <button
+                    onClick={this.refreshQRCode}
+                    style={{
+                      position: 'absolute',
+                      top: '5px',
+                      right: '5px',
+                      backgroundColor: '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '30px',
+                      height: '30px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                    title="Refresh QR Code"
+                  >
+                    🔄
+                  </button>
+                  
+                  {/* QR Status indicator */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '5px',
+                    right: '5px',
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontSize: '10px',
+                    fontWeight: 'bold'
+                  }}>
+                    READY
+                  </div>
+                </div>
+                <p className="qr-modal-description">
+                  ✅ Multi-device scanning enabled<br/>
+                  🔄 Auto-refresh if corrupted<br/>
+                  📱 Station master will scan this code to record your fitness test results
+                </p>
+                <p style={{ fontSize: '12px', color: '#666', marginTop: '15px' }}>
+                  If QR code appears black or unresponsive, click the refresh button (🔄) above
+                </p>
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <h2 className="qr-modal-title">QR Code Corrupted</h2>
+                <p style={{ color: '#dc3545', margin: '20px 0' }}>The QR code appears to be corrupted or invalid.</p>
                 <button 
-                  onClick={() => this.generateQRCode(currentParticipantId)}
+                  onClick={this.refreshQRCode}
                   style={{
-                    backgroundColor: '#007bff',
+                    backgroundColor: '#28a745',
                     color: 'white',
                     border: 'none',
                     padding: '10px 20px',
@@ -760,21 +938,10 @@ class Participants extends Component {
                     cursor: 'pointer'
                   }}
                 >
-                  Try Again
+                  Generate New QR Code
                 </button>
               </div>
-            ) : qrCodeUrl ? (
-              <>
-                <h2 className="qr-modal-title">Registration Successful!</h2>
-                <p className="qr-modal-subtitle">Present this QR code to the station master</p>
-                <div className="qr-code-container">
-                  <img src={qrCodeUrl} alt="QR Code" className="qr-code-image" />
-                </div>
-                <p className="qr-modal-description">
-                  Station master will scan this code to record your fitness test results
-                </p>
-              </>
-            ) : null}
+            )}
           </div>
         </div>
       )

@@ -5,18 +5,21 @@ const uri = 'mongodb+srv://moseslee:Mlxy6695@ecss-course.hejib.mongodb.net/?retr
 class DatabaseConnectivity {
     constructor() {
         this.client = new MongoClient(uri, {
-            maxPoolSize: 10,
-            minPoolSize: 2,
+            maxPoolSize: 20,        // Increased for concurrent access
+            minPoolSize: 5,         // Maintain minimum connections
             maxIdleTimeMS: 60000,
             serverSelectionTimeoutMS: 60000,
             socketTimeoutMS: 60000,
             connectTimeoutMS: 60000,
             heartbeatFrequencyMS: 10000,
             retryWrites: true,
-            retryReads: true
+            retryReads: true,
+            readPreference: 'secondaryPreferred', // Distribute read load
+            writeConcern: { w: 'majority', j: true } // Ensure data consistency
         });
         this.isConnected = false;
         this.connectionPromise = null;
+        this.connectionLock = false; // Prevent connection race conditions
     }
 
     async initialize() {

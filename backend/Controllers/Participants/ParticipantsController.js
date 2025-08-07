@@ -75,50 +75,108 @@ class ParticipantsController {
     }
 
     async getParticipant(participantID) {
-        try {
-            console.log('Retrieving participant with ID:', participantID);
-            // Initialize the database connection
-            await this.dbConnection.initialize();
-
-            // Ensure participantID is an ObjectId
-            const { ObjectId } = require('mongodb');
-            let query = {};
+        // Implement concurrent access protection
+        const requestId = Date.now() + Math.random().toString(36);
+        console.log(`[${requestId}] Starting participant retrieval for ID:`, participantID);
+        
+        let retryCount = 0;
+        const maxRetries = 5; // Increased retries for concurrent access
+        
+        while (retryCount < maxRetries) {
             try {
-                query = { _id: new ObjectId(participantID) };
-            } catch (e) {
+                console.log(`[${requestId}] Retrieving participant (attempt ${retryCount + 1}/${maxRetries})`);
+                
+                // Add random delay to reduce collision probability
+                if (retryCount > 0) {
+                    const delay = Math.min(100 * Math.pow(2, retryCount) + Math.random() * 100, 2000);
+                    console.log(`[${requestId}] Waiting ${delay}ms before retry...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+                
+                // Initialize the database connection with retry logic
+                await this.dbConnection.initialize();
+
+                // Ensure participantID is an ObjectId
+                const { ObjectId } = require('mongodb');
+                let query = {};
+                try {
+                    query = { _id: new ObjectId(participantID) };
+                } catch (e) {
+                    console.error(`[${requestId}] Invalid participant ID format:`, e);
+                    return {
+                        success: false,
+                        error: 'Invalid participant ID format'
+                    };
+                }
+
+                const result = await this.dbConnection.getDocument(
+                    'Fitness-Test', // database name
+                    'Participants', // collection name
+                    query
+                );
+
+                console.log(`[${requestId}] Participant retrieval result:`, result);
+
+                if (result.success) {
+                    console.log(`[${requestId}] Successfully retrieved participant`);
+                    return {
+                        success: true,
+                        data: result.data,
+                        message: 'Participant retrieved successfully',
+                        requestId: requestId
+                    };
+                } else {
+                    // If document not found, no need to retry
+                    if (result.message && result.message.includes('No document found')) {
+                        console.log(`[${requestId}] Participant not found, stopping retries`);
+                        return {
+                            success: false,
+                            error: result.message || 'Participant not found'
+                        };
+                    }
+                    
+                    // For other errors, continue retrying
+                    throw new Error(result.message || 'Failed to retrieve participant data');
+                }
+            } catch (error) {
+                console.error(`[${requestId}] Error retrieving participant (attempt ${retryCount + 1}):`, error);
+                retryCount++;
+                
+                // Check if it's a connection error that we should retry
+                if (this._isRetryableError(error) && retryCount < maxRetries) {
+                    console.log(`[${requestId}] Retryable error, will retry...`);
+                    // Reset connection on error
+                    this.dbConnection.isConnected = false;
+                    this.dbConnection.connectionPromise = null;
+                    continue;
+                }
+                
+                // If max retries reached or non-retryable error
+                console.error(`[${requestId}] Max retries reached or non-retryable error`);
                 return {
                     success: false,
-                    error: 'Invalid participant ID format'
+                    error: error.message,
+                    requestId: requestId
                 };
             }
-
-            const result = await this.dbConnection.getDocument(
-                'Fitness-Test', // database name
-                'Participants', // collection name
-                query
-            );
-
-            console.log('Participant retrieval result:', result);
-
-            if (result.success) {
-                return {
-                    success: true,
-                    data: result.data,
-                    message: 'Participant retrieved successfully'
-                };
-            } else {
-                return {
-                    success: false,
-                    error: result.message || 'Failed to retrieve participant data'
-                };
-            }
-        } catch (error) {
-            console.error('Error retrieving participant:', error);
-            return {
-                success: false,
-                error: error.message
-            };
         }
+        
+        console.error(`[${requestId}] Failed after ${maxRetries} attempts`);
+        return {
+            success: false,
+            error: 'Failed to retrieve participant after multiple attempts',
+            requestId: requestId
+        };
+    }
+
+    // Helper method to check if error is retryable
+    _isRetryableError(error) {
+        return error.name === 'MongoServerSelectionError' || 
+               error.name === 'MongoNetworkTimeoutError' ||
+               error.message.includes('timeout') ||
+               error.message.includes('connection') ||
+               error.message.includes('ECONNRESET') ||
+               error.message.includes('socket');
     }
 
     async updateStationData(participantID, data) {
