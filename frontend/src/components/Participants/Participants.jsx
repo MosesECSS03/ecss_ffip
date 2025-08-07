@@ -201,6 +201,7 @@ class Participants extends Component {
           localStorage.removeItem('ecss_ffip_force_form_view');
         }
         
+      //ok
         // Force fresh state - make sure to set both isLoading and isInitializing to false
         this.setState({
           isLoading: false,
