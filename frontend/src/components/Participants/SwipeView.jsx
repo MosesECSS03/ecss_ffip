@@ -23,7 +23,9 @@
       }
     }
 
-    componentDidMount() {
+    componentDidMount() 
+    {
+      this.generateQR();
       const { participant } = this.props;
       const participantId = participant?.id;
       
@@ -35,7 +37,6 @@
         this.retrieveParticipantData(participantId);
       }
       
-      this.generateQR();
       document.addEventListener('keydown', this.handleKeyDown)
       
       // Listen for survey-updated event
