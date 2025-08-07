@@ -1116,11 +1116,37 @@ class ParticipantDetails extends Component {
             className="done-button"
             style={{ padding: '10px 32px', fontSize: 18, borderRadius: 8, background: '#1976d2', color: '#fff', border: 'none', cursor: 'pointer' }}
             onClick={() => { 
-              localStorage.clear(); 
-              sessionStorage.clear(); 
-              // Reset the entire app to force language selection
-              window.location.href = '/';
-              window.location.reload();
+              try {
+                // Clear all storage synchronously
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Also clear any potential IndexedDB or other storage
+                if ('indexedDB' in window) {
+                  // Clear any potential app-specific IndexedDB data
+                  indexedDB.deleteDatabase('ecss-ffip');
+                }
+                
+                // Clear any cookies related to the app
+                document.cookie.split(";").forEach(function(c) { 
+                  document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                console.log('All storage cleared successfully');
+                
+                // Use a small delay to ensure all clearing operations complete
+                setTimeout(() => {
+                  // Reset the entire app to force language selection
+                  window.location.href = '/';
+                  window.location.reload(true); // Force reload from server
+                }, 100);
+                
+              } catch (error) {
+                console.error('Error clearing storage:', error);
+                // Fallback: still attempt to redirect even if clearing fails
+                window.location.href = '/';
+                window.location.reload(true);
+              }
             }}
           >
             Done
