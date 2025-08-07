@@ -87,27 +87,7 @@ class ParticipantForm extends Component {
               </div>
             )}
             
-            {/* Show data restoration indicator */}
-            {hasRestoredData && (
-              <div style={{
-                backgroundColor: '#e3f2fd',
-                border: '1px solid #2196f3',
-                borderRadius: '4px',
-                padding: '10px',
-                marginBottom: '20px',
-                color: '#1565c0',
-                fontSize: '14px',
-                animation: 'fadeIn 0.5s ease-in'
-              }}>
-                🔄 <strong>Form data restored from previous session</strong> - You can continue where you left off!
-                <br />
-                <small style={{ fontSize: '12px', opacity: 0.8 }}>
-                  ✅ Name: {formData.participantDetails.participantName && `"${formData.participantDetails.participantName}"`}
-                  {formData.participantDetails.phoneNumber && ` | ✅ Phone: "${formData.participantDetails.phoneNumber}"`}
-                  {formData.participantDetails.gender && ` | ✅ Gender: "${formData.participantDetails.gender}"`}
-                </small>
-              </div>
-            )}
+            
             
             <form onSubmit={onSubmit} className="senior-form">
               {/* Personal Information */}
@@ -252,45 +232,6 @@ class ParticipantForm extends Component {
                     <span className="statement-text">{t.indemnityStatement3}</span>
                   </div>
                 </div>
-              </div>
-              
-              {/* Debug Section */}
-              <div style={{ 
-                backgroundColor: '#f8f9fa', 
-                padding: '15px', 
-                margin: '20px 0', 
-                borderRadius: '5px',
-                border: '1px solid #dee2e6'
-              }}>
-                <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>🔧 Debug Info</h4>
-                <div style={{ fontSize: '14px', fontFamily: 'monospace' }}>
-                  <strong>Current Form Data:</strong><br/>
-                  Name: "{formData.participantDetails.participantName || 'empty'}"<br/>
-                  Phone: "{formData.participantDetails.phoneNumber || 'empty'}"<br/>
-                  Gender: "{formData.participantDetails.gender || 'empty'}"<br/>
-                  DOB: "{formData.participantDetails.dateOfBirth || 'empty'}"
-                </div>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    console.log('🧪 Test button clicked - Current form data:', formData);
-                    // Access parent's save function through props if needed
-                    if (this.props.onTestSave) {
-                      this.props.onTestSave();
-                    }
-                  }}
-                  style={{
-                    backgroundColor: '#17a2b8',
-                    color: 'white',
-                    border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '4px',
-                    marginTop: '10px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  🧪 Test Current Data
-                </button>
               </div>
               
               <div className="senior-form-actions">

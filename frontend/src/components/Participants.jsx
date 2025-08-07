@@ -155,8 +155,7 @@ class Participants extends Component {
               hasSubmitted: parsedState.hasSubmitted || false,
               showForm: parsedState.showForm !== undefined ? parsedState.showForm : true,
               showSwipeView: parsedState.showSwipeView || false,
-              swipeParticipantData: parsedState.swipeParticipantData || null,
-              dataStatusMessage: '🔄 Form data restored from previous session'
+              swipeParticipantData: parsedState.swipeParticipantData || null
             };
             
             this.setState(newState, () => {
@@ -222,6 +221,14 @@ class Participants extends Component {
     console.log('🧪 Check localStorage after save:', localStorage.getItem('participantsAppState'));
   }
 
+  // Test function to manually load data
+  testLoad = async () => {
+    console.log('🧪 Test Load - Starting manual load...');
+    const loaded = await this.loadStateFromLocalStorage();
+    console.log('🧪 Load result:', loaded);
+    console.log('🧪 Form data after load:', this.state.formData.participantDetails);
+  }
+
   // Test function to manually trigger save and reload
   testDataPersistence = () => {
     console.log('🧪 Testing data persistence...');
@@ -266,9 +273,6 @@ class Participants extends Component {
       
       if (loaded) {
         console.log('✅ Data loaded successfully');
-        this.setState({ 
-          dataStatusMessage: '🔄 Form data restored from previous session'
-        });
       } else {
         console.log('ℹ️ No data was loaded or data was expired');
       }
@@ -1345,7 +1349,6 @@ class Participants extends Component {
             language={language}
             onInputChange={this.handleInputChange}
             onSubmit={this.handleSubmit}
-            onTestSave={this.testSave}
             submissionError={submissionError}
           />
           
@@ -1408,7 +1411,6 @@ class Participants extends Component {
           language={language}
           onInputChange={this.handleInputChange}
           onSubmit={this.handleSubmit}
-          onTestSave={this.testSave}
           submissionError={submissionError}
         />
         

@@ -982,7 +982,6 @@ class ParticipantDetails extends Component {
     const fallbackT = {
       personalInformation: 'Personal Information',
       stationResults: 'Station Results',
-      nric: 'NRIC',
       age: 'Age',
       dateOfBirth: 'Date of Birth',
       phoneNumber: 'Phone Number',
@@ -1002,10 +1001,6 @@ class ParticipantDetails extends Component {
         <div className="details-section">
           <h3 className="details-section-title">{fallbackT.personalInformation}</h3>
           <div className="personal-info-cards">
-            <div className="personal-info-card">
-              <span className="personal-info-label">{fallbackT.nric}</span>
-              <span className="personal-info-value">{participant.nric}</span>
-            </div>
             {this.hasValue(participant.dateOfBirth) && (
               <div className="personal-info-card">
                 <span className="personal-info-label">{fallbackT.age}</span>

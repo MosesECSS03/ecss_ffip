@@ -119,8 +119,7 @@ class Volunteers extends Component {
             formData: parsedState.formData || {},
             qrValue: parsedState.qrValue || '',
             qrScanned: parsedState.qrScanned || false,
-            stations: parsedState.stations || [],
-            dataStatusMessage: '🔄 Data restored from previous session'
+            stations: parsedState.stations || []
           };
           
           this.setState(newState);

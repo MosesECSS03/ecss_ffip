@@ -79,8 +79,7 @@ Data is restored when:
 ### Status Notifications
 The app shows notifications for:
 - 💾 **Data saved** - Brief notification after changes
-- 🔄 **Data restored from previous session** - On page load
-- 🗑️ **Saved data cleared successfully** - After manual clear
+- ️ **Saved data cleared successfully** - After manual clear
 - ❌ **Error messages** - If save/load fails
 
 ### User Controls
@@ -168,13 +167,11 @@ The app shows notifications for:
    
 2. **Check for visual confirmation**:
    - Form fields with data should have a light green border
-   - You should see "🔄 Form data restored from previous session" message if data was restored
    
 3. **Test persistence**:
    - Click "🧪 Test Persistence" button to force save current data
    - **Refresh the page** (F5 or Cmd+R)
    - **Verify**: All your entered data should reappear in the form fields
-   - **Look for**: Blue notification saying "🔄 Data restored from previous session"
    
 4. **Navigate away and back**:
    - Go to another page (like /volunteers)

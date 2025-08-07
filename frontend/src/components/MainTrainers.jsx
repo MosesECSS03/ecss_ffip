@@ -43,11 +43,6 @@ class MainTrainers extends Component {
           width: 150
         },
         { 
-          headerName: 'NRIC', 
-          field: 'nric',
-          width: 150
-        },
-        { 
           headerName: 'Age', 
           field: 'age',
           width: 75
@@ -366,7 +361,6 @@ class MainTrainers extends Component {
       const row = {
         'S/N': index + 1,
         [t.name || 'Name']: participant.name || '',
-        [t.nric || 'NRIC']: participant.nric || '',
         [t.age || 'Age']: participant.age || '',
         [t.gender || 'Gender']: participant.gender ? participant.gender.charAt(0).toUpperCase() + participant.gender.slice(1) : '',
         'Date Of Birth': participant.dateOfBirth || '',

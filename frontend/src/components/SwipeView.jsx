@@ -61,7 +61,7 @@ class SwipeView extends Component {
     try {
       const { participant } = this.props
       const participantId = participant.id || participant._id || participant.participant_id
-      const qrString = participantId ? participantId.toString() : participant.nric
+      const qrString = participantId ? participantId.toString() : participant.name || 'Unknown'
       
       const qrUrl = await QRCode.toDataURL(qrString, {
         width: 400,

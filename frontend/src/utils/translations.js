@@ -58,7 +58,6 @@ export const translations = {
     fillForm: 'Please complete the Health Declaration and Indemnity Form for the Fitness Test.',
     // FFT Form Fields
     participantName: 'Participant Name',
-    participantNric: 'NRIC Number',
     dateOfBirth: 'Date of Birth',
     gender: 'Gender',
     male: 'Male',
@@ -123,7 +122,6 @@ export const translations = {
     time: 'Time',
     status: 'Status',
     // Participant Details Labels
-    nric: 'NRIC',
     height: 'Height',
     weight: 'Weight',
     phoneNumber: 'Phone Number',
