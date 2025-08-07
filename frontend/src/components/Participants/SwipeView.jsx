@@ -130,6 +130,7 @@
     // Handle participant update from socket event
     handleParticipantUpdate = async () => {
       const participantId = this.getCurrentParticipantId();
+      console.log("🔄 Handling participant update for ID:", participantId);
       if (participantId) {
         console.log("🔄 Updating participant data from socket event");
         await this.retrieveParticipantData(participantId);
