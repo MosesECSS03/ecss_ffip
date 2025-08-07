@@ -1048,6 +1048,10 @@ class ParticipantDetails extends Component {
       liveBMI: this.state.liveBMI
     })
     
+    // Debug the entire participant object structure
+    console.log('🔍 Complete participant object:', participant)
+    console.log('🔍 Participant keys:', Object.keys(participant || {}))
+    
     // Handle case where props might not be available yet
     if (!participant) {
       console.log('ParticipantDetails: Missing participant prop', this.props)

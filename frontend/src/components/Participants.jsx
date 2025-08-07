@@ -470,6 +470,11 @@ class Participants extends Component {
 
         clearTimeout(timeoutId);
         console.log('🔄 Retrieved participant from backend:', response.data);
+        console.log('🔍 Full participant object structure:', response.data.data);
+        console.log('🔍 Participant keys:', Object.keys(response.data.data || {}));
+        console.log('🔍 Height value:', response.data.data?.height);
+        console.log('🔍 Weight value:', response.data.data?.weight);
+        console.log('🔍 BMI value:', response.data.data?.bmi);
 
         if (response.data && response.data.success && response.data.data) {
           // User has successfully submitted before, show swipe view
