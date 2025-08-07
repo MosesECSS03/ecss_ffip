@@ -60,7 +60,7 @@
           // Update only if it matches current participant and user doesn't have form data
           if (participantId === data.participantID) {
             console.log("✅ Event matches current participant");
-            this.handleParticipantUpdate();
+            this.handleParticipantUpdate(participantId);
             //this.retrieveParticipantData(participantId);
           } else {
             console.log("ℹ️ Event for different participant, ignoring update");
@@ -128,9 +128,7 @@
     }
 
     // Handle participant update from socket event
-    handleParticipantUpdate = async () => {
-      const participantId = this.getCurrentParticipantId();
-      console.log("🔄 Handling participant update for ID:", participantId);
+    handleParticipantUpdate = async (participantId) => {
       if (participantId) {
         console.log("🔄 Updating participant data from socket event");
         await this.retrieveParticipantData(participantId);
