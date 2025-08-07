@@ -320,15 +320,15 @@ class MainTrainers extends Component {
     
     try {
       const response = await axios.post(`${API_BASE_URL}/participants`, {purpose: 'retrieveAllParticipants'});
-      console.log("📊 Participants fetched:", response.data);
+      console.log("📊 Participants fetched:", response.data.data);
       
       this.setState({ 
-        participants: response.data,
+        participants: response.data.data,
         loading: false 
       });
       
       // Update column definitions with station columns after data is loaded
-      this.updateColumnDefsWithStations(response.data);
+      this.updateColumnDefsWithStations(response.data.data);
       
     } catch (error) {
       console.error('Error fetching participants:', error)
