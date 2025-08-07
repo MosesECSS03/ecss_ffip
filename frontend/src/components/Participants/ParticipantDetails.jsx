@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import { translations } from '../../utils/translations'
 import '../Pages.css'
 import io from 'socket.io-client'
+import dataManager from '../../utils/dataManager'
 
 const API_BASE_URL =
   window.location.hostname === 'localhost'
@@ -987,6 +988,120 @@ class ParticipantDetails extends Component {
     return Math.max(score1, score2)
   }
 
+  // Comprehensive data clearing method
+  clearAllAppData = () => {
+    // Ask for confirmation before clearing all data
+    const confirmMessage = 'Are you sure you want to clear all app data and restart? This will:\n\n' +
+      '• Clear all saved participant information\n' +
+      '• Clear all form data\n' +
+      '• Reset language preferences\n' +
+      '• Return to the language selection screen\n\n' +
+      'This action cannot be undone.';
+    
+    if (!window.confirm(confirmMessage)) {
+      return; // User cancelled
+    }
+
+    try {
+      console.log('🗑️ Starting comprehensive data clearing...');
+
+      // Show loading message to user
+      const originalButton = document.querySelector('.done-button');
+      if (originalButton) {
+        originalButton.textContent = 'Clearing Data...';
+        originalButton.disabled = true;
+      }
+
+      // 1. Use the app's data manager to clear all managed data
+      try {
+        const clearResult = dataManager.clearAll();
+        console.log('🗑️ DataManager clearAll result:', clearResult);
+      } catch (dmError) {
+        console.warn('⚠️ DataManager clearAll failed:', dmError);
+      }
+
+      // 2. Clear all localStorage entries (including our app-specific ones)
+      localStorage.clear();
+      
+      // 3. Clear sessionStorage
+      sessionStorage.clear();
+      
+      // 4. Clear any potential data from the DataManager system (backup)
+      // This covers the app's sophisticated data management keys
+      const appKeys = [
+        'ecss_ffip_participants_state',
+        'ecss_ffip_participant_id', 
+        'ecss_ffip_volunteers_state',
+        'ecss_ffip_language_preference',
+        'ecss_ffip_trainers_state',
+        'ecss_ffip_form_autosave',
+        'participantsAppState',
+        'volunteersAppState',
+        'participantId'
+      ];
+      
+      // Clear each key individually as backup
+      appKeys.forEach(key => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
+      
+      // 5. Clear any cache or temporary data
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => {
+            caches.delete(name);
+          });
+        });
+      }
+      
+      // 6. Clear any IndexedDB data if it exists
+      if ('indexedDB' in window) {
+        // Try to clear common database names
+        const dbNames = ['ecss_ffip', 'app_data', 'user_data'];
+        dbNames.forEach(dbName => {
+          try {
+            const deleteReq = indexedDB.deleteDatabase(dbName);
+            deleteReq.onsuccess = () => console.log(`🗑️ Cleared IndexedDB: ${dbName}`);
+          } catch (e) {
+            // Silently fail if database doesn't exist
+          }
+        });
+      }
+      
+      // 7. Clear any potential WebSQL data (legacy browsers)
+      if ('openDatabase' in window) {
+        try {
+          const db = window.openDatabase('', '', '', '');
+          db.transaction(tx => {
+            tx.executeSql('DROP TABLE IF EXISTS data');
+          });
+        } catch (e) {
+          // Silently fail if WebSQL not supported
+        }
+      }
+      
+      console.log('✅ All app data cleared successfully');
+      
+      // 8. Force complete application reset
+      // Use replace instead of href to prevent back button issues
+      window.location.replace('/');
+      
+      // 9. Reload the page to ensure clean state
+      setTimeout(() => {
+        window.location.reload(true); // Force reload from server
+      }, 100);
+      
+    } catch (error) {
+      console.error('❌ Error during data clearing:', error);
+      
+      // Fallback: Force reload anyway
+      alert('Data clearing completed with some issues. The app will now restart.');
+      window.location.replace('/');
+      window.location.reload(true);
+    }
+  }
+
   render() {
     console.log('ParticipantDetails this.props:', this.props)
     const { participant, language, onClose } = this.props
@@ -1116,37 +1231,8 @@ class ParticipantDetails extends Component {
             className="done-button"
             style={{ padding: '10px 32px', fontSize: 18, borderRadius: 8, background: '#1976d2', color: '#fff', border: 'none', cursor: 'pointer' }}
             onClick={() => { 
-              try {
-                // Clear all storage synchronously
-                localStorage.clear();
-                sessionStorage.clear();
-                
-                // Also clear any potential IndexedDB or other storage
-                if ('indexedDB' in window) {
-                  // Clear any potential app-specific IndexedDB data
-                  indexedDB.deleteDatabase('ecss-ffip');
-                }
-                
-                // Clear any cookies related to the app
-                document.cookie.split(";").forEach(function(c) { 
-                  document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-                });
-                
-                console.log('All storage cleared successfully');
-                
-                // Use a small delay to ensure all clearing operations complete
-                setTimeout(() => {
-                  // Reset the entire app to force language selection
-                  window.location.href = '/';
-                  window.location.reload(true); // Force reload from server
-                }, 100);
-                
-              } catch (error) {
-                console.error('Error clearing storage:', error);
-                // Fallback: still attempt to redirect even if clearing fails
-                window.location.href = '/';
-                window.location.reload(true);
-              }
+              // Comprehensive data clearing
+              this.clearAllAppData();
             }}
           >
             Done
