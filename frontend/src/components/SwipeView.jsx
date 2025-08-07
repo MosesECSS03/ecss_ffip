@@ -179,7 +179,6 @@ class SwipeView extends Component {
         onTouchEnd={this.handleTouchEnd}
         style={{
           minHeight: '100vh',
-          minHeight: '-webkit-fill-available',
           backgroundColor: '#f5f5f5',
           position: 'relative'
         }}
