@@ -17,11 +17,12 @@ import { io } from 'socket.io-client';
     constructor(props) {
       super(props)
       this.state = {
-        currentView: 'details',
+        currentView: 'details', // Start with details view, but QR will be pre-generated
         qrCodeUrl: '',
         touchStart: 0,
         touchEnd: 0,
-        updatedParticipant: null
+        updatedParticipant: null,
+        isGeneratingQR: true // Track QR generation state
       }
     }
 
@@ -202,7 +203,9 @@ import { io } from 'socket.io-client';
     // Generate QR code
     generateQR = async (participantId) => {
       try {
-        console.log('QR Code will use ID:', participantId)
+        console.log('🔄 Generating QR Code for participant ID:', participantId)
+        this.setState({ isGeneratingQR: true })
+        
         const qrString = participantId
         
         const qrUrl = await QRCode.toDataURL(qrString, {
@@ -214,13 +217,19 @@ import { io } from 'socket.io-client';
           }
         })
         
-        console.log('QR code generated successfully')
-        this.setState({ qrCodeUrl: qrUrl }, () => {
-          console.log('QR code state updated:', this.state.qrCodeUrl ? 'Success' : 'Failed')
+        console.log('✅ QR code generated successfully')
+        this.setState({ 
+          qrCodeUrl: qrUrl,
+          isGeneratingQR: false 
+        }, () => {
+          console.log('📱 QR code state updated:', this.state.qrCodeUrl ? 'Success' : 'Failed')
         })
       } catch (error) {
-        console.error('Error generating QR code:', error)
-        this.setState({ qrCodeUrl: '' })
+        console.error('❌ Error generating QR code:', error)
+        this.setState({ 
+          qrCodeUrl: '',
+          isGeneratingQR: false 
+        })
       }
     }
 
@@ -269,7 +278,7 @@ import { io } from 'socket.io-client';
 
     render() {
       const { language, onClose } = this.props
-      const { currentView, qrCodeUrl } = this.state
+      const { currentView, qrCodeUrl, isGeneratingQR } = this.state
       const participant = this.getCurrentParticipant()
       const hasStationData = this.hasStationData()
       const hasHeightWeight = this.hasHeightWeightData()
@@ -330,7 +339,7 @@ import { io } from 'socket.io-client';
           )}
 
           {/* Content area */}
-          <div className="swipe-view-content" style={{ paddingTop: '50px' }}>
+          <div className="swipe-view-content" style={{ paddingTop: '20px' }}>
               {currentView === 'details' && participant && (
                 <div>
                   <ParticipantDetails 
@@ -430,48 +439,142 @@ import { io } from 'socket.io-client';
                     </div>
                   )}
                   
+                  {/* Swipe hint for QR code */}
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '20px',
+                    margin: '20px 10px',
+                    backgroundColor: '#e8f5e8',
+                    borderRadius: '15px',
+                    border: '2px dashed #28a745'
+                  }}>
+                    <div style={{ fontSize: '24px', marginBottom: '10px' }}>📱</div>
+                    <p style={{ 
+                      color: '#28a745', 
+                      fontWeight: 'bold',
+                      margin: '0 0 5px 0',
+                      fontSize: '16px'
+                    }}>
+                      {language === 'en' ? 'QR Code Ready!' : '二维码已准备好！'}
+                    </p>
+                    <p style={{ 
+                      color: '#666', 
+                      fontSize: '14px',
+                      margin: '0'
+                    }}>
+                      {language === 'en' 
+                        ? '👈 Swipe left to view your QR code for the stations'
+                        : '👈 向左滑动查看您的测试站二维码'
+                      }
+                    </p>
+                  </div>
+                  
                 </div>
               )}
 
               {currentView === 'qr' && participant && (
-                <>                
-                  <>
-                    {qrCodeUrl ? (
+                <div style={{ 
+                  textAlign: 'center', 
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  margin: '10px',
+                  borderRadius: '15px',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                }}>
+                  <h2 style={{ 
+                    color: '#28a745', 
+                    marginBottom: '20px',
+                    fontSize: '24px',
+                    fontWeight: 'bold'
+                  }}>
+                    🎉 Registration Successful!
+                  </h2>
+                  
+                  <p style={{ 
+                    color: '#666', 
+                    marginBottom: '30px',
+                    fontSize: '16px'
+                  }}>
+                    {language === 'en' 
+                      ? 'Present this QR code to the station master' 
+                      : '向站长出示此二维码'
+                    }
+                  </p>
+                  
+                  {qrCodeUrl && !isGeneratingQR ? (
+                    <div style={{ marginBottom: '20px' }}>
                       <img 
                         src={qrCodeUrl} 
                         alt="Participant QR Code" 
                         className="qr-code-image"
                         style={{
-                          maxWidth: '250px',
+                          maxWidth: '300px',
                           width: '100%',
                           height: 'auto',
-                          border: '2px solid #ddd',
-                          borderRadius: '10px'
+                          border: '3px solid #28a745',
+                          borderRadius: '15px',
+                          padding: '10px',
+                          backgroundColor: 'white',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
                         }}
                       />
-                    ) : (
                       <div style={{
-                        padding: '40px',
-                        backgroundColor: '#f0f0f0',
-                        borderRadius: '10px',
-                        color: '#666'
+                        marginTop: '10px',
+                        padding: '5px 15px',
+                        backgroundColor: '#28a745',
+                        color: 'white',
+                        borderRadius: '20px',
+                        display: 'inline-block',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
                       }}>
-                        <div>🔄 Generating QR Code...</div>
-                        <div style={{ fontSize: '12px', marginTop: '10px' }}>
-                          Please wait while we create your QR code
-                        </div>
+                        ✅ READY
                       </div>
-                    )}
-                  </>
+                    </div>
+                  ) : (
+                    <div style={{
+                      padding: '40px',
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '15px',
+                      color: '#666',
+                      marginBottom: '20px'
+                    }}>
+                      <div style={{ fontSize: '48px', marginBottom: '10px' }}>🔄</div>
+                      <div style={{ fontSize: '18px', fontWeight: 'bold' }}>Generating QR Code...</div>
+                      <div style={{ fontSize: '14px', marginTop: '10px' }}>
+                        {language === 'en' 
+                          ? 'Please wait while we create your QR code' 
+                          : '请稍候，我们正在生成您的二维码'
+                        }
+                      </div>
+                    </div>
+                  )}
                   
-                  <div className="qr-modal-description">
-                    <p>{t.qrCodeDescription}</p>
+                  <div style={{ 
+                    color: '#666', 
+                    fontSize: '14px',
+                    lineHeight: '1.5',
+                    marginBottom: '20px'
+                  }}>
+                    <p>
+                      {language === 'en' 
+                        ? '📱 Station master will scan this QR code to access your participant information and record test results.'
+                        : '📱 站长将扫描此二维码以访问您的参与者信息并记录测试结果。'
+                      }
+                    </p>
                   </div>
                   
-                  <div className="swipe-instructions">
-                    <p className="swipe-instructions-text">{t.swipeInstructionsDetails}</p>
+                  <div style={{ 
+                    color: '#888', 
+                    fontSize: '12px',
+                    fontStyle: 'italic'
+                  }}>
+                    {language === 'en' 
+                      ? '👉 Swipe right to view your details' 
+                      : '👉 向右滑动查看您的详细信息'
+                    }
                   </div>
-                </>
+                </div>
               )}
 
               {currentView === 'stations' && (
