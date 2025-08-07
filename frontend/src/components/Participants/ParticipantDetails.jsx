@@ -1272,30 +1272,9 @@ class ParticipantDetails extends Component {
       
       console.log('✅ All app data cleared successfully (enhanced for mobile/tablet)');
       
-      // 9. Enhanced application reset for mobile devices - redirect to participants form
-      // Add a longer delay to ensure all clearing operations complete
-      setTimeout(() => {
-        // Use replace instead of href to prevent back button issues
-        // Add a parameter to force fresh form view
-        window.location.replace('/participants?fresh=true');
-      }, 500); // Longer delay to ensure clearing completes
-      
-      // 10. Enhanced reload for mobile/tablet to ensure clean state
-      setTimeout(() => {
-        // For mobile devices, we want to ensure complete reload
-        if (navigator.userAgent.match(/Mobile|Tablet|Android|iPhone|iPad/i)) {
-          console.log('🗑️ Mobile/tablet device detected, performing enhanced reload');
-          // Clear any remaining browser state
-          if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, null, '/participants?fresh=true');
-          }
-          // Force hard reload
-          window.location.reload(true);
-        } else {
-          // Desktop reload
-          window.location.reload(true);
-        }
-      }, 700); // Even longer delay for mobile devices
+      // 9. Immediate redirect to fresh form - no delays to avoid timing issues
+      // Use replace instead of href to prevent back button issues
+      window.location.replace('/participants?fresh=true');
       
     } catch (error) {
       console.error('❌ Error during data clearing:', error);
@@ -1308,12 +1287,8 @@ class ParticipantDetails extends Component {
         alert('Data clearing completed with some issues. The app will now restart.');
       }
       
-      setTimeout(() => {
-        window.location.replace('/participants?fresh=true');
-        setTimeout(() => {
-          window.location.reload(true);
-        }, 200);
-      }, 300);
+      // Immediate redirect without delays
+      window.location.replace('/participants?fresh=true');
     }
   }
 

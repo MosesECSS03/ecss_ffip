@@ -190,9 +190,10 @@ class Participants extends Component {
         // Clean the URL
         window.history.replaceState({}, document.title, window.location.pathname);
         
-        // Force fresh state
+        // Force fresh state - make sure to set both isLoading and isInitializing to false
         this.setState({
           isLoading: false,
+          isInitializing: false,
           showForm: true,
           showSwipeView: false,
           hasSubmitted: false,
