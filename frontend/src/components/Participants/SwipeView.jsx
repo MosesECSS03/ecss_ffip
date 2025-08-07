@@ -1,8 +1,16 @@
   import React, { Component } from 'react'
   import QRCode from 'qrcode'
+  import axios from 'axios'
   import ParticipantDetails from './ParticipantDetails'
   import { translations } from '../../utils/translations'
   import '../Pages.css'
+
+
+  const API_BASE_URL =
+    window.location.hostname === 'localhost'
+      ? 'http://localhost:3001'
+      : 'https://ecss-fft.azurewebsites.net';
+
 
   class SwipeView extends Component {
     constructor(props) {
@@ -16,6 +24,17 @@
     }
 
     componentDidMount() {
+      const { participant } = this.props;
+      const participantId = participant?.id;
+      
+      console.log('Component mounted with participant ID:', participantId);
+      
+      // Use participantId for data retrieval here
+      if (participantId) {
+        // You can add your data retrieval logic here
+        this.retrieveParticipantData(participantId);
+      }
+      
       this.generateQR();
       document.addEventListener('keydown', this.handleKeyDown)
       
@@ -26,6 +45,32 @@
       document.removeEventListener('keydown', this.handleKeyDown)
       if (this.socket) {
         this.socket.disconnect();
+      }
+    }
+
+    // Method to retrieve participant data using the ID
+    retrieveParticipantData = async (participantId) => {
+      try {
+        console.log('Retrieving data for participant:', participantId);
+
+        const response = await axios.post(`${API_BASE_URL}/participants/`, {
+          purpose: 'retrieveParticipant',
+          participantId: participantId
+        });
+        
+        if (response.data && response.data.success) {
+          console.log('Retrieved participant data:', response.data.participant);
+          // You can update state with the retrieved data if needed
+          // this.setState({ updatedParticipant: response.data.participant });
+        } else {
+          console.warn('Failed to retrieve participant data:', response.data.message);
+        }
+        
+      } catch (error) {
+        console.error('Error retrieving participant data:', error);
+        if (error.response) {
+          console.error('Response error:', error.response.data);
+        }
       }
     }
 
