@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 import QRCode from 'qrcode'
 import ParticipantDetails from './ParticipantDetails'
 import { translations } from '../utils/translations'
-import './Pages.css';
+import './Pages.css'
 
 class SwipeView extends Component {
   constructor(props) {
@@ -289,7 +289,6 @@ class SwipeView extends Component {
                   <div className="station-results-section">
                     <h2 className="section-title">
                       {language === 'en' ? 'Test Station Results' : '测试站结果'}
-                      <span className="live-indicator">🔴 {language === 'en' ? 'Live Updates' : '实时更新'}</span>
                     </h2>
                     
                     {/* Station Cards */}
@@ -340,56 +339,6 @@ class SwipeView extends Component {
                   </div>
                 )}
                 
-                {/* No station data message */}
-                {!hasStationData && !hasHeightWeight && (
-                  <div className="no-data-section">
-                    <div className="no-data-message">
-                      <h3>{language === 'en' ? 'No Test Results Yet' : '暂无测试结果'}</h3>
-                      <p>{language === 'en' ? 'Visit test stations to see your results here' : '请前往测试站点查看结果'}</p>
-                      <div className="live-indicator">🔴 {language === 'en' ? 'Live Updates Enabled' : '实时更新已启用'}</div>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Mobile navigation buttons for details view */}
-                <div style={{
-                  display: 'flex',
-                  gap: '10px',
-                  justifyContent: 'center',
-                  margin: '30px 20px',
-                  paddingBottom: '20px'
-                }}>
-                  <button 
-                    onClick={() => this.setCurrentView('qr')}
-                    style={{
-                      padding: '12px 24px',
-                      backgroundColor: '#28a745',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '25px',
-                      fontSize: '16px',
-                      cursor: 'pointer',
-                      minWidth: '120px'
-                    }}
-                  >
-                    {language === 'en' ? 'Show QR Code' : '显示二维码'}
-                  </button>
-                  <button 
-                    onClick={onClose}
-                    style={{
-                      padding: '12px 24px',
-                      backgroundColor: '#6c757d',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '25px',
-                      fontSize: '16px',
-                      cursor: 'pointer',
-                      minWidth: '120px'
-                    }}
-                  >
-                    {language === 'en' ? 'Close' : '关闭'}
-                  </button>
-                </div>
               </div>
             )}
 
