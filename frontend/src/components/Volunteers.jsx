@@ -34,7 +34,6 @@ class Volunteers extends Component {
       qrValue: '',
       qrScanned: false,
       cameraError: null,
-      stations: [], // <-- add stations array to state
       dataStatusMessage: '' // For showing save/load notifications
     }
     this.qrScanner = null
@@ -128,7 +127,6 @@ class Volunteers extends Component {
         formData: this.state.formData,
         qrValue: this.state.qrValue,
         qrScanned: this.state.qrScanned,
-        stations: this.state.stations,
         lastUpdated: Date.now()
       };
       
@@ -371,11 +369,20 @@ class Volunteers extends Component {
               
               if (response.data && response.data.success && response.data.data) {
                 console.log(`📋 Participant data retrieved for scan [${scanId}]:`, response.data.data);
-                // Populate ALL participant data
+                
+                // Debug: Log the specific fields we're looking for
+                console.log(`🔍 Debug - Name field: "${response.data.data.name}"`);
+                console.log(`🔍 Debug - All participant fields:`, Object.keys(response.data.data));
+                
+                // Populate participant personal data
                 const formData = {};
                 Object.keys(response.data.data).forEach(key => {
                   formData[key] = response.data.data[key];
                 });
+                
+                // Debug: Log the formData after population
+                console.log(`🔍 Debug - FormData after population:`, formData);
+                console.log(`🔍 Debug - FormData.name: "${formData.name}"`);
                 
                 // Check if participant has height and weight recorded for non-heightWeight stations
                 const hasHeight = formData.height && formData.height !== '' && formData.height !== '-';
@@ -383,6 +390,18 @@ class Volunteers extends Component {
                 
                 // Store height/weight status in formData for later use in form validation
                 formData.hasHeightWeight = hasHeight && hasWeight;
+                
+                // Initialize empty form fields for the selected station so volunteer can enter new data
+                if (this.state.selectedStation && stationFields[this.state.selectedStation]) {
+                  stationFields[this.state.selectedStation].forEach(field => {
+                    // Only initialize if the field doesn't already have a value
+                    if (formData[field] === undefined || formData[field] === null) {
+                      formData[field] = '';
+                    }
+                  });
+                  console.log(`🔧 Initialized form fields for station [${this.state.selectedStation}]`);
+                  console.log(`🔧 Final formData before setState:`, formData);
+                }
                 
                 // Stop and hide QR scanner after successful participant data retrieval
                 this.stopQRScanner();
@@ -394,6 +413,13 @@ class Volunteers extends Component {
                   cameraError: null, // Clear any previous errors
                   formData
                 }, () => {
+                  // Debug: Log the state after setState
+                  console.log(`🔍 Debug - State after setState:`, {
+                    formData: this.state.formData,
+                    selectedStation: this.state.selectedStation,
+                    qrScanned: this.state.qrScanned
+                  });
+                  
                   // Immediately save state after successful scan
                   this.immediateSave();
                   console.log(`💾 Data saved for scan [${scanId}]`);
@@ -414,6 +440,13 @@ class Volunteers extends Component {
             } catch (err) {
               console.error(`❌ QR Scan error [${scanId}]:`, err.message);
               console.error(`❌ Full error details for scan [${scanId}]:`, err);
+              
+              // Log more specific error details for debugging
+              if (err.response) {
+                console.error(`❌ Server Response Status [${scanId}]:`, err.response.status);
+                console.error(`❌ Server Response Data [${scanId}]:`, err.response.data);
+                console.error(`❌ Server Response Headers [${scanId}]:`, err.response.headers);
+              }
               
               // Check if we have response data even with an error (e.g., timeout after successful response)
               if (err.response && err.response.data && err.response.data.success && err.response.data.data) {
@@ -440,19 +473,55 @@ class Volunteers extends Component {
                 return; // Exit early since we handled the data
               }
               
-              // Only show error if we truly didn't get any participant data
+              // Provide more specific error messages based on the error type
               let errorMessage = 'Network or server error';
+              let userFriendlyMessage = '';
+              
               if (err.name === 'AbortError') {
                 errorMessage = 'Request timeout - check connection';
+                userFriendlyMessage = language === 'en' 
+                  ? 'Request timeout. Please try scanning again.' 
+                  : '请求超时。请重新扫描。';
               } else if (err.code === 'ERR_NETWORK') {
                 errorMessage = 'Network connection failed - check backend server';
+                userFriendlyMessage = language === 'en' 
+                  ? 'Network connection failed. Please check your connection and try again.' 
+                  : '网络连接失败。请检查您的连接并重试。';
               } else if (err.response) {
-                errorMessage = `Server error: ${err.response.status}`;
+                const status = err.response.status;
+                if (status === 500) {
+                  errorMessage = `Server internal error (500) - backend database or processing issue`;
+                  userFriendlyMessage = language === 'en' 
+                    ? 'Server error. The participant may not exist in the database or there is a backend issue. Please contact support.' 
+                    : '服务器错误。参与者可能不在数据库中或存在后端问题。请联系技术支持。';
+                } else if (status === 404) {
+                  errorMessage = `Participant not found (404)`;
+                  userFriendlyMessage = language === 'en' 
+                    ? 'Participant not found. Please check the QR code and try again.' 
+                    : '找不到参与者。请检查二维码并重试。';
+                } else if (status === 400) {
+                  errorMessage = `Bad request (400) - invalid QR code format`;
+                  userFriendlyMessage = language === 'en' 
+                    ? 'Invalid QR code format. Please scan a valid participant QR code.' 
+                    : '二维码格式无效。请扫描有效的参与者二维码。';
+                } else {
+                  errorMessage = `Server error: ${status}`;
+                  userFriendlyMessage = language === 'en' 
+                    ? `Server error (${status}). Please try again or contact support.` 
+                    : `服务器错误 (${status})。请重试或联系技术支持。`;
+                }
               }
+              
+              console.error(`❌ Final error classification [${scanId}]: ${errorMessage}`);
               
               // Stop scanner on error too
               this.stopQRScanner();
               console.log(`📹 QR scanner stopped after error [${scanId}]`);
+              
+              // Show user-friendly error message
+              if (userFriendlyMessage) {
+                alert(userFriendlyMessage);
+              }
               
               this.setState({
                 qrValue: result.data,
@@ -534,13 +603,39 @@ class Volunteers extends Component {
     // Clear processing flag when changing stations
     this.isProcessingQR = false;
     
-    // For any station, allow QR scanner to keep running with optimized state update
-    this.setState({
-      selectedStation: newStation,
-      qrValue: '',
-      qrScanned: false,
-      cameraError: null,
-      formData: {}
+    // Preserve participant data but clear station-specific form fields
+    this.setState(prevState => {
+      const newFormData = { ...prevState.formData };
+      
+      // Clear previous station fields if we had a station selected
+      if (prevState.selectedStation && stationFields[prevState.selectedStation]) {
+        stationFields[prevState.selectedStation].forEach(field => {
+          // Only clear station-specific fields, not participant info
+          if (!['name', 'age', 'gender', 'dateOfBirth', 'phoneNumber', 'height', 'weight', 'bmi', 'stations', 'hasHeightWeight'].includes(field)) {
+            delete newFormData[field];
+          }
+        });
+      }
+      
+      // Initialize new station fields as empty for data entry
+      if (newStation && stationFields[newStation]) {
+        stationFields[newStation].forEach(field => {
+          // Don't overwrite participant info or height/weight data
+          if (!['name', 'age', 'gender', 'dateOfBirth', 'phoneNumber', 'height', 'weight', 'bmi', 'stations', 'hasHeightWeight'].includes(field)) {
+            newFormData[field] = '';
+          }
+        });
+        console.log(`🔧 Initialized form fields for new station [${newStation}]`);
+      }
+      
+      return {
+        selectedStation: newStation,
+        // Only clear QR fields if no participant is loaded
+        qrValue: newFormData.name ? prevState.qrValue : '',
+        qrScanned: newFormData.name ? prevState.qrScanned : false,
+        cameraError: null,
+        formData: newFormData
+      };
     }, () => {
       // Immediate save for faster state persistence across devices
       this.immediateSave();
@@ -611,8 +706,104 @@ class Volunteers extends Component {
     }
   }
 
+  handleManualQREntry = async (qrCode) => {
+    // Set processing flag
+    this.isProcessingQR = true;
+    
+    // Generate unique scan ID for tracking
+    const scanId = `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`🔍 Manual QR Entry started [${scanId}]:`, qrCode);
+    
+    // Clear any existing error
+    this.setState({ cameraError: null });
+    
+    try {
+      const response = await axios.post(`${API_BASE_URL}/participants`, {
+        "purpose": "retrieveParticipant",
+        "participantID": qrCode
+      }, {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Scan-ID': scanId,
+          'X-Device-ID': this.deviceId || 'unknown'
+        }
+      });
+      
+      console.log(`✅ Manual QR Entry completed [${scanId}]:`, response.data?.success ? 'Success' : 'Failed');
+      console.log(`📋 Full response for manual entry [${scanId}]:`, response.data);
+      
+      if (response.data && response.data.success && response.data.data) {
+        console.log(`📋 Participant data retrieved for manual entry [${scanId}]:`, response.data.data);
+        
+        // Populate participant personal data
+        const formData = {};
+        Object.keys(response.data.data).forEach(key => {
+          formData[key] = response.data.data[key];
+        });
+        
+        // Check if participant has height and weight recorded
+        const hasHeight = formData.height && formData.height !== '' && formData.height !== '-';
+        const hasWeight = formData.weight && formData.weight !== '' && formData.weight !== '-';
+        formData.hasHeightWeight = hasHeight && hasWeight;
+        
+        // Initialize empty form fields for the selected station
+        if (this.state.selectedStation && stationFields[this.state.selectedStation]) {
+          stationFields[this.state.selectedStation].forEach(field => {
+            if (formData[field] === undefined || formData[field] === null) {
+              formData[field] = '';
+            }
+          });
+          console.log(`🔧 Initialized form fields for manual entry [${this.state.selectedStation}]`);
+        }
+        
+        // Stop QR scanner since we have manual entry
+        this.stopQRScanner();
+        
+        this.setState({
+          qrValue: qrCode,
+          qrScanned: true,
+          cameraError: null,
+          formData
+        }, () => {
+          this.immediateSave();
+          console.log(`💾 Data saved for manual entry [${scanId}]`);
+        });
+      } else {
+        console.log(`❌ Invalid response for manual entry [${scanId}]:`, response.data);
+        this.setState({
+          cameraError: response.data?.message || 'Participant not found'
+        });
+      }
+    } catch (err) {
+      console.error(`❌ Manual QR Entry error [${scanId}]:`, err);
+      
+      const { language } = this.context;
+      let errorMessage = 'Network or server error';
+      
+      if (err.response) {
+        const status = err.response.status;
+        if (status === 500) {
+          errorMessage = language === 'en' 
+            ? 'Server error. Please contact support.' 
+            : '服务器错误。请联系技术支持。';
+        } else if (status === 404) {
+          errorMessage = language === 'en' 
+            ? 'Participant not found. Please check the ID.' 
+            : '找不到参与者。请检查ID。';
+        }
+      }
+      
+      this.setState({
+        cameraError: errorMessage
+      });
+    } finally {
+      this.isProcessingQR = false;
+    }
+  }
+
   onEnter = async () => {
-    const { selectedStation, formData, qrValue, stations } = this.state;
+    const { selectedStation, formData, qrValue } = this.state;
     const { language } = this.context;
     if (!qrValue) {
       alert(language === 'en' ? 'No QR code scanned.' : '未扫描二维码。');
@@ -668,11 +859,18 @@ class Volunteers extends Component {
         // Always include the field, even if empty
         fieldsToSend[field] = getFieldWithUnit(field, formData[field] ?? '');
       });
-      // Remove any previous entry for this station
-      const filteredStations = stations.filter(s => !s[selectedStation]);
+      // Remove any previous entry for this station from participant's existing stations
+      const existingStations = formData.stations || [];
+      const filteredStations = existingStations.filter(s => !s[selectedStation]);
       const newStations = [...filteredStations, { [selectedStation]: fieldsToSend }];
       payload = { stations: newStations };
-      this.setState({ stations: newStations });
+      // Update formData with new stations for UI purposes
+      this.setState(prevState => ({
+        formData: {
+          ...prevState.formData,
+          stations: newStations
+        }
+      }));
     }
     try {
       const response = await axios.post(`${API_BASE_URL}/participants`, {
@@ -892,6 +1090,96 @@ class Volunteers extends Component {
               </div>
             )}
             
+            {/* Show error state with retry option */}
+            {!formData.name && qrScanned && cameraError && (
+              <div style={{ 
+                textAlign: 'center', 
+                marginBottom: 16, 
+                padding: '20px', 
+                backgroundColor: '#f8d7da', 
+                border: '2px solid #dc3545',
+                borderRadius: '8px',
+                color: '#721c24'
+              }}>
+                <h3 style={{ margin: '0 0 12px 0', color: '#dc3545' }}>
+                  ❌ {language === 'en' ? 'Scan Error' : '扫描错误'}
+                </h3>
+                <div style={{ fontSize: '1.1em', marginBottom: '16px' }}>
+                  {language === 'en' ? 'QR Code: ' : '二维码：'}<strong>{qrValue}</strong>
+                </div>
+                <div style={{ fontSize: '1em', marginBottom: '16px', color: '#721c24' }}>
+                  {cameraError}
+                </div>
+                <button 
+                  onClick={() => {
+                    // Clear error state and restart scanner
+                    this.isProcessingQR = false;
+                    this.stopQRScanner();
+                    
+                    this.setState({ 
+                      qrScanned: false, 
+                      qrValue: '', 
+                      cameraError: null,
+                      formData: {}
+                    }, () => {
+                      // Restart scanner after clearing error
+                      if (this.videoNode && this.state.selectedStation) {
+                        setTimeout(() => {
+                          if (!this.qrScanner && !this.isProcessingQR) {
+                            console.log('📹 Restarting QR scanner after error retry');
+                            this.startQRScannerWithNode(this.videoNode);
+                          }
+                        }, 500);
+                      }
+                    });
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '1em',
+                    fontWeight: '600',
+                    marginRight: '10px'
+                  }}
+                >
+                  {language === 'en' ? '🔄 Try Again' : '🔄 重试'}
+                </button>
+                <button 
+                  onClick={() => {
+                    // Manual QR entry option
+                    const manualQR = prompt(
+                      language === 'en' 
+                        ? 'Enter participant ID manually:' 
+                        : '手动输入参与者ID：',
+                      qrValue || ''
+                    );
+                    if (manualQR && manualQR.trim()) {
+                      // Trigger manual scan processing
+                      this.setState({ qrValue: manualQR.trim() }, () => {
+                        // Manually trigger the scan processing
+                        this.handleManualQREntry(manualQR.trim());
+                      });
+                    }
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '1em',
+                    fontWeight: '600'
+                  }}
+                >
+                  {language === 'en' ? '✏️ Manual Entry' : '✏️ 手动输入'}
+                </button>
+              </div>
+            )}
+            
             {/* Only show camera status when no participant is loaded and no successful scan */}
             {!formData.name && !qrScanned && (
               <div style={{ textAlign: 'center', marginBottom: 8, color: '#1976d2', fontWeight: 600 }}>
@@ -944,7 +1232,14 @@ class Volunteers extends Component {
             )}
 
             {/* Show form fields in the same position as camera when participant is loaded */}
-            {formData.name && selectedStation && (
+            {(() => {
+              // Debug logging for render conditions
+              console.log(`🎨 Render Debug - formData.name: "${formData.name}"`);
+              console.log(`🎨 Render Debug - selectedStation: "${selectedStation}"`);
+              console.log(`🎨 Render Debug - Should show form: ${!!(formData.name && selectedStation)}`);
+              
+              return formData.name && selectedStation;
+            })() && (
               <div style={{ width: '100%', maxWidth: 640, margin: '0 auto', padding: '20px', borderRadius: 18, background: '#f8f9fa', border: '2px solid #28a745', boxShadow: '0 4px 32px rgba(0,0,0,0.12)' }}>
                 
                 {/* Check if height/weight is required but missing */}
@@ -1155,10 +1450,10 @@ class Volunteers extends Component {
                       unit = 'kg'; placeholder = `${t[field] || field}`;
                     }
 
-                    // Find last value for this station/field
+                    // Find last value for this station/field from participant's data
                     let lastValue = '';
-                    if (this.state.stations && this.state.stations.length > 0) {
-                      const lastStationObj = this.state.stations.find(s => s[selectedStation]);
+                    if (formData.stations && formData.stations.length > 0) {
+                      const lastStationObj = formData.stations.find(s => s[selectedStation]);
                       if (lastStationObj && lastStationObj[selectedStation] && lastStationObj[selectedStation][field]) {
                         lastValue = lastStationObj[selectedStation][field];
                       }
