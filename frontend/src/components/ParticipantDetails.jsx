@@ -72,7 +72,9 @@ class ParticipantDetails extends Component {
   }
 
   hasValue = (value) => {
-    return value && value.toString().trim() !== '' && value !== 'Pending' && value !== '-'
+    const result = value && value.toString().trim() !== '' && value !== 'Pending' && value !== '-'
+    console.log('🔍 hasValue check:', { value, result })
+    return result
   }
 
   // Support both ISO and DD/MM/YYYY date formats
@@ -1036,6 +1038,16 @@ class ParticipantDetails extends Component {
     const { participant, language, onClose } = this.props
     console.log('ParticipantDetails render', participant, language)
     
+    // Debug logging for height, weight, BMI
+    console.log('🔍 Debug participant data:', {
+      height: participant?.height,
+      weight: participant?.weight,
+      bmi: participant?.bmi,
+      liveHeight: this.state.liveHeight,
+      liveWeight: this.state.liveWeight,
+      liveBMI: this.state.liveBMI
+    })
+    
     // Handle case where props might not be available yet
     if (!participant) {
       console.log('ParticipantDetails: Missing participant prop', this.props)
@@ -1098,28 +1110,28 @@ class ParticipantDetails extends Component {
                 <span className="personal-info-value">{fallbackT[participant.gender.toLowerCase()] || participant.gender}</span>
               </div>
             )}
-            {/* Live Height Field */}
-            {(this.hasValue(participant.height) || this.state.liveHeight) && (
+            {/* Live Height Field - Always show if data exists */}
+            {(participant.height || this.state.liveHeight) && (
               <div className="personal-info-card">
-                <span className="personal-info-label">{fallbackT.height}</span>
+                <span className="personal-info-label">{fallbackT.height || 'Height'}</span>
                 <span className="personal-info-value">
                   {this.state.liveHeight || participant.height}
                 </span>
               </div>
             )}
-            {/* Live Weight Field */}
-            {(this.hasValue(participant.weight) || this.state.liveWeight) && (
+            {/* Live Weight Field - Always show if data exists */}
+            {(participant.weight || this.state.liveWeight) && (
               <div className="personal-info-card">
-                <span className="personal-info-label">{fallbackT.weight}</span>
+                <span className="personal-info-label">{fallbackT.weight || 'Weight'}</span>
                 <span className="personal-info-value">
                   {this.state.liveWeight || participant.weight}
                 </span>
               </div>
             )}
-            {/* Live BMI Field */}
-            {(this.hasValue(participant.bmi) || this.state.liveBMI) && (
+            {/* Live BMI Field - Always show if data exists */}
+            {(participant.bmi || this.state.liveBMI) && (
               <div className="personal-info-card">
-                <span className="personal-info-label">{fallbackT.bmi}</span>
+                <span className="personal-info-label">{fallbackT.bmi || 'BMI'}</span>
                 <span className="personal-info-value">
                   {this.state.liveBMI || participant.bmi}
                 </span>
