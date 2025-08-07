@@ -18,53 +18,7 @@ class ParticipantDetails extends Component {
     }
     this.socket = null
   }
-
-  componentDidMount() {
-    // Initialize socket connection
-    this.socket = io(API_BASE_URL)
-    
-    this.socket.on('connect', () => {
-      console.log('🔌 Socket connected for ParticipantDetails')
-    })
-
-    // Listen for participant updates
-    this.socket.on('participant-updated', (data) => {
-      console.log('📊 Received participant update:', data)
-      
-      // Check if this update is for the current participant
-      if (data.participantID === this.props.participant?.id) {
-        const { participant } = data
-        
-        // Update live values if they exist in the update
-        if (participant) {
-          this.setState({
-            liveHeight: participant.height || this.state.liveHeight,
-            liveWeight: participant.weight || this.state.liveWeight,
-            liveBMI: participant.bmi || this.state.liveBMI
-          })
-          
-          console.log('✅ Updated live values:', {
-            height: participant.height,
-            weight: participant.weight, 
-            bmi: participant.bmi
-          })
-        }
-      }
-    })
-  }
-
-  componentDidUpdate(prevProps) {
-    // Update state if participant data changes
-    if (prevProps.participant !== this.props.participant) {
-      const { participant } = this.props
-      this.setState({
-        liveHeight: participant?.height || '',
-        liveWeight: participant?.weight || '',
-        liveBMI: participant?.bmi || ''
-      })
-    }
-  }
-
+  
   componentWillUnmount() {
     if (this.socket) {
       this.socket.disconnect()

@@ -59,7 +59,8 @@
           // Update only if it matches current participant and user doesn't have form data
           if (currentParticipantId === data.participantID) {
             console.log("✅ Event matches current participant");
-            this.handleParticipantUpdate();
+            //this.handleParticipantUpdate();
+            this.retrieveParticipantData(participantId);
           } else {
             console.log("ℹ️ Event for different participant, ignoring update");
           }
