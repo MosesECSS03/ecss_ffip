@@ -837,28 +837,52 @@ class Volunteers extends Component {
         )}
         {selectedStation && qrScanned && (
           <div className="details-section">
-            {/* Show completed stations only if there are actually completed stations with data */}
-            {this.state.stations.length > 0 && this.state.stations.some(stationObj => {
-              const stationData = Object.values(stationObj)[0];
-              return stationData && Object.keys(stationData).length > 0 && Object.values(stationData).some(val => val && val !== '');
-            }) && (
-              <div style={{ marginBottom: 16, color: '#1976d2', fontWeight: 600 }}>
-                {language === 'en' ? 'Completed Stations:' : '已完成站点：'}
-                <ul>
-                  {this.state.stations.filter(stationObj => {
-                    const stationData = Object.values(stationObj)[0];
-                    return stationData && Object.keys(stationData).length > 0 && Object.values(stationData).some(val => val && val !== '');
-                  }).map((stationObj, idx) => {
-                    const stationName = Object.keys(stationObj)[0];
-                    return (
-                      <li key={stationName}>
-                        {t.stations[stationName] || stationName}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
+            {/* Show completed stations only if participant has stations data AND has meaningful completed data */}
+            {(() => {
+              // First check if participant has stations data at all
+              if (!formData.stations || !Array.isArray(formData.stations) || formData.stations.length === 0) {
+                return null; // No stations key or empty stations - participant hasn't completed any stations yet
+              }
+              
+              // Helper function to check if a station has meaningful completed data
+              const hasCompletedData = (stationObj) => {
+                const stationData = Object.values(stationObj)[0];
+                if (!stationData || typeof stationData !== 'object') return false;
+                
+                // Check if any field has meaningful non-empty data
+                return Object.values(stationData).some(val => {
+                  if (!val || val === '' || val === '-' || val === 'null' || val === 'undefined') return false;
+                  // For numeric fields, check if it's not just "0" or " cm", " kg", " secs"
+                  if (typeof val === 'string') {
+                    const trimmed = val.trim();
+                    if (trimmed === '0' || trimmed === '0 cm' || trimmed === '0 kg' || trimmed === '0 secs') return false;
+                    if (trimmed.match(/^\s*(cm|kg|secs)\s*$/)) return false; // Just unit without value
+                    if (trimmed.length > 0) return true;
+                  }
+                  return val !== null && val !== undefined;
+                });
+              };
+              
+              // Use participant's stations data from formData, not local state
+              const participantStations = formData.stations || [];
+              const completedStations = participantStations.filter(hasCompletedData);
+              
+              return completedStations.length > 0 && (
+                <div style={{ marginBottom: 16, color: '#1976d2', fontWeight: 600 }}>
+                  {language === 'en' ? 'Completed Stations:' : '已完成站点：'}
+                  <ul>
+                    {completedStations.map((stationObj, idx) => {
+                      const stationName = Object.keys(stationObj)[0];
+                      return (
+                        <li key={stationName}>
+                          {t.stations[stationName] || stationName}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })()}
             <div style={{ textAlign: 'center', marginBottom: 12, color: '#388e3c', fontWeight: 600 }}>
               {/* Always show participant info section as heightWeight, even for manual entry */}
               {(() => {
