@@ -3,9 +3,9 @@ import { translations } from '../utils/translations'
 import LanguageContext from '../contexts/LanguageContext'
 import './Pages.css'
 import axios from "axios"
-import QRCode from 'qrcode'
 import ParticipantForm from './ParticipantForm'
 import SwipeView from './SwipeView'
+import QRCodeModal from './Volunteers/QRCodeModal'
 import { io } from 'socket.io-client' // Uncommented import for socket.io-client
 
 // If you need to use socket.io-client, import as needed below or in the relevant method/component.
@@ -53,20 +53,16 @@ class Participants extends Component {
       showForm: false, // Start with false to prevent flickering
       hasSubmitted: false,
       participants: [],
-      qrCodeUrl: '',
+      // Simplified QR state management
       showQRCode: false,
       currentParticipantId: null,
-      showTableQRCode: false,
-      tableQRCodeUrl: '',
-      tableQRParticipantId: null,
+      qrCodeType: 'detailed', // 'detailed' or 'simple'
       showResults: false,
       selectedParticipantResults: null,
       showSwipeView: false,
       swipeParticipantData: null,
       submissionError: null,
       dataStatusMessage: '', // For showing save/load notifications
-      isGeneratingQR: false, // Loading state for QR generation
-      qrGenerationError: null, // Error state for QR generation
       isInitializing: true // Add initialization state
     }
     this.socket = null;
@@ -582,127 +578,33 @@ class Participants extends Component {
     // Note: Can't show custom messages in modern browsers, but data will be saved
   }
   
-  // Generate QR code for participant ID - Enhanced for concurrent access
-  generateQRCode = async (participantId) => {
-    // Prevent multiple simultaneous QR generations
-    if (this.state.isGeneratingQR) {
-      console.log('QR generation already in progress, skipping...');
+  // Show QR code modal for participant - Simplified
+  showQRCode = (participantId, type = 'detailed') => {
+    if (!participantId) {
+      console.error('No participant ID provided for QR code');
+      this.setState({ 
+        submissionError: 'No participant ID available for QR code generation' 
+      });
       return;
     }
-
-    try {
-      if (!participantId) {
-        console.error('No participant ID provided for QR code generation');
-        this.setState({ 
-          qrGenerationError: 'No participant ID available for QR code generation' 
-        });
-        return;
-      }
-      
-      console.log('Generating QR code for participant ID:', participantId);
-      
-      // Set loading state
-      this.setState({ 
-        isGeneratingQR: true, 
-        qrGenerationError: null,
-        dataStatusMessage: 'Generating QR code...'
-      });
-      
-      // Create a resilient QR code with error correction for scanning reliability
-      const qrDataPayload = {
-        id: participantId.toString(),
-        timestamp: Date.now(),
-        checksum: this.generateChecksum(participantId.toString())
-      };
-      
-      const qrPromise = QRCode.toDataURL(JSON.stringify(qrDataPayload), {
-        width: 350,         // Optimized size for scanning
-        margin: 2,          // Adequate margin for camera recognition
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        },
-        errorCorrectionLevel: 'H' // High error correction for better scanning in poor conditions
-      });
-      
-      // Add timeout to prevent hanging but increased for reliability
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('QR code generation timeout')), 15000)
-      );
-      
-      const qrCodeUrl = await Promise.race([qrPromise, timeoutPromise]);
-      
-      // Validate QR code was generated properly
-      if (!qrCodeUrl || !qrCodeUrl.startsWith('data:image')) {
-        throw new Error('Invalid QR code generated');
-      }
-      
-      this.setState({ 
-        qrCodeUrl,
-        showQRCode: true,
-        currentParticipantId: participantId,
-        isGeneratingQR: false,
-        qrGenerationError: null,
-        dataStatusMessage: 'QR code ready for scanning!'
-      });
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        this.setState({ dataStatusMessage: '' });
-      }, 3000);
-      
-      console.log('QR code generated successfully with high reliability settings');
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-      
-      // Attempt fallback QR generation with simpler data
-      try {
-        console.log('Attempting fallback QR generation...');
-        const fallbackQR = await QRCode.toDataURL(participantId.toString(), {
-          width: 300,
-          margin: 1,
-          errorCorrectionLevel: 'M'
-        });
-        
-        this.setState({
-          qrCodeUrl: fallbackQR,
-          showQRCode: true,
-          currentParticipantId: participantId,
-          isGeneratingQR: false,
-          qrGenerationError: null,
-          dataStatusMessage: 'QR code generated (fallback mode)'
-        });
-        
-        setTimeout(() => {
-          this.setState({ dataStatusMessage: '' });
-        }, 3000);
-        
-      } catch (fallbackError) {
-        console.error('Fallback QR generation also failed:', fallbackError);
-        this.setState({
-          isGeneratingQR: false,
-          qrGenerationError: error.message || 'Failed to generate QR code',
-          submissionError: 'Failed to generate QR code. Please try again.',
-          dataStatusMessage: 'QR code generation failed'
-        });
-        
-        // Clear error message after 5 seconds
-        setTimeout(() => {
-          this.setState({ dataStatusMessage: '', qrGenerationError: null });
-        }, 5000);
-      }
-    }
+    
+    console.log('Showing QR code for participant ID:', participantId, 'Type:', type);
+    
+    this.setState({
+      showQRCode: true,
+      currentParticipantId: participantId,
+      qrCodeType: type,
+      dataStatusMessage: ''
+    });
   }
 
-  // Helper method to generate checksum for QR data validation
-  generateChecksum = (data) => {
-    let hash = 0;
-    for (let i = 0; i < data.length; i++) {
-      const char = data.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(36);
+  // Close QR code modal
+  closeQRCode = () => {
+    this.setState({
+      showQRCode: false,
+      currentParticipantId: null,
+      qrCodeType: 'detailed'
+    });
   }
 
   // Calculate age from date of birth
@@ -1071,7 +973,7 @@ class Participants extends Component {
     return null;
   }
 
-  // Optimized QR code button handler with debouncing
+  // Simplified QR code button handler
   handleQRCodeClick = (participantId) => {
     // Prevent rapid clicks
     if (this.lastQRClickTime && Date.now() - this.lastQRClickTime < 1000) {
@@ -1080,10 +982,10 @@ class Participants extends Component {
     }
     
     this.lastQRClickTime = Date.now();
-    this.generateQRCode(participantId);
+    this.showQRCode(participantId, 'detailed');
   }
 
-  // Optimized table QR code button handler with debouncing
+  // Simplified table QR code button handler
   handleTableQRCodeClick = (participantId) => {
     // Prevent rapid clicks
     if (this.lastTableQRClickTime && Date.now() - this.lastTableQRClickTime < 1000) {
@@ -1092,7 +994,7 @@ class Participants extends Component {
     }
     
     this.lastTableQRClickTime = Date.now();
-    this.generateTableQRCode(participantId);
+    this.showQRCode(participantId, 'simple');
   }
 
   // Enhanced QR code close with refresh capability
@@ -1103,40 +1005,6 @@ class Participants extends Component {
       currentParticipantId: null,
       isGeneratingQR: false,
       qrGenerationError: null
-    });
-  }
-
-  // Add QR code refresh method
-  refreshQRCode = async () => {
-    const currentId = this.state.currentParticipantId;
-    if (!currentId) {
-      console.error('No participant ID available for QR refresh');
-      return;
-    }
-    
-    // Clear current QR and regenerate
-    this.setState({ 
-      qrCodeUrl: '', 
-      qrGenerationError: null,
-      dataStatusMessage: 'Refreshing QR code...' 
-    });
-    
-    await this.generateQRCode(currentId);
-  }
-
-  // QR code health check
-  validateQRCode = (qrCodeUrl) => {
-    if (!qrCodeUrl) return false;
-    if (!qrCodeUrl.startsWith('data:image')) return false;
-    if (qrCodeUrl.length < 100) return false; // Too small to be valid
-    return true;
-  }
-
-  closeTableQRCode = () => {
-    this.setState({
-      showTableQRCode: false,
-      tableQRCodeUrl: '',
-      tableQRParticipantId: null
     });
   }
 
@@ -1187,85 +1055,10 @@ class Participants extends Component {
     window.location.href = '/';
   }
 
-  // Generate QR code for table participant - Optimized for performance
-  generateTableQRCode = async (participantId) => {
-    // Prevent multiple simultaneous QR generations
-    if (this.state.isGeneratingQR) {
-      console.log('QR generation already in progress, skipping...');
-      return;
-    }
-
-    try {
-      if (!participantId) {
-        console.error('No participant ID provided for table QR code generation');
-        this.setState({ 
-          qrGenerationError: 'No participant ID available for table QR code generation' 
-        });
-        return;
-      }
-      
-      console.log('Generating table QR code for participant ID:', participantId);
-      
-      // Set loading state
-      this.setState({ 
-        isGeneratingQR: true, 
-        qrGenerationError: null,
-        dataStatusMessage: 'Generating table QR code...'
-      });
-      
-      // Use a timeout to prevent hanging
-      const qrPromise = QRCode.toDataURL(participantId.toString(), {
-        width: 300, // Reduced size for better performance
-        margin: 1,  // Reduced margin
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        },
-        errorCorrectionLevel: 'L' // Lower correction level for faster generation
-      });
-      
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Table QR code generation timeout')), 10000)
-      );
-      
-      const qrCodeUrl = await Promise.race([qrPromise, timeoutPromise]);
-      
-      this.setState({
-        tableQRCodeUrl: qrCodeUrl,
-        showTableQRCode: true,
-        tableQRParticipantId: participantId,
-        isGeneratingQR: false,
-        qrGenerationError: null,
-        dataStatusMessage: 'Table QR code generated successfully!'
-      });
-      
-      // Clear success message after 2 seconds
-      setTimeout(() => {
-        this.setState({ dataStatusMessage: '' });
-      }, 2000);
-      
-      console.log('Table QR code generated successfully');
-    } catch (error) {
-      console.error('Error generating table QR code:', error);
-      this.setState({
-        isGeneratingQR: false,
-        qrGenerationError: error.message || 'Failed to generate table QR code',
-        submissionError: 'Failed to generate QR code. Please try again.',
-        dataStatusMessage: 'Table QR code generation failed'
-      });
-      
-      // Clear error message after 3 seconds
-      setTimeout(() => {
-        this.setState({ dataStatusMessage: '', qrGenerationError: null });
-      }, 3000);
-    }
-  }
-
   render() {
     const { language } = this.props
     const t = translations[language]
-    const { formData, showForm, participants, showQRCode, qrCodeUrl, currentParticipantId, showTableQRCode, tableQRCodeUrl, tableQRParticipantId, showResults, selectedParticipantResults, showSwipeView, swipeParticipantData, submissionError, isInitializing, isLoading } = this.state
+    const { formData, showForm, participants, showQRCode, currentParticipantId, qrCodeType, showResults, selectedParticipantResults, showSwipeView, swipeParticipantData, submissionError, isInitializing, isLoading } = this.state
 
     // Debug logging for render decisions
     console.log('🔍 Render Decision Debug:', {
@@ -1682,6 +1475,17 @@ class Participants extends Component {
             🧪 Test Persistence
           </button>
         </div>
+
+        {/* QR Code Modal Component */}
+        <QRCodeModal 
+          isVisible={showQRCode}
+          participantId={currentParticipantId}
+          type={qrCodeType}
+          title={qrCodeType === 'simple' ? 'Participant QR Code' : 'Registration Successful! 🎉'}
+          subtitle={qrCodeType === 'simple' ? 'Present this QR code to the station master' : 'Present this QR code to the station master'}
+          description={qrCodeType === 'simple' ? 'Station master will scan this code to access participant data.' : 'Station master will scan this code to access your health information for measurement taking.'}
+          onClose={this.closeQRCode}
+        />
       </div>
     )
   }
