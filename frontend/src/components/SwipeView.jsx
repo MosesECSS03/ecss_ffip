@@ -18,8 +18,18 @@ class SwipeView extends Component {
   componentDidMount() {
     this.generateQR();
     document.addEventListener('keydown', this.handleKeyDown)
+    
+    // Mobile debugging
+    console.log('📱 SwipeView mounted:', {
+      participant: this.props.participant,
+      hasParticipant: !!this.props.participant,
+      viewport: `${window.innerWidth}x${window.innerHeight}`,
+      isMobile: window.innerWidth <= 768,
+      hasStationData: this.hasStationData(),
+      hasHeightWeight: this.hasHeightWeightData()
+    })
+    
     // Listen for survey-updated event
-
   }
 
   componentWillUnmount() {
@@ -177,11 +187,60 @@ class SwipeView extends Component {
         onTouchStart={this.handleTouchStart}
         onTouchMove={this.handleTouchMove}
         onTouchEnd={this.handleTouchEnd}
+        style={{
+          minHeight: '100vh',
+          minHeight: '-webkit-fill-available',
+          backgroundColor: '#f5f5f5',
+          position: 'relative'
+        }}
       >
+        {/* Mobile Debug Info */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: '#ff6b6b',
+          color: 'white',
+          padding: '8px',
+          fontSize: '12px',
+          zIndex: 9999,
+          textAlign: 'center'
+        }}>
+          📱 SwipeView - Current: {currentView} | Participant: {participant?.name || 'No name'} | QR: {qrCodeUrl ? 'Ready' : 'Loading'}
+        </div>
+
+        {/* Emergency fallback if no participant */}
+        {!participant && (
+          <div style={{
+            padding: '60px 20px 20px',
+            textAlign: 'center',
+            backgroundColor: '#fff3cd',
+            margin: '10px',
+            borderRadius: '5px',
+            border: '1px solid #ffeaa7'
+          }}>
+            <h2>⚠️ No Participant Data</h2>
+            <p>Participant information is missing. Please try submitting the form again.</p>
+            <button 
+              onClick={onClose}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                fontSize: '16px'
+              }}
+            >
+              Go Back
+            </button>
+          </div>
+        )}
 
         {/* Content area */}
-        <div className="swipe-view-content">
-            {currentView === 'details' && (
+        <div className="swipe-view-content" style={{ paddingTop: '50px' }}>
+            {currentView === 'details' && participant && (
               <div>
                 <ParticipantDetails 
                   participant={participant} 
@@ -291,21 +350,104 @@ class SwipeView extends Component {
                     </div>
                   </div>
                 )}
+                
+                {/* Mobile navigation buttons for details view */}
+                <div style={{
+                  display: 'flex',
+                  gap: '10px',
+                  justifyContent: 'center',
+                  margin: '30px 20px',
+                  paddingBottom: '20px'
+                }}>
+                  <button 
+                    onClick={() => this.setCurrentView('qr')}
+                    style={{
+                      padding: '12px 24px',
+                      backgroundColor: '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '25px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      minWidth: '120px'
+                    }}
+                  >
+                    {language === 'en' ? 'Show QR Code' : '显示二维码'}
+                  </button>
+                  <button 
+                    onClick={onClose}
+                    style={{
+                      padding: '12px 24px',
+                      backgroundColor: '#6c757d',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '25px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      minWidth: '120px'
+                    }}
+                  >
+                    {language === 'en' ? 'Close' : '关闭'}
+                  </button>
+                </div>
               </div>
             )}
 
-            {currentView === 'qr' && (
-              <div className="qr-code-view">
+            {currentView === 'qr' && participant && (
+              <div className="qr-code-view" style={{
+                padding: '20px',
+                textAlign: 'center',
+                backgroundColor: 'white',
+                borderRadius: '10px',
+                margin: '20px',
+                minHeight: '60vh'
+              }}>
                 <h2 className="qr-modal-title">{t.presentQRCode}</h2>
                 <p className="qr-modal-subtitle">{t.qrCodeSubtitle}</p>
                 
-                <div className="qr-code-container">
-                  {qrCodeUrl && (
+                {/* Mobile debug for QR */}
+                <div style={{
+                  fontSize: '12px',
+                  color: '#666',
+                  margin: '10px 0',
+                  padding: '10px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '5px'
+                }}>
+                  📱 QR Debug: {qrCodeUrl ? 'Generated' : 'Missing'} | Participant: {participant?.name || 'Unknown'}
+                </div>
+                
+                <div className="qr-code-container" style={{
+                  margin: '20px 0',
+                  padding: '20px',
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: '10px'
+                }}>
+                  {qrCodeUrl ? (
                     <img 
                       src={qrCodeUrl} 
                       alt="Participant QR Code" 
                       className="qr-code-image"
+                      style={{
+                        maxWidth: '250px',
+                        width: '100%',
+                        height: 'auto',
+                        border: '2px solid #ddd',
+                        borderRadius: '10px'
+                      }}
                     />
+                  ) : (
+                    <div style={{
+                      padding: '40px',
+                      backgroundColor: '#f0f0f0',
+                      borderRadius: '10px',
+                      color: '#666'
+                    }}>
+                      <div>🔄 Generating QR Code...</div>
+                      <div style={{ fontSize: '12px', marginTop: '10px' }}>
+                        Please wait while we create your QR code
+                      </div>
+                    </div>
                   )}
                 </div>
                 
@@ -315,6 +457,43 @@ class SwipeView extends Component {
                 
                 <div className="swipe-instructions">
                   <p className="swipe-instructions-text">{t.swipeInstructionsDetails}</p>
+                </div>
+                
+                {/* Mobile navigation buttons */}
+                <div style={{
+                  display: 'flex',
+                  gap: '10px',
+                  justifyContent: 'center',
+                  marginTop: '20px'
+                }}>
+                  <button 
+                    onClick={() => this.setCurrentView('details')}
+                    style={{
+                      padding: '12px 24px',
+                      backgroundColor: '#667eea',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '25px',
+                      fontSize: '16px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {language === 'en' ? 'View Details' : '查看详情'}
+                  </button>
+                  <button 
+                    onClick={onClose}
+                    style={{
+                      padding: '12px 24px',
+                      backgroundColor: '#6c757d',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '25px',
+                      fontSize: '16px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {language === 'en' ? 'Close' : '关闭'}
+                  </button>
                 </div>
               </div>
             )}

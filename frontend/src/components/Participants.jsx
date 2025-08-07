@@ -1261,10 +1261,52 @@ class Participants extends Component {
     // Show loading during initialization or data loading to prevent flickering
     if (isInitializing || isLoading) {
       return (
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <h2>Loading...</h2>
-          <div style={{ fontSize: '48px', margin: '20px 0', animation: 'spin 2s linear infinite' }}>🔄</div>
-          <p>{isLoading ? 'Loading saved data...' : 'Initializing application...'}</p>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '40px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#f8f9fa'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '40px',
+            borderRadius: '15px',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            maxWidth: '400px',
+            width: '100%'
+          }}>
+            <h2 style={{ margin: '0 0 20px 0', color: '#333' }}>
+              {isLoading ? 'Loading Your Data...' : 'Initializing...'}
+            </h2>
+            <div style={{ 
+              fontSize: '48px', 
+              margin: '20px 0', 
+              animation: 'spin 2s linear infinite' 
+            }}>
+              🔄
+            </div>
+            <p style={{ color: '#666', margin: '0' }}>
+              {isLoading ? 'Retrieving your saved information...' : 'Setting up the application...'}
+            </p>
+            
+            {/* Mobile debug in loading screen */}
+            <div style={{
+              fontSize: '12px',
+              color: '#999',
+              marginTop: '20px',
+              padding: '10px',
+              backgroundColor: '#f1f1f1',
+              borderRadius: '5px'
+            }}>
+              📱 Mobile: {window.innerWidth}x{window.innerHeight} | 
+              Loading: {isLoading ? 'Data' : 'App'} | 
+              HasSubmitted: {this.state.hasSubmitted ? 'Yes' : 'No'}
+            </div>
+          </div>
         </div>
       )
     }
@@ -1463,6 +1505,10 @@ class Participants extends Component {
         submittedAt: new Date().toISOString(),
         id: this.getCurrentParticipantId() || Date.now().toString()
       };
+      
+      // Debug participant data
+      console.log('📱 Creating SwipeView with participant data:', participantData);
+      console.log('📱 Form data details:', formData.participantDetails);
       
       return (
         <SwipeView
