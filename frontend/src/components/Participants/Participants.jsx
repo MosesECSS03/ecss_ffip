@@ -216,7 +216,7 @@ class Participants extends Component {
             dateOfBirth: this.state.formData.participantDetails.dateOfBirth,
             phoneNumber: this.state.formData.participantDetails.phoneNumber,
             submittedAt: new Date().toISOString(),
-            id: this.getCurrentParticipantId() || Date.now().toString()
+            id: this.getCurrentParticipantId()
           };
           
           this.setState({ 
@@ -494,15 +494,6 @@ class Participants extends Component {
     });
   }
 
-  // Close QR code modal
-  closeQRCode = () => {
-    this.setState({
-      showQRCode: false,
-      currentParticipantId: null,
-      qrCodeType: 'detailed'
-    });
-  }
-
   // Calculate age from date of birth
   calculateAge = (dateOfBirth) => {
     if (!dateOfBirth) return null
@@ -728,6 +719,10 @@ class Participants extends Component {
         let backendId = backendResult.data && (backendResult.data._id || backendResult.data.id);
         if (backendId) {
           newParticipant.id = backendId;
+          console.log('✅ Using backend-generated participant ID:', backendId);
+        } else {
+          console.warn('⚠️ Backend did not return a valid ID, using temporary ID');
+          newParticipant.id = `temp_${Date.now()}`;
         }
         // Only proceed if backend submission was successful
         const updatedParticipants = [...participants, newParticipant];
@@ -832,13 +827,18 @@ class Participants extends Component {
   getCurrentParticipantId = () => {
     try {
       const saved = localStorage.getItem('participantId');
-      if (saved) {
+      console.log('🔄 Retrieving participant ID from localStorage...');
+     /* if (saved) {
         const parsed = JSON.parse(saved);
+        console.log('🆔 Retrieved participant ID from localStorage:', parsed?.participantId);
         return parsed?.participantId;
-      }
+      }*/
     } catch (e) {
       console.warn('Failed to parse participantId from localStorage:', e);
+      // Clear corrupted data
+      localStorage.removeItem('participantId');
     }
+    console.warn('⚠️ No valid participant ID found in localStorage');
     return null;
   }
 
@@ -1170,7 +1170,7 @@ class Participants extends Component {
         height: formData.participantDetails.height,
         weight: formData.participantDetails.weight,
         submittedAt: new Date().toISOString(),
-        id: this.getCurrentParticipantId() || Date.now().toString()
+        id: this.getCurrentParticipantId() || `fallback_${Date.now()}`
       };
       
       return (
@@ -1257,7 +1257,7 @@ class Participants extends Component {
         height: formData.participantDetails.height,
         weight: formData.participantDetails.weight,
         submittedAt: new Date().toISOString(),
-        id: this.getCurrentParticipantId() || Date.now().toString()
+        id: this.getCurrentParticipantId() || `fallback_${Date.now()}`
       };
       
       return (

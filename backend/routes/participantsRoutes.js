@@ -50,7 +50,7 @@ router.post('/', async (req, res) =>
       var controller = new ParticipantsController();
       const result = await controller.getParticipant(participantID);
 
-      console.log('Participant retrieved:', result);
+      console.log(':', result);
       
       if (result.success) {
         res.status(201).json({
