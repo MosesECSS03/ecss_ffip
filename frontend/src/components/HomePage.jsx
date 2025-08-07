@@ -15,6 +15,15 @@ function HomePage() {
   const [error, setError] = useState('')
   const navigate = window.location.assign ? null : undefined // fallback for react-router-dom v6+ if needed
 
+  // Debug info for mobile
+  console.log('📱 HomePage rendered:', {
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    language,
+    translations: !!t,
+    isMobile: window.innerWidth <= 768,
+    userAgent: navigator.userAgent.substring(0, 50)
+  })
+
   //ok
   // Passwords (replace with env or secure method in production)
   const PASSWORDS = {
@@ -62,6 +71,19 @@ function HomePage() {
           <h1>{t.title}</h1>
           <p className="subtitle">{t.subtitle}</p>
         </header>
+        
+        {/* Mobile debug info */}
+        <div style={{
+          fontSize: '12px',
+          color: '#666',
+          margin: '10px 0',
+          padding: '10px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '5px',
+          border: '1px solid #dee2e6'
+        }}>
+          📱 Mobile Debug: {window.innerWidth}x{window.innerHeight} | Lang: {language} | Touch: {'ontouchstart' in window ? 'Yes' : 'No'} | Route: {window.location.pathname}
+        </div>
         
         <main className="homepage-content">
           <h2>{t.welcome}</h2>

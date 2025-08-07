@@ -629,6 +629,7 @@ class Volunteers extends Component {
         : '无法继续：该参与者必须先完成身高体重测量。');
       return;
     }
+    
     // Helper to ensure value is in the format '{value} {unit}' for fields with units
     const getFieldWithUnit = (field, value) => {
       let unit = '';
@@ -686,25 +687,32 @@ class Volunteers extends Component {
       });
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
-        // Only clear form data, preserve participant info and QR scanner state
-        const preservedFormData = {
-          name: formData.name,
-          age: formData.age,
-          gender: formData.gender,
-          dateOfBirth: formData.dateOfBirth,
-          phoneNumber: formData.phoneNumber,
-          height: formData.height,
-          weight: formData.weight,
-          bmi: formData.bmi,
-          stations: formData.stations
-        };
         
-        this.setState({
-          formData: preservedFormData,
+        // Clear processing flag and reset scanner state (same as "Scan Different Participant")
+        this.isProcessingQR = false;
+        
+        // Stop any existing scanner
+        this.stopQRScanner();
+        
+        // Reset state to allow new scan
+        this.setState({ 
+          qrScanned: false, 
+          qrValue: '', 
+          formData: {},  // Clear all form data including name
           cameraError: null
         }, () => {
-          // Save state immediately after successful submission
+          // Save state immediately after clearing
           this.immediateSave();
+          
+          // Restart scanner after state is cleared
+          if (this.videoNode && this.state.selectedStation) {
+            setTimeout(() => {
+              if (!this.qrScanner && !this.isProcessingQR) {
+                console.log('📹 Restarting QR scanner for new participant scan after data submission');
+                this.startQRScannerWithNode(this.videoNode);
+              }
+            }, 200);
+          }
         });
       } else {
         alert(language === 'en' ? 'Failed to submit data.' : '提交数据失败。');

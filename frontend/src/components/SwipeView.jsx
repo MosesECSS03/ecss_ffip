@@ -29,28 +29,59 @@ class SwipeView extends Component {
     }
   }
 
-  // Check if participant has any station results
-  hasStationResults = () => {
+  // Check if participant has any station data
+  hasStationData = () => {
     const { participant } = this.props
-    return participant.stationResults && 
-      Object.keys(participant.stationResults).length > 0 &&
-      Object.values(participant.stationResults).some(result => result.status === 'completed')
+    return participant.stations && 
+      Array.isArray(participant.stations) &&
+      participant.stations.length > 0
   }
 
-  // Get completed and incomplete stations
+  // Check if participant has height and weight data
+  hasHeightWeightData = () => {
+    const { participant } = this.props
+    return participant.height && participant.weight && 
+           participant.height !== '' && participant.weight !== '' &&
+           participant.height !== '-' && participant.weight !== '-'
+  }
+
+  // Get station summary from the stations array
   getStationSummary = () => {
     const { participant } = this.props
-    if (!participant.stationResults) return { completed: [], incomplete: [] }
+    if (!participant.stations || !Array.isArray(participant.stations)) {
+      return { completed: [], incomplete: [] }
+    }
     
     const completed = []
     const incomplete = []
     
-    Object.entries(participant.stationResults).forEach(([stationName, result]) => {
-      if (result.status === 'completed') {
-        completed.push({ name: stationName, ...result })
-      } else {
-        incomplete.push({ name: stationName, ...result })
-      }
+    // Process each station in the stations array
+    participant.stations.forEach(stationObj => {
+      Object.entries(stationObj).forEach(([stationName, stationData]) => {
+        // Check if station has meaningful data
+        const hasData = Object.values(stationData).some(value => {
+          if (!value || value === '' || value === '-') return false
+          if (typeof value === 'string') {
+            const trimmed = value.trim()
+            if (trimmed === '0' || trimmed.match(/^\s*(cm|kg|secs)\s*$/)) return false
+            return trimmed.length > 0
+          }
+          return true
+        })
+        
+        if (hasData) {
+          completed.push({ 
+            name: stationName, 
+            data: stationData,
+            completedAt: new Date().toISOString() // Stations don't have timestamps, use current time
+          })
+        } else {
+          incomplete.push({ 
+            name: stationName, 
+            data: stationData 
+          })
+        }
+      })
     })
     
     return { completed, incomplete }
@@ -123,8 +154,22 @@ class SwipeView extends Component {
   render() {
     const { participant, language, onClose } = this.props
     const { currentView, qrCodeUrl } = this.state
-    const hasResults = this.hasStationResults()
+    const hasStationData = this.hasStationData()
+    const hasHeightWeight = this.hasHeightWeightData()
+    const { completed: completedStations } = this.getStationSummary()
     const t = translations[language || 'en']
+
+    // Station name translations
+    const stationNames = {
+      heightWeight: language === 'en' ? 'Height & Weight' : '身高体重',
+      sitStand: language === 'en' ? 'Sit & Stand' : '坐立测试',
+      armBanding: language === 'en' ? 'Arm Banding' : '臂力测试',
+      marching: language === 'en' ? 'Marching in Place' : '原地踏步',
+      sitReach: language === 'en' ? 'Sit & Reach' : '坐位体前屈',
+      backStretch: language === 'en' ? 'Back Stretch' : '背部伸展',
+      speedWalking: language === 'en' ? 'Speed Walking' : '快速步行',
+      handGrip: language === 'en' ? 'Hand Grip' : '握力测试'
+    }
 
     return (
       <div 
@@ -143,35 +188,106 @@ class SwipeView extends Component {
                   language={language} 
                   onClose={onClose}
                 />
-                {console.log('Raw Participant Data', participant)}
-                {/* Station Results Section within Details */}
-                {hasResults && (
+                
+                {/* Height & Weight Section */}
+                {hasHeightWeight && (
                   <div className="station-results-section">
-                    <h2 className="section-title">{t.stationResults}</h2>
+                    <h2 className="section-title">{language === 'en' ? 'Physical Measurements' : '身体测量'}</h2>
                     
-                    {/* Station Cards */}
                     <div className="station-cards">
-                      {Object.entries(participant.stationResults || {}).map(([stationName, result]) => (
-                        <div key={stationName} className="station-card">
-                          <div className="station-header">
-                            <h3 className="station-title">{stationName}</h3>
+                      <div className="station-card height-weight-card">
+                        <div className="station-header">
+                          <h3 className="station-title">{stationNames.heightWeight}</h3>
+                        </div>
+                        
+                        <div className="measurement-details">
+                          <div className="measurement-item">
+                            <span className="measurement-label">{language === 'en' ? 'Height:' : '身高:'}</span>
+                            <span className="measurement-value">{participant.height}</span>
                           </div>
-                          
-                          {result.score && (
-                            <div className="station-score-large">{result.score}/10</div>
-                          )}
-                          
-                          <div className={`station-badge-large ${result.status}`}>
-                            {result.status.toUpperCase()}
+                          <div className="measurement-item">
+                            <span className="measurement-label">{language === 'en' ? 'Weight:' : '体重:'}</span>
+                            <span className="measurement-value">{participant.weight}</span>
                           </div>
-                          
-                          {result.completedAt && (
-                            <div className="station-timestamp">
-                              {new Date(result.completedAt).toLocaleDateString()} {new Date(result.completedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          {participant.bmi && (
+                            <div className="measurement-item">
+                              <span className="measurement-label">BMI:</span>
+                              <span className="measurement-value">{participant.bmi}</span>
                             </div>
                           )}
                         </div>
+                        
+                        <div className="station-badge-large completed">
+                          {language === 'en' ? 'COMPLETED' : '已完成'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Station Test Results Section */}
+                {hasStationData && completedStations.length > 0 && (
+                  <div className="station-results-section">
+                    <h2 className="section-title">
+                      {language === 'en' ? 'Test Station Results' : '测试站结果'}
+                      <span className="live-indicator">🔴 {language === 'en' ? 'Live Updates' : '实时更新'}</span>
+                    </h2>
+                    
+                    {/* Station Cards */}
+                    <div className="station-cards">
+                      {completedStations.map((station, index) => (
+                        <div key={`${station.name}-${index}`} className="station-card">
+                          <div className="station-header">
+                            <h3 className="station-title">{stationNames[station.name] || station.name}</h3>
+                          </div>
+                          
+                          {/* Display station data */}
+                          <div className="station-data">
+                            {Object.entries(station.data || {}).map(([key, value]) => {
+                              // Skip empty or meaningless values
+                              if (!value || value === '' || value === '-' || 
+                                  (typeof value === 'string' && value.trim().match(/^\s*(cm|kg|secs)\s*$/))) {
+                                return null
+                              }
+                              
+                              // Format the key name for display
+                              const displayKey = key
+                                .replace(/([A-Z])/g, ' $1')
+                                .replace(/^./, str => str.toUpperCase())
+                                .replace('Score1', language === 'en' ? 'Score 1' : '分数 1')
+                                .replace('Score2', language === 'en' ? 'Score 2' : '分数 2')
+                                .replace('LeftRight', language === 'en' ? 'Side' : '边')
+                                .replace('Remarks', language === 'en' ? 'Notes' : '备注')
+                              
+                              return (
+                                <div key={key} className="data-item">
+                                  <span className="data-label">{displayKey}:</span>
+                                  <span className="data-value">{value}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                          
+                          <div className="station-badge-large completed">
+                            {language === 'en' ? 'COMPLETED' : '已完成'}
+                          </div>
+                          
+                          <div className="station-timestamp">
+                            {language === 'en' ? 'Updated just now' : '刚刚更新'}
+                          </div>
+                        </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* No station data message */}
+                {!hasStationData && !hasHeightWeight && (
+                  <div className="no-data-section">
+                    <div className="no-data-message">
+                      <h3>{language === 'en' ? 'No Test Results Yet' : '暂无测试结果'}</h3>
+                      <p>{language === 'en' ? 'Visit test stations to see your results here' : '请前往测试站点查看结果'}</p>
+                      <div className="live-indicator">🔴 {language === 'en' ? 'Live Updates Enabled' : '实时更新已启用'}</div>
                     </div>
                   </div>
                 )}

@@ -22,6 +22,26 @@ class App extends Component {
     // Test data manager on app start
     dataManager.test()
     
+    // Debug info for mobile troubleshooting
+    console.log('📱 Mobile Debug Info:', {
+      userAgent: navigator.userAgent,
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        visualViewport: window.visualViewport ? {
+          width: window.visualViewport.width,
+          height: window.visualViewport.height
+        } : null
+      },
+      screen: {
+        width: window.screen.width,
+        height: window.screen.height,
+        orientation: window.screen.orientation?.type || 'unknown'
+      },
+      localStorage: typeof Storage !== 'undefined',
+      touch: 'ontouchstart' in window
+    })
+    
     // Check if language was already selected using new data manager
     const savedLanguage = dataManager.load(DATA_KEYS.LANGUAGE_PREFERENCE)
     if (savedLanguage) {

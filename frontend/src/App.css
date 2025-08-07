@@ -6,6 +6,9 @@
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   overflow-x: hidden;
   position: relative;
+  /* Fix for mobile Safari viewport units */
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
 }
 
 /* Reset and Base Styles */
@@ -22,6 +25,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   width: 100%;
   overflow-x: hidden;
+  /* Prevent zoom on input focus in iOS */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
 /* Mobile responsiveness */
@@ -29,6 +35,22 @@ body {
   .App {
     min-height: 100vh;
     min-height: -webkit-fill-available;
+    /* Ensure proper rendering on mobile */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+  
+  /* Fix for mobile Safari address bar hiding */
+  html {
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    height: -webkit-fill-available;
+    /* Prevent horizontal scrolling */
+    overflow-x: hidden;
+    /* Fix for touch scrolling */
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -43,5 +65,46 @@ body {
 @supports (-webkit-touch-callout: none) {
   .App {
     min-height: -webkit-fill-available;
+  }
+}
+
+/* Additional mobile fixes */
+@media screen and (max-width: 768px) {
+  /* Prevent horizontal overflow */
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+  }
+  
+  /* Fix for iOS Safari bottom bar */
+  .App {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Very small screens */
+@media screen and (max-width: 480px) {
+  .App {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    /* Force GPU acceleration for smoother rendering */
+    will-change: transform;
+  }
+}
+
+/* Landscape mobile */
+@media screen and (max-width: 768px) and (orientation: landscape) {
+  .App {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Fix for older Android browsers */
+@media screen and (max-width: 768px) {
+  .App {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
   }
 }

@@ -254,24 +254,83 @@ class ParticipantsEnhanced extends Component {
    */
   async initializeSocket() {
     try {
-      this.socket = io(API_BASE_URL)
+      console.log('🔌 Initializing Socket.IO connection to:', API_BASE_URL)
+      
+      this.socket = io(API_BASE_URL, {
+        transports: ['websocket', 'polling'],
+        timeout: 5000,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
+      })
 
       this.socket.on('connect', () => {
         console.log('✅ Socket connected:', this.socket.id)
+        
+        // Join participant room for targeted updates
+        const participantId = this.persistenceManager.loadParticipantId()
+        if (participantId) {
+          this.socket.emit('join-participant-room', participantId)
+          console.log('🏠 Joined participant room:', participantId)
+        }
+        
+        this.setState({ 
+          statusMessage: '🔗 Connected for live updates' 
+        })
+        this.clearStatusMessage()
       })
 
-      this.socket.on('disconnect', () => {
-        console.log('❌ Socket disconnected')
+      this.socket.on('disconnect', (reason) => {
+        console.log('❌ Socket disconnected:', reason)
+        this.setState({ 
+          statusMessage: '📡 Connection lost - trying to reconnect...' 
+        })
+      })
+
+      this.socket.on('reconnect', () => {
+        console.log('✅ Socket reconnected')
+        
+        // Rejoin participant room after reconnection
+        const participantId = this.persistenceManager.loadParticipantId()
+        if (participantId) {
+          this.socket.emit('join-participant-room', participantId)
+          console.log('🏠 Rejoined participant room after reconnection:', participantId)
+        }
+        
+        this.setState({ 
+          statusMessage: '✅ Reconnected for live updates' 
+        })
+        this.clearStatusMessage()
       })
 
       this.socket.on('participant-updated', (data) => {
-        console.log('🔔 Participant updated:', data)
+        console.log('🔔 Participant updated event received:', data)
+        
         // Handle real-time updates
         this.handleParticipantUpdate(data)
       })
 
+      this.socket.on('station-data-updated', (data) => {
+        console.log('🔔 Station data updated event received:', data)
+        
+        // Handle station-specific updates
+        this.handleStationDataUpdate(data)
+      })
+
+      this.socket.on('connect_error', (error) => {
+        console.error('❌ Socket connection error:', error)
+        this.setState({ 
+          statusMessage: '❌ Connection error - updates may be delayed' 
+        })
+        this.clearStatusMessage()
+      })
+
     } catch (error) {
       console.error('❌ Socket initialization failed:', error)
+      this.setState({ 
+        statusMessage: '❌ Live updates unavailable' 
+      })
+      this.clearStatusMessage()
     }
   }
 
@@ -626,8 +685,85 @@ class ParticipantsEnhanced extends Component {
     const currentParticipantId = this.persistenceManager.loadParticipantId()
     
     if (currentParticipantId === data.participantID) {
-      // Update is for current participant
-      this.checkForExistingParticipant()
+      // Update is for current participant - refresh their data
+      console.log('✅ Live update received for current participant')
+      
+      // Show notification about the update
+      this.setState({ 
+        statusMessage: '🔄 Your data has been updated by volunteer station' 
+      })
+      
+      // Refresh participant data from backend
+      this.refreshParticipantData(currentParticipantId)
+    }
+  }
+
+  /**
+   * Refresh participant data from backend to get latest station updates
+   */
+  refreshParticipantData = async (participantId) => {
+    try {
+      console.log('🔄 Refreshing participant data from backend...')
+      
+      const response = await axios.post(`${API_BASE_URL}/participants`, {
+        purpose: 'retrieveParticipant',
+        participantID: participantId
+      })
+
+      if (response.data?.success && response.data?.data) {
+        console.log('✅ Received updated participant data:', response.data.data)
+        
+        // Update the current participant data in state
+        this.setState({
+          participants: [response.data.data],
+          swipeParticipantData: response.data.data,
+          statusMessage: '✅ Your station data has been updated!'
+        })
+        
+        // Save the updated state
+        this.persistenceManager.saveState()
+        
+        // Clear status message after delay
+        setTimeout(() => {
+          this.setState({ statusMessage: '' })
+        }, 3000)
+        
+      } else {
+        console.warn('⚠️ Failed to refresh participant data')
+        this.setState({ 
+          statusMessage: '⚠️ Could not refresh your data' 
+        })
+        this.clearStatusMessage()
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing participant data:', error)
+      this.setState({ 
+        statusMessage: '❌ Error updating your data' 
+      })
+      this.clearStatusMessage()
+    }
+  }
+
+  /**
+   * Handle station-specific data updates
+   */
+  handleStationDataUpdate = (data) => {
+    console.log('🏥 Handling station data update:', data)
+    
+    const currentParticipantId = this.persistenceManager.loadParticipantId()
+    
+    if (currentParticipantId === data.participantID) {
+      // Station data update for current participant
+      console.log('✅ Station update received for current participant')
+      
+      // Show specific notification about which station was updated
+      const stationName = data.stationName || 'test station'
+      this.setState({ 
+        statusMessage: `🏥 ${stationName} data updated by volunteer` 
+      })
+      
+      // Refresh participant data to get the latest updates
+      this.refreshParticipantData(currentParticipantId)
     }
   }
 
@@ -697,10 +833,34 @@ class ParticipantsEnhanced extends Component {
     // Show loading during initialization
     if (isInitializing || isLoading) {
       return (
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <h2>Loading...</h2>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '40px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#f8f9fa'
+        }}>
+          <h2 style={{ color: '#333', marginBottom: '20px' }}>Loading...</h2>
           <div style={{ fontSize: '48px', margin: '20px 0', animation: 'spin 2s linear infinite' }}>🔄</div>
-          <p>{statusMessage || 'Initializing application...'}</p>
+          <p style={{ color: '#666', fontSize: '16px' }}>{statusMessage || 'Initializing application...'}</p>
+          
+          {/* Debug info for mobile */}
+          <div style={{
+            marginTop: '20px',
+            padding: '10px',
+            backgroundColor: '#e9ecef',
+            borderRadius: '5px',
+            fontSize: '12px',
+            color: '#495057',
+            maxWidth: '300px'
+          }}>
+            <div>Screen: {window.innerWidth}x{window.innerHeight}</div>
+            <div>Viewport: {window.visualViewport?.width || 'N/A'}x{window.visualViewport?.height || 'N/A'}</div>
+            <div>User Agent: {navigator.userAgent.substring(0, 50)}...</div>
+          </div>
         </div>
       )
     }
