@@ -51,11 +51,94 @@ class Participants extends Component {
       selectedParticipantResults: null,
       showSwipeView: false,
       swipeParticipantData: null,
-      submissionError: null
+      submissionError: null,
+      dataStatusMessage: '' // For showing save/load notifications
     }
     this.socket = null;
   }
   
+  // Add method to save state to localStorage
+  saveStateToLocalStorage = () => {
+    try {
+      const stateToSave = {
+        participants: this.state.participants,
+        selectedLanguage: this.state.selectedLanguage,
+        currentStep: this.state.currentStep,
+        formData: this.state.formData,
+        currentParticipantIndex: this.state.currentParticipantIndex,
+        lastUpdated: Date.now()
+      };
+      localStorage.setItem('participantsAppState', JSON.stringify(stateToSave));
+      console.log('💾 State saved to localStorage');
+      
+      // Show brief notification
+      this.setState({ dataStatusMessage: '💾 Data saved' });
+      setTimeout(() => {
+        this.setState({ dataStatusMessage: '' });
+      }, 2000);
+    } catch (error) {
+      console.error('❌ Error saving state to localStorage:', error);
+      this.setState({ dataStatusMessage: '❌ Failed to save data' });
+      setTimeout(() => {
+        this.setState({ dataStatusMessage: '' });
+      }, 3000);
+    }
+  }
+
+  // Add method to load state from localStorage
+  loadStateFromLocalStorage = () => {
+    try {
+      const savedState = localStorage.getItem('participantsAppState');
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        
+        // Check if the saved state is not too old (e.g., 24 hours)
+        const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        const age = Date.now() - (parsedState.lastUpdated || 0);
+        
+        if (age < maxAge) {
+          this.setState({
+            participants: parsedState.participants || [],
+            selectedLanguage: parsedState.selectedLanguage || 'english',
+            currentStep: parsedState.currentStep || 1,
+            formData: parsedState.formData || {},
+            currentParticipantIndex: parsedState.currentParticipantIndex || 0,
+            dataStatusMessage: '🔄 Data restored from previous session'
+          });
+          console.log('🔄 State restored from localStorage');
+          
+          // Clear the notification after 3 seconds
+          setTimeout(() => {
+            this.setState({ dataStatusMessage: '' });
+          }, 3000);
+        } else {
+          console.log('⏰ Saved state is too old, starting fresh');
+          localStorage.removeItem('participantsAppState');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error loading state from localStorage:', error);
+      // If there's an error, clear the corrupted data
+      localStorage.removeItem('participantsAppState');
+      this.setState({ dataStatusMessage: '❌ Failed to restore previous data' });
+      setTimeout(() => {
+        this.setState({ dataStatusMessage: '' });
+      }, 3000);
+    }
+  }
+
+  // Add method to clear saved state
+  clearSavedState = () => {
+    localStorage.removeItem('participantsAppState');
+    console.log('🗑️ Saved state cleared from localStorage');
+    this.setState({ 
+      dataStatusMessage: '🗑️ Saved data cleared successfully' 
+    });
+    setTimeout(() => {
+      this.setState({ dataStatusMessage: '' });
+    }, 2000);
+  }
+
   componentDidMount = async () => {
     try {
       console.log('🔌 Connecting to Socket.IO at:', API_BASE_URL);
@@ -148,6 +231,9 @@ class Participants extends Component {
             showSwipeView: true,
             swipeParticipantData: response.data.data,
             submissionError: null
+          }, () => {
+            // Save state after successful participant update
+            this.saveStateToLocalStorage();
           });
           return;
         }
@@ -252,7 +338,10 @@ class Participants extends Component {
             }
           }
         }
-      }))
+      }), () => {
+        // Save state after input change
+        this.saveStateToLocalStorage();
+      })
     } else if (nameParts.length === 2) {
       // Handle two-level structure like participantDetails.participantName
       const [mainKey, subKey] = nameParts
@@ -264,7 +353,10 @@ class Participants extends Component {
             [subKey]: type === 'checkbox' ? checked : value
           }
         }
-      }))
+      }), () => {
+        // Save state after input change
+        this.saveStateToLocalStorage();
+      })
     } else {
       // Handle flat structure for backward compatibility
       this.setState(prevState => ({
@@ -272,7 +364,10 @@ class Participants extends Component {
           ...prevState.formData,
           [name]: type === 'checkbox' ? checked : value
         }
-      }))
+      }), () => {
+        // Save state after input change
+        this.saveStateToLocalStorage();
+      })
     }
   }
 
@@ -338,6 +433,8 @@ class Participants extends Component {
             localStorage.setItem('participantId', JSON.stringify({ participantId: backendId }));
             console.log('Stored participantId in localStorage:', backendId);
           }
+          // Save complete state to localStorage
+          this.saveStateToLocalStorage();
           // Show swipe view with the new participant after state is updated
           this.showSwipeView(newParticipant.id);
         });
@@ -512,13 +609,52 @@ class Participants extends Component {
 
     if (showForm) {
       return (
-        <ParticipantForm
-          formData={formData}
-          language={language}
-          onInputChange={this.handleInputChange}
-          onSubmit={this.handleSubmit}
-          submissionError={submissionError}
-        />
+        <div>
+          {/* Data Status Notification */}
+          {this.state.dataStatusMessage && (
+            <div style={{
+              position: 'fixed',
+              top: '20px',
+              right: '20px',
+              backgroundColor: '#007bff',
+              color: 'white',
+              padding: '10px 15px',
+              borderRadius: '5px',
+              zIndex: 1000,
+              fontSize: '14px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+            }}>
+              {this.state.dataStatusMessage}
+            </div>
+          )}
+          
+          <ParticipantForm
+            formData={formData}
+            language={language}
+            onInputChange={this.handleInputChange}
+            onSubmit={this.handleSubmit}
+            submissionError={submissionError}
+          />
+          
+          {/* Clear Saved Data Button */}
+          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <button 
+              onClick={this.clearSavedState}
+              style={{
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+              title="Clear all saved form data from browser storage"
+            >
+              🗑️ Clear Saved Data
+            </button>
+          </div>
+        </div>
       )
     }
 
@@ -536,13 +672,52 @@ class Participants extends Component {
     // If no participants and not showing form, show form by default
     if (participants.length === 0 && !showForm) {
       return (
-        <ParticipantForm
-          formData={formData}
-          language={language}
-          onInputChange={this.handleInputChange}
-          onSubmit={this.handleSubmit}
-          submissionError={submissionError}
-        />
+        <div>
+          {/* Data Status Notification */}
+          {this.state.dataStatusMessage && (
+            <div style={{
+              position: 'fixed',
+              top: '20px',
+              right: '20px',
+              backgroundColor: '#007bff',
+              color: 'white',
+              padding: '10px 15px',
+              borderRadius: '5px',
+              zIndex: 1000,
+              fontSize: '14px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+            }}>
+              {this.state.dataStatusMessage}
+            </div>
+          )}
+          
+          <ParticipantForm
+            formData={formData}
+            language={language}
+            onInputChange={this.handleInputChange}
+            onSubmit={this.handleSubmit}
+            submissionError={submissionError}
+          />
+          
+          {/* Clear Saved Data Button */}
+          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <button 
+              onClick={this.clearSavedState}
+              style={{
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+              title="Clear all saved form data from browser storage"
+            >
+              🗑️ Clear Saved Data
+            </button>
+          </div>
+        </div>
       )
     }
 
