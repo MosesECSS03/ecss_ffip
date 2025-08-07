@@ -1278,7 +1278,7 @@ class ParticipantDetails extends Component {
       
       // 9. Immediate redirect to participants form - use persistent localStorage flag instead of URL param
       // Use replace instead of href to prevent back button issues
-      window.location.replace('/participants');
+      window.location.replace('/');
       
     } catch (error) {
       console.error('❌ Error during data clearing:', error);
@@ -1296,7 +1296,7 @@ class ParticipantDetails extends Component {
       localStorage.setItem('ecss_ffip_last_cleared', Date.now().toString());
       
       // Immediate redirect without delays
-      window.location.replace('/participants');
+      window.location.replace('/');
     }
   }
 
