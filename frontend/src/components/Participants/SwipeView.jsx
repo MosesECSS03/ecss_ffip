@@ -51,9 +51,11 @@
           console.log("🔔 Socket event received", data);
           console.log("🔄 Triggering handleParticipantUpdate...");
           
-          //6894da46a97f6e2e8660811e //6894da46a97f6e2e8660811e
-          console.log("Current participant ID:", participantId);
-          console.log("Event participant ID:", data.participantID);
+          //6894da46a97f6e2e8660811e
+          //6894da46a97f6e2e8660811e 
+          console.log("Current participant ID:", participantId, typeof participantId);
+          console.log("Event participant ID:", data.participantID, typeof data.participantID);
+          console.log("Participant ID Matches:", participantId === data.participantID);
           
           // Update only if it matches current participant and user doesn't have form data
           if (participantId === data.participantID) {
