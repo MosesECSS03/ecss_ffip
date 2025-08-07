@@ -1288,7 +1288,7 @@ class ParticipantDetails extends Component {
       localStorage.removeItem('selectedLanguage');
       localStorage.removeItem('language');
       
-      // 10. Set flag to force clean form view when user eventually reaches Participants page
+      // 10. Set flag to force clean form view when returning to Participants
       // Restore preserved values and set new flags
       Object.entries(currentPreservedValues).forEach(([key, value]) => {
         localStorage.setItem(key, value);
@@ -1296,10 +1296,15 @@ class ParticipantDetails extends Component {
       localStorage.setItem('ecss_ffip_force_form_view', 'true');
       localStorage.setItem('ecss_ffip_last_cleared', Date.now().toString());
       
-      // 11. Redirect to root to start the full navigation flow
-      // This forces: Language Selection → Home → Participants → Form
-      console.log('🔄 Redirecting to language selection to start fresh navigation flow');
-      window.location.replace("/");
+      // 11. Use onClose to return to Participants with clean form
+      if (this.props.onClose && typeof this.props.onClose === 'function') {
+        console.log('🔄 Using onClose to return to clean participants form...');
+        this.props.onClose();
+      } else {
+        console.log('⚠️ No onClose callback found, redirecting to language selection');
+        // Fallback: redirect to root for language selection → home → participants → form flow
+        window.location.replace("/");
+      }
       
     } catch (error) {
       console.error('❌ Error during data clearing:', error);
@@ -1317,11 +1322,17 @@ class ParticipantDetails extends Component {
       localStorage.removeItem('selectedLanguage');
       localStorage.removeItem('language');
       
-      // Set flag to force clean form view and redirect to root for full navigation flow
+      // Set flag to force clean form view and use onClose or redirect
       localStorage.setItem('ecss_ffip_force_form_view', 'true');
       localStorage.setItem('ecss_ffip_last_cleared', Date.now().toString());
-      console.log('🔄 Error fallback: Redirecting to language selection');
-      window.location.replace("/");
+      
+      if (this.props.onClose && typeof this.props.onClose === 'function') {
+        console.log('🔄 Error fallback: Using onClose to return to participants form...');
+        this.props.onClose();
+      } else {
+        console.log('🔄 Error fallback: Redirecting to language selection');
+        window.location.replace("/");
+      }
     }
   }
 
@@ -1462,6 +1473,9 @@ class ParticipantDetails extends Component {
               cursor: 'pointer'
             }}
             onClick={() => { 
+              console.log('🔍 Clear All & Exit button clicked!');
+              console.log('🔍 Current localStorage before clearing:', Object.keys(localStorage));
+              
               // Comprehensive data clearing with confirmation
               this.clearAllAppData();
             }}

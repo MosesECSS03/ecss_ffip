@@ -982,7 +982,20 @@ class Participants extends Component {
 
   // Add missing close swipe view method
   closeSwipeView = () => {
-    // Clear all participant data and navigation state
+    // Check if this is a data clearing operation (flag will be set)
+    const isAfterDataClear = localStorage.getItem('ecss_ffip_force_form_view') === 'true';
+    
+    if (isAfterDataClear) {
+      console.log('🔄 Data was cleared, redirecting to home page');
+      // Clear the flag since we're handling it
+      localStorage.removeItem('ecss_ffip_force_form_view');
+      localStorage.removeItem('ecss_ffip_last_cleared');
+      // Redirect to home page
+      window.location.href = '/';
+      return;
+    }
+    
+    // Normal close behavior - Clear all participant data and navigation state
     this.setState({
       showSwipeView: false,
       swipeParticipantData: null,
