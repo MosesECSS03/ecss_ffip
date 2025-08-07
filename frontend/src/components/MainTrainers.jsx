@@ -319,7 +319,7 @@ class MainTrainers extends Component {
     this.setState({ loading: true, error: null })
     
     try {
-      const response = await axios.get(`${API_BASE_URL}/participants`);
+      const response = await axios.post(`${API_BASE_URL}/participants`, {purpose: 'retrieveAllParticipants'});
       console.log("📊 Participants fetched:", response.data);
       
       this.setState({ 
