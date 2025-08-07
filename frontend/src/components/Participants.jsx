@@ -295,9 +295,21 @@ class Participants extends Component {
         
         if (this.state.hasSubmitted && this.hasFilledFormData()) {
           console.log('📱 User has submitted form, showing details view');
-          // User has submitted, don't show form by default
+          // User has submitted, show swipe view with their data
+          const participantData = {
+            name: this.state.formData.participantDetails.participantName || 'Participant',
+            age: this.calculateAge(this.state.formData.participantDetails.dateOfBirth),
+            gender: this.state.formData.participantDetails.gender,
+            dateOfBirth: this.state.formData.participantDetails.dateOfBirth,
+            phoneNumber: this.state.formData.participantDetails.phoneNumber,
+            submittedAt: new Date().toISOString(),
+            id: this.getCurrentParticipantId() || Date.now().toString()
+          };
+          
           this.setState({ 
             showForm: false,
+            showSwipeView: true,
+            swipeParticipantData: participantData,
             isLoading: false,
             dataStatusMessage: '✅ Welcome back! Your details are saved.' 
           });
@@ -379,13 +391,20 @@ class Participants extends Component {
       if (!hasFormData && !loaded) {
         // Only attempt to load participant data if no form data exists and nothing was loaded
         await this.handleParticipantUpdate();
-      } else {
-        console.log('📝 Form data exists, keeping form visible for completion');
-        // Ensure form stays visible with the saved data
+      } else if (hasFormData && !this.state.hasSubmitted) {
+        // Only show form if user has data but hasn't submitted yet
+        console.log('📝 Form data exists but not submitted, keeping form visible for completion');
         this.setState({
           showForm: true,
           hasSubmitted: false,
           showSwipeView: false,
+          isLoading: false,
+          isInitializing: false
+        });
+      } else {
+        // User has submitted or no data - don't override the previous state setup
+        console.log('📝 User has submitted or no data, keeping current state');
+        this.setState({
           isLoading: false,
           isInitializing: false
         });
@@ -870,10 +889,29 @@ class Participants extends Component {
 
   handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('🔍 Form submission started');
     const { formData, participants } = this.state;
 
-    if (formData.participantDetails.participantName.trim() && 
-        formData.participantDetails.phoneNumber.trim()) {
+    // Debug: Log current form data
+    console.log('📝 Current form data:', formData.participantDetails);
+    console.log('📝 Name value:', `"${formData.participantDetails.participantName}"`);
+    console.log('📝 Phone value:', `"${formData.participantDetails.phoneNumber}"`);
+    console.log('📝 Date of Birth value:', `"${formData.participantDetails.dateOfBirth}"`);
+    console.log('📝 Gender value:', `"${formData.participantDetails.gender}"`);
+    
+    const nameValid = formData.participantDetails.participantName && formData.participantDetails.participantName.trim();
+    const phoneValid = formData.participantDetails.phoneNumber && formData.participantDetails.phoneNumber.trim();
+    const dobValid = formData.participantDetails.dateOfBirth && formData.participantDetails.dateOfBirth.trim();
+    const genderValid = formData.participantDetails.gender && formData.participantDetails.gender.trim();
+    
+    console.log('✅ Name valid:', !!nameValid);
+    console.log('✅ Phone valid:', !!phoneValid);
+    console.log('✅ Date of Birth valid:', !!dobValid);
+    console.log('✅ Gender valid:', !!genderValid);
+    console.log('✅ All valid:', !!(nameValid && phoneValid && dobValid && genderValid));
+
+    if (nameValid && phoneValid && dobValid && genderValid) {
+      console.log('✅ Validation passed, proceeding with submission');
       const calculatedAge = this.calculateAge(formData.participantDetails.dateOfBirth);
 
       const newParticipant = {
@@ -904,34 +942,8 @@ class Participants extends Component {
         this.setState(prevState => ({
           participants: updatedParticipants,
           submissionError: null,
-          formData: {
-            participantDetails: {
-              participantName: '',
-              phoneNumber: '',
-              gender: '',
-              dateOfBirth: '',
-              nationality: '',
-              email: '',
-              homeAddress: '',
-              relationshipStatus: '',
-              children: '',
-              profession: '',
-              educationLevel: '',
-              ethnicGroup: '',
-              religion: '',
-              stateOfOrigin: '',
-              experienceWithIT: '',
-              comfortWithTechnology: ''
-            },
-            healthDeclaration: {
-              questions: {
-                healthQuestion1: '',
-                healthQuestion2: '',
-                healthQuestion3: '',
-                healthQuestion4: ''
-              }
-            }
-          },
+          // DON'T clear form data - keep it for persistence after refresh
+          // formData: { ... } - REMOVED to preserve submitted data
           showForm: false,
           hasSubmitted: true
         }), () => {
@@ -951,6 +963,29 @@ class Participants extends Component {
           submissionError: backendResult.error || 'Submission failed. Please try again.' 
         });
       }
+    } else {
+      // Validation failed - show detailed error message
+      console.log('❌ Validation failed!');
+      const missingFields = [];
+      if (!nameValid) {
+        missingFields.push('Participant Name');
+      }
+      if (!phoneValid) {
+        missingFields.push('Phone Number');
+      }
+      if (!dobValid) {
+        missingFields.push('Date of Birth');
+      }
+      if (!genderValid) {
+        missingFields.push('Gender');
+      }
+      
+      const errorMessage = `Please fill in the required fields: ${missingFields.join(', ')}`;
+      console.log('❌ Missing fields:', missingFields);
+      
+      this.setState({ 
+        submissionError: errorMessage
+      });
     }
   }
 
@@ -1093,7 +1128,39 @@ class Participants extends Component {
       swipeParticipantData: null,
       showForm: true,
       hasSubmitted: false,
-      participants: []
+      participants: [],
+      // Clear form data when user explicitly closes details view
+      formData: {
+        participantDetails: {
+          participantName: '',
+          phoneNumber: '',
+          gender: '',
+          dateOfBirth: '',
+          nationality: '',
+          email: '',
+          homeAddress: '',
+          relationshipStatus: '',
+          children: '',
+          profession: '',
+          educationLevel: '',
+          ethnicGroup: '',
+          religion: '',
+          stateOfOrigin: '',
+          experienceWithIT: '',
+          comfortWithTechnology: ''
+        },
+        healthDeclaration: {
+          questions: {
+            healthQuestion1: '',
+            healthQuestion2: '',
+            healthQuestion3: '',
+            healthQuestion4: ''
+          }
+        }
+      }
+    }, () => {
+      // Clear localStorage when explicitly closing
+      this.clearSavedState();
     });
     
     // Navigate back to HomePage
@@ -1401,13 +1468,7 @@ class Participants extends Component {
         <SwipeView
           participant={participantData}
           language={language}
-          onClose={() => {
-            // Allow user to go back to form to edit
-            this.setState({ 
-              hasSubmitted: false,
-              showForm: true 
-            });
-          }}
+          onClose={this.closeSwipeView}
         />
       )
     }
