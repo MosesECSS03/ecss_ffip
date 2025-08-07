@@ -17,16 +17,17 @@ import { io } from 'socket.io-client';
     constructor(props) {
       super(props)
       this.state = {
-        currentView: 'details', // Start with details view, but QR will be pre-generated
+        currentView: 'details', // Start with details view
         qrCodeUrl: '',
         touchStart: 0,
         touchEnd: 0,
         updatedParticipant: null,
-        isGeneratingQR: true // Track QR generation state
+        isGeneratingQR: true, // Track QR generation state
+        showLoadingPopup: true // Show loading popup initially
       }
     }
 
-    componentDidMount = async () => {
+  componentDidMount = async () => {
     const { participant } = this.props;
     const participantId = participant?.id;
     
@@ -88,7 +89,7 @@ import { io } from 'socket.io-client';
         });
         
         if (response.data && response.data.success) {
-          console.log(' :', response.data.data);
+          console.log('okkkkk:', response.data.data);
           // You can update state with the retrieved data if needed
           this.setState({ updatedParticipant: response.data.data });
         } else {
@@ -201,12 +202,13 @@ import { io } from 'socket.io-client';
           console.error('❌ No participant ID provided for QR generation')
           this.setState({ 
             qrCodeUrl: '',
-            isGeneratingQR: false 
+            isGeneratingQR: false,
+            showLoadingPopup: false 
           })
           return
         }
         
-        this.setState({ isGeneratingQR: true })
+        this.setState({ isGeneratingQR: true, showLoadingPopup: true })
         
         const qrString = String(participantId) // Ensure it's a string
         console.log('📝 QR String to encode:', qrString)
@@ -223,7 +225,8 @@ import { io } from 'socket.io-client';
         console.log('✅ QR code generated successfully, length:', qrUrl.length)
         this.setState({ 
           qrCodeUrl: qrUrl,
-          isGeneratingQR: false 
+          isGeneratingQR: false,
+          showLoadingPopup: false // Hide loading popup when done
         }, () => {
           console.log('📱 QR code state updated - URL exists:', !!this.state.qrCodeUrl)
           console.log('📱 Is generating:', this.state.isGeneratingQR)
@@ -232,7 +235,8 @@ import { io } from 'socket.io-client';
         console.error('❌ Error generating QR code:', error)
         this.setState({ 
           qrCodeUrl: '',
-          isGeneratingQR: false 
+          isGeneratingQR: false,
+          showLoadingPopup: false 
         })
       }
     }
@@ -587,6 +591,19 @@ import { io } from 'socket.io-client';
                 </div>
               )}
             </div>
+            
+            {/* Loading Popup for QR Generation */}
+            {this.state.showLoadingPopup && (
+              <div className="loading-popup-overlay">
+                <div className="loading-popup">
+                  <div className="loading-spinner"></div>
+                  <div className="loading-text">
+                    <h3>Generating QR Code...</h3>
+                    <p>Please wait while we prepare your participant QR code</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
       )
     }
