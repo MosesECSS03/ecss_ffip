@@ -1117,9 +1117,8 @@ class ParticipantDetails extends Component {
             style={{ padding: '10px 32px', fontSize: 18, borderRadius: 8, background: '#1976d2', color: '#fff', border: 'none', cursor: 'pointer' }}
             onClick={() => { 
               localStorage.clear(); 
-              if (onClose) {
-                onClose();
-              }
+              // Navigate back to home page (language selection page)
+              window.location.href = '/';
             }}
           >
             Done
