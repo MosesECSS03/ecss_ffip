@@ -52,7 +52,9 @@ class Participants extends Component {
       showSwipeView: false,
       swipeParticipantData: null,
       submissionError: null,
-      dataStatusMessage: '' // For showing save/load notifications
+      dataStatusMessage: '', // For showing save/load notifications
+      isGeneratingQR: false, // Loading state for QR generation
+      qrGenerationError: null // Error state for QR generation
     }
     this.socket = null;
   }
@@ -200,6 +202,13 @@ class Participants extends Component {
   }
 
   handleParticipantUpdate = async () => {
+    // Prevent multiple simultaneous updates
+    if (this.isUpdatingParticipants) {
+      console.log('Participant update already in progress, skipping...');
+      return;
+    }
+    
+    this.isUpdatingParticipants = true;
     let participantId = null;
 
     try {
@@ -216,11 +225,19 @@ class Participants extends Component {
 
     if (participantId) {
       try {
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        
         const response = await axios.post(`${API_BASE_URL}/participants`, {
           purpose: 'retrieveParticipant',
           participantID: participantId
+        }, {
+          signal: controller.signal,
+          timeout: 15000
         });
 
+        clearTimeout(timeoutId);
         console.log('🔄 Retrieved participant from backend:', response.data);
 
         if (response.data && response.data.success && response.data.data) {
@@ -239,8 +256,15 @@ class Participants extends Component {
         }
       } catch (err) {
         console.error('Error retrieving participant from backend:', err);
-        // Clear any existing error when retrieval fails
-        this.setState({ submissionError: 'Failed to retrieve participant. Please try again.' });
+        
+        // Handle specific error types
+        if (err.name === 'AbortError') {
+          this.setState({ submissionError: 'Request timeout. Please check your connection and try again.' });
+        } else if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
+          this.setState({ submissionError: 'Connection timeout. Please try again.' });
+        } else {
+          this.setState({ submissionError: 'Failed to retrieve participant. Please try again.' });
+        }
       }
     }
 
@@ -252,6 +276,9 @@ class Participants extends Component {
       swipeParticipantData: null,
       submissionError: null
     });
+    
+    // Clean up the update flag
+    this.isUpdatingParticipants = false;
   }
 
   componentWillUnmount() {
@@ -260,38 +287,78 @@ class Participants extends Component {
     }
   }
   
-  // Generate QR code for participant ID
+  // Generate QR code for participant ID - Optimized for performance
   generateQRCode = async (participantId) => {
+    // Prevent multiple simultaneous QR generations
+    if (this.state.isGeneratingQR) {
+      console.log('QR generation already in progress, skipping...');
+      return;
+    }
+
     try {
       if (!participantId) {
         console.error('No participant ID provided for QR code generation');
+        this.setState({ 
+          qrGenerationError: 'No participant ID available for QR code generation' 
+        });
         return;
       }
       
       console.log('Generating QR code for participant ID:', participantId);
       
-      const qrCodeUrl = await QRCode.toDataURL(participantId.toString(), {
-        width: 400,
-        margin: 2,
+      // Set loading state
+      this.setState({ 
+        isGeneratingQR: true, 
+        qrGenerationError: null,
+        dataStatusMessage: 'Generating QR code...'
+      });
+      
+      // Use a timeout to prevent hanging
+      const qrPromise = QRCode.toDataURL(participantId.toString(), {
+        width: 300, // Reduced size for better performance
+        margin: 1,  // Reduced margin
         color: {
           dark: '#000000',
           light: '#FFFFFF'
         },
-        errorCorrectionLevel: 'M'
+        errorCorrectionLevel: 'L' // Lower correction level for faster generation
       });
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('QR code generation timeout')), 10000)
+      );
+      
+      const qrCodeUrl = await Promise.race([qrPromise, timeoutPromise]);
       
       this.setState({ 
         qrCodeUrl,
         showQRCode: true,
-        currentParticipantId: participantId
+        currentParticipantId: participantId,
+        isGeneratingQR: false,
+        qrGenerationError: null,
+        dataStatusMessage: 'QR code generated successfully!'
       });
+      
+      // Clear success message after 2 seconds
+      setTimeout(() => {
+        this.setState({ dataStatusMessage: '' });
+      }, 2000);
       
       console.log('QR code generated successfully');
     } catch (error) {
       console.error('Error generating QR code:', error);
       this.setState({
-        submissionError: 'Failed to generate QR code. Please try again.'
+        isGeneratingQR: false,
+        qrGenerationError: error.message || 'Failed to generate QR code',
+        submissionError: 'Failed to generate QR code. Please try again.',
+        dataStatusMessage: 'QR code generation failed'
       });
+      
+      // Clear error message after 3 seconds
+      setTimeout(() => {
+        this.setState({ dataStatusMessage: '', qrGenerationError: null });
+      }, 3000);
     }
   }
 
@@ -320,6 +387,17 @@ class Participants extends Component {
     return `${day}/${month}/${year}`
   }
 
+  // Debounced save function to reduce localStorage writes
+  debouncedSave = (() => {
+    let timeoutId;
+    return () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        this.saveStateToLocalStorage();
+      }, 500); // Wait 500ms after last change
+    };
+  })()
+
   handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
     const nameParts = name.split('.')
@@ -339,8 +417,8 @@ class Participants extends Component {
           }
         }
       }), () => {
-        // Save state after input change
-        this.saveStateToLocalStorage();
+        // Use debounced save to reduce localStorage writes
+        this.debouncedSave();
       })
     } else if (nameParts.length === 2) {
       // Handle two-level structure like participantDetails.participantName
@@ -354,8 +432,8 @@ class Participants extends Component {
           }
         }
       }), () => {
-        // Save state after input change
-        this.saveStateToLocalStorage();
+        // Use debounced save to reduce localStorage writes
+        this.debouncedSave();
       })
     } else {
       // Handle flat structure for backward compatibility
@@ -365,8 +443,8 @@ class Participants extends Component {
           [name]: type === 'checkbox' ? checked : value
         }
       }), () => {
-        // Save state after input change
-        this.saveStateToLocalStorage();
+        // Use debounced save to reduce localStorage writes
+        this.debouncedSave();
       })
     }
   }
@@ -520,38 +598,78 @@ class Participants extends Component {
     });
   }
 
-  // Generate QR code for table participant
+  // Generate QR code for table participant - Optimized for performance
   generateTableQRCode = async (participantId) => {
+    // Prevent multiple simultaneous QR generations
+    if (this.state.isGeneratingQR) {
+      console.log('QR generation already in progress, skipping...');
+      return;
+    }
+
     try {
       if (!participantId) {
         console.error('No participant ID provided for table QR code generation');
+        this.setState({ 
+          qrGenerationError: 'No participant ID available for table QR code generation' 
+        });
         return;
       }
       
       console.log('Generating table QR code for participant ID:', participantId);
       
-      const qrCodeUrl = await QRCode.toDataURL(participantId.toString(), {
-        width: 400,
-        margin: 2,
+      // Set loading state
+      this.setState({ 
+        isGeneratingQR: true, 
+        qrGenerationError: null,
+        dataStatusMessage: 'Generating table QR code...'
+      });
+      
+      // Use a timeout to prevent hanging
+      const qrPromise = QRCode.toDataURL(participantId.toString(), {
+        width: 300, // Reduced size for better performance
+        margin: 1,  // Reduced margin
         color: {
           dark: '#000000',
           light: '#FFFFFF'
         },
-        errorCorrectionLevel: 'M'
+        errorCorrectionLevel: 'L' // Lower correction level for faster generation
       });
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Table QR code generation timeout')), 10000)
+      );
+      
+      const qrCodeUrl = await Promise.race([qrPromise, timeoutPromise]);
       
       this.setState({
         tableQRCodeUrl: qrCodeUrl,
         showTableQRCode: true,
-        tableQRParticipantId: participantId
+        tableQRParticipantId: participantId,
+        isGeneratingQR: false,
+        qrGenerationError: null,
+        dataStatusMessage: 'Table QR code generated successfully!'
       });
+      
+      // Clear success message after 2 seconds
+      setTimeout(() => {
+        this.setState({ dataStatusMessage: '' });
+      }, 2000);
       
       console.log('Table QR code generated successfully');
     } catch (error) {
       console.error('Error generating table QR code:', error);
       this.setState({
-        submissionError: 'Failed to generate QR code. Please try again.'
+        isGeneratingQR: false,
+        qrGenerationError: error.message || 'Failed to generate table QR code',
+        submissionError: 'Failed to generate QR code. Please try again.',
+        dataStatusMessage: 'Table QR code generation failed'
       });
+      
+      // Clear error message after 3 seconds
+      setTimeout(() => {
+        this.setState({ dataStatusMessage: '', qrGenerationError: null });
+      }, 3000);
     }
   }
 
