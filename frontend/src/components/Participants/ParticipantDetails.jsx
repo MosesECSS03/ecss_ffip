@@ -1022,18 +1022,7 @@ class ParticipantDetails extends Component {
         console.warn('⚠️ DataManager clearAll failed:', dmError);
       }
 
-      // 2. Clear specific localStorage entries instead of localStorage.clear()
-      // This allows us to preserve important flags for navigation
-      const preserveKeys = ['ecss_ffip_force_form_view', 'ecss_ffip_last_cleared'];
-      const currentPreservedValues = {};
-      preserveKeys.forEach(key => {
-        const value = localStorage.getItem(key);
-        if (value !== null) {
-          currentPreservedValues[key] = value;
-        }
-      });
-      
-      // Clear all localStorage except preserved keys
+      // 2. Clear all localStorage entries completely
       localStorage.clear();
       
       // 3. Clear sessionStorage
@@ -1288,13 +1277,8 @@ class ParticipantDetails extends Component {
       localStorage.removeItem('selectedLanguage');
       localStorage.removeItem('language');
       
-      // 10. Set flag to force clean form view when returning to Participants
-      // Restore preserved values and set new flags
-      Object.entries(currentPreservedValues).forEach(([key, value]) => {
-        localStorage.setItem(key, value);
-      });
-      localStorage.setItem('ecss_ffip_force_form_view', 'true');
-      localStorage.setItem('ecss_ffip_last_cleared', Date.now().toString());
+      // 10. Don't set navigation flags - let natural flow handle clean state
+      // The comprehensive clearing above should ensure clean state
       
       // 11. Use onClose to close swipe view, then redirect to home page
       if (this.props.onClose && typeof this.props.onClose === 'function') {
@@ -1326,9 +1310,7 @@ class ParticipantDetails extends Component {
       localStorage.removeItem('selectedLanguage');
       localStorage.removeItem('language');
       
-      // Set flag to force clean form view and use onClose or redirect
-      localStorage.setItem('ecss_ffip_force_form_view', 'true');
-      localStorage.setItem('ecss_ffip_last_cleared', Date.now().toString());
+      // Don't set navigation flags in error case either
       
       if (this.props.onClose && typeof this.props.onClose === 'function') {
         console.log('🔄 Error fallback: Using onClose to close swipe view, then redirecting to home...');
