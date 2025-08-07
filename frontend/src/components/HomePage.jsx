@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 import { translations } from '../utils/translations'
@@ -7,13 +7,6 @@ import './HomePage.css'
 function HomePage() {
   const { language } = useLanguage()
   const t = translations[language]
-
-  // Password popup state
-  const [showPopup, setShowPopup] = useState(false)
-  const [popupTarget, setPopupTarget] = useState(null) // 'volunteers' or 'trainers'
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const navigate = window.location.assign ? null : undefined // fallback for react-router-dom v6+ if needed
 
   // Debug info for mobile
   console.log('📱 HomePage rendered:', {
@@ -24,43 +17,19 @@ function HomePage() {
     userAgent: navigator.userAgent.substring(0, 50)
   })
 
-  //ok
-  // Passwords (replace with env or secure method in production)
-  const PASSWORDS = {
-    volunteers: 'ecss_v2046',
-    trainers: 'ecss_t2046',
-  }
-
-  // Handle nav button click
+  // Handle nav button click - use global password popup
   const handleProtectedClick = (target, e) => {
     if (target === 'participants') {
       // No password required for participants
       return
     }
     e.preventDefault()
-    setPopupTarget(target)
-    setShowPopup(true)
-    setPassword('')
-    setError('')
-  }
-
-  // Handle password submit
-  const handlePasswordSubmit = (e) => {
-    e.preventDefault()
-    if (PASSWORDS[popupTarget] && password === PASSWORDS[popupTarget]) {
-      setShowPopup(false)
-      setError('')
-      setPassword('')
-      // Redirect to the correct page
-      if (popupTarget === 'participants') {
-        window.location.href = '/participants'
-      } else if (popupTarget === 'volunteers') {
-        window.location.href = '/volunteers'
-      } else if (popupTarget === 'trainers') {
-        window.location.href = '/trainers'
-      }
+    console.log('🔐 HomePage calling showPasswordPopup for:', target)
+    // Use global password popup function
+    if (window.showPasswordPopup) {
+      window.showPasswordPopup(target)
     } else {
-      setError('Incorrect password. Please try again.')
+      console.error('🔐 window.showPasswordPopup not available')
     }
   }
 
@@ -72,18 +41,6 @@ function HomePage() {
           <p className="subtitle">{t.subtitle}</p>
         </header>
         
-        {/* Mobile debug info */}
-        <div style={{
-          fontSize: '12px',
-          color: '#666',
-          margin: '10px 0',
-          padding: '10px',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '5px',
-          border: '1px solid #dee2e6'
-        }}>
-          📱 Mobile Debug: {window.innerWidth}x{window.innerHeight} | Lang: {language} | Touch: {'ontouchstart' in window ? 'Yes' : 'No'} | Route: {window.location.pathname}
-        </div>
         
         <main className="homepage-content">
           <h2>{t.welcome}</h2>
@@ -112,43 +69,6 @@ function HomePage() {
               </a>
             )}
           </div>
-
-          {/* Password Popup */}
-          {showPopup && (
-            <div
-              className="password-popup-overlay"
-              onClick={e => {
-                // Only close if clicking the overlay, not the popup itself
-                if (e.target.classList.contains('password-popup-overlay')) setShowPopup(false)
-              }}
-            >
-              <div className="password-popup" onClick={e => e.stopPropagation()}>
-                <button
-                  className="popup-close-x"
-                  aria-label="Close"
-                  type="button"
-                  onClick={() => setShowPopup(false)}
-                >
-                  &times;
-                </button>
-                <h3>{t.passwordPopupTitle}</h3>
-                <form onSubmit={handlePasswordSubmit} autoComplete="off">
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder={t.passwordPopupPlaceholder}
-                    autoFocus
-                  />
-                  <div className="popup-actions">
-                    <button type="button" onClick={() => setShowPopup(false)}>{t.passwordPopupCancel}</button>
-                    <button type="submit">{t.passwordPopupSubmit}</button>
-                  </div>
-                </form>
-                {error && <div className="password-error">{t.passwordPopupError}</div>}
-              </div>
-            </div>
-          )}
         </main>
       </div>
     </div>
