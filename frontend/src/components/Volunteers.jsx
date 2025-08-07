@@ -402,9 +402,12 @@ class Volunteers extends Component {
         },
         {
           onDecodeError: error => {
-            // Suppress minor decode errors to avoid console spam
-            if (!error.message.includes('No QR code found')) {
-              console.warn('QR Scanner decode error:', error.message);
+            // Safely handle decode errors with proper error checking
+            const errorMessage = error && error.message ? error.message : 'Unknown decode error';
+            console.log('🔍 QR Scanner decode attempt:', errorMessage);
+            // Only suppress the most common "no QR code found" messages
+            if (!errorMessage.includes('No QR code found') && !errorMessage.includes('Could not find')) {
+              console.warn('QR Scanner decode error:', errorMessage);
             }
           },
           highlightScanRegion: true,
@@ -548,9 +551,12 @@ class Volunteers extends Component {
         },
         {
           onDecodeError: error => {
-            // Suppress minor decode errors
-            if (!error.message.includes('No QR code found')) {
-              console.warn('QR Scanner decode error:', error.message);
+            // Safely handle decode errors with proper error checking
+            const errorMessage = error && error.message ? error.message : 'Unknown decode error';
+            console.log('🔍 QR Scanner decode attempt:', errorMessage);
+            // Only suppress the most common "no QR code found" messages
+            if (!errorMessage.includes('No QR code found') && !errorMessage.includes('Could not find')) {
+              console.warn('QR Scanner decode error:', errorMessage);
             }
           },
           highlightScanRegion: true,
@@ -746,9 +752,21 @@ class Volunteers extends Component {
       });
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
-        // Only clear form data, keep QR scanner active for next scan
+        // Only clear form data, preserve participant info and QR scanner state
+        const preservedFormData = {
+          name: formData.name,
+          age: formData.age,
+          gender: formData.gender,
+          dateOfBirth: formData.dateOfBirth,
+          phoneNumber: formData.phoneNumber,
+          height: formData.height,
+          weight: formData.weight,
+          bmi: formData.bmi,
+          stations: formData.stations
+        };
+        
         this.setState({
-          formData: {},
+          formData: preservedFormData,
           cameraError: null
         }, () => {
           // Save state immediately after successful submission
@@ -839,6 +857,11 @@ class Volunteers extends Component {
                       ✅ {language === 'en' ? `Participant: ${formData.name} | Scan again anytime` : `参与者: ${formData.name} | 可随时重新扫描`}
                     </div>
                   )}
+                  {qrValue && !formData.name && (
+                    <div style={{ fontSize: '0.9em', color: '#ff9800', marginTop: '8px' }}>
+                      🔍 {language === 'en' ? `QR: ${qrValue} | Loading participant...` : `二维码: ${qrValue} | 加载参与者...`}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -864,7 +887,7 @@ class Volunteers extends Component {
             </div>
           </div>
         )}
-        {selectedStation && qrScanned && (
+        {selectedStation && (qrScanned || qrValue) && (
           <div className="details-section">
             {/* Show completed stations only if participant has stations data AND has meaningful completed data */}
             {(() => {
