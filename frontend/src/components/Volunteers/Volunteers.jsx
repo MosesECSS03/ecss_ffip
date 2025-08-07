@@ -64,6 +64,10 @@ class Volunteers extends Component {
     if (this._qrScannerStartTimeout) {
       clearTimeout(this._qrScannerStartTimeout);
     }
+    
+    if (this.loadingTimeout) {
+      clearTimeout(this.loadingTimeout);
+    }
   }
 
   /**
@@ -219,10 +223,27 @@ class Volunteers extends Component {
           if (this.isProcessingQR) return;
           this.isProcessingQR = true;
           
+          // Clear any existing timeout
+          if (this.loadingTimeout) {
+            clearTimeout(this.loadingTimeout);
+          }
+          
+          // Set a timeout to clear loading state if it gets stuck
+          this.loadingTimeout = setTimeout(() => {
+            console.warn('⚠️ QR loading timeout, resetting state');
+            this.setState({
+              qrValue: '',
+              qrScanned: false,
+              cameraError: 'Loading timeout - please try scanning again',
+              formData: {}
+            });
+            this.isProcessingQR = false;
+          }, 15000); // 15 second timeout
+          
           try {
             const participantID = result.data;
             const response = await axios.post(`${API_BASE_URL}/participants`, {
-              purpose: 'getParticipantData',
+              purpose: 'retrieveParticipant',
               participantID: participantID
             }, { timeout: 10000 });
 
@@ -273,6 +294,11 @@ class Volunteers extends Component {
               formData: {}
             });
           } finally {
+            // Clear the loading timeout
+            if (this.loadingTimeout) {
+              clearTimeout(this.loadingTimeout);
+              this.loadingTimeout = null;
+            }
             this.isProcessingQR = false;
           }
         },
@@ -769,11 +795,6 @@ class Volunteers extends Component {
                     {this.isProcessingQR && (
                       <div style={{ fontSize: '0.8em', color: '#ff9800', marginTop: '4px' }}>
                         {language === 'en' ? '⚡ Processing...' : '⚡ 处理中...'}
-                      </div>
-                    )}
-                    {qrValue && !formData.name && (
-                      <div style={{ fontSize: '0.9em', color: '#ff9800', marginTop: '8px' }}>
-                        🔍 {language === 'en' ? `QR: ${qrValue} | Loading participant...` : `二维码: ${qrValue} | 加载参与者...`}
                       </div>
                     )}
                   </div>
