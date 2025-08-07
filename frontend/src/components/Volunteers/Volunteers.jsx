@@ -557,26 +557,26 @@ class Volunteers extends Component {
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
         
-        // Reset for next participant
-        this.isProcessingQR = false;
-        this.stopQRScanner();
-        
-        this.setState({ 
-          qrScanned: false, 
-          qrValue: '', 
-          formData: {},
-          cameraError: null
+        // Keep participant loaded but clear current station fields
+        this.setState(prevState => {
+          const newFormData = { ...prevState.formData };
+          
+          // Clear only the current station's fields, keep participant info
+          if (selectedStation && stationFields[selectedStation]) {
+            stationFields[selectedStation].forEach(field => {
+              if (!['name', 'age', 'gender', 'dateOfBirth', 'phoneNumber', 'height', 'weight', 'bmi', 'stations', 'hasHeightWeight'].includes(field)) {
+                newFormData[field] = '';
+              }
+            });
+          }
+          
+          return {
+            formData: newFormData,
+            // Keep participant loaded (don't reset qrScanned, qrValue, etc.)
+            // selectedStation stays the same so volunteer can continue with same station or change
+          };
         }, () => {
           this.saveStateToLocalStorage();
-          
-          // Restart scanner for next participant
-          if (this.videoNode && this.state.selectedStation) {
-            setTimeout(() => {
-              if (!this.qrScanner && !this.isProcessingQR) {
-                this.startQRScannerWithNode(this.videoNode);
-              }
-            }, 200);
-          }
         });
       } else {
         alert(language === 'en' ? 'Failed to submit data.' : '提交数据失败。');
@@ -796,7 +796,7 @@ class Volunteers extends Component {
                     fontWeight: '600'
                   }}
                 >
-                  {language === 'en' ? '📹 Scan Different Participant' : '📹 扫描其他参与者'}
+                  {language === 'en' ? '📹 Scan New Participant' : '📹 扫描新参与者'}
                 </button>
               </div>
             )}
