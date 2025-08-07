@@ -573,6 +573,30 @@ class Participants extends Component {
     return null;
   }
 
+  // Optimized QR code button handler with debouncing
+  handleQRCodeClick = (participantId) => {
+    // Prevent rapid clicks
+    if (this.lastQRClickTime && Date.now() - this.lastQRClickTime < 1000) {
+      console.log('QR button clicked too quickly, ignoring...');
+      return;
+    }
+    
+    this.lastQRClickTime = Date.now();
+    this.generateQRCode(participantId);
+  }
+
+  // Optimized table QR code button handler with debouncing
+  handleTableQRCodeClick = (participantId) => {
+    // Prevent rapid clicks
+    if (this.lastTableQRClickTime && Date.now() - this.lastTableQRClickTime < 1000) {
+      console.log('Table QR button clicked too quickly, ignoring...');
+      return;
+    }
+    
+    this.lastTableQRClickTime = Date.now();
+    this.generateTableQRCode(participantId);
+  }
+
   // Add missing QR code close methods
   closeQRCode = () => {
     this.setState({
@@ -704,22 +728,53 @@ class Participants extends Component {
       )
     }
 
-    // Show QR Code modal if QR code is generated
-    if (showQRCode && qrCodeUrl) {
+    // Show QR Code modal if QR code is generated or being generated
+    if (showQRCode || this.state.isGeneratingQR) {
       return (
-        <div className="qr-modal-overlay" onClick={this.closeQRCode}>
+        <div className="qr-modal-overlay" onClick={!this.state.isGeneratingQR ? this.closeQRCode : undefined}>
           <div onClick={(e) => e.stopPropagation()}>
-            <button className="qr-modal-close" onClick={this.closeQRCode}>
-              ×
-            </button>
-            <h2 className="qr-modal-title">Registration Successful!</h2>
-            <p className="qr-modal-subtitle">Present this QR code to the station master</p>
-            <div className="qr-code-container">
-              <img src={qrCodeUrl} alt="QR Code" className="qr-code-image" />
-            </div>
-            <p className="qr-modal-description">
-              Station master will scan this code to record your fitness test results
-            </p>
+            {!this.state.isGeneratingQR && (
+              <button className="qr-modal-close" onClick={this.closeQRCode}>
+                ×
+              </button>
+            )}
+            
+            {this.state.isGeneratingQR ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <h2 className="qr-modal-title">Generating QR Code...</h2>
+                <div style={{ fontSize: '48px', margin: '20px 0' }}>🔄</div>
+                <p className="qr-modal-subtitle">Please wait while we generate your QR code</p>
+              </div>
+            ) : this.state.qrGenerationError ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <h2 className="qr-modal-title">QR Code Generation Failed</h2>
+                <p style={{ color: '#dc3545', margin: '20px 0' }}>{this.state.qrGenerationError}</p>
+                <button 
+                  onClick={() => this.generateQRCode(currentParticipantId)}
+                  style={{
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '5px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : qrCodeUrl ? (
+              <>
+                <h2 className="qr-modal-title">Registration Successful!</h2>
+                <p className="qr-modal-subtitle">Present this QR code to the station master</p>
+                <div className="qr-code-container">
+                  <img src={qrCodeUrl} alt="QR Code" className="qr-code-image" />
+                </div>
+                <p className="qr-modal-description">
+                  Station master will scan this code to record your fitness test results
+                </p>
+              </>
+            ) : null}
           </div>
         </div>
       )
