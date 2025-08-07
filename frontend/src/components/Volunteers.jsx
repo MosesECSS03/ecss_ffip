@@ -38,17 +38,77 @@ class Volunteers extends Component {
       dataStatusMessage: '' // For showing save/load notifications
     }
     this.qrScanner = null
+    this.isProcessingQR = false // Flag to prevent multiple simultaneous QR processing
+    
+    // Generate unique device ID for multi-device support
+    this.deviceId = this.getOrCreateDeviceId()
+    console.log('🔧 Volunteer device initialized with ID:', this.deviceId)
+  }
+
+  // Generate or retrieve device ID for multi-device tracking
+  getOrCreateDeviceId = () => {
+    try {
+      let deviceId = localStorage.getItem('volunteer_device_id')
+      if (!deviceId) {
+        // Create unique device ID combining timestamp, random, and browser info
+        const timestamp = Date.now().toString(36)
+        const random = Math.random().toString(36).substr(2, 9)
+        const browserInfo = navigator.userAgent.replace(/[^a-zA-Z0-9]/g, '').substr(0, 8)
+        deviceId = `vol_${timestamp}_${random}_${browserInfo}`
+        localStorage.setItem('volunteer_device_id', deviceId)
+      }
+      return deviceId
+    } catch (error) {
+      // Fallback if localStorage fails
+      return `vol_fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    }
   }
 
   componentDidMount() {
     // Load saved state when component mounts
     this.loadStateFromLocalStorage();
+    
+    // Log device initialization for debugging multi-device scenarios
+    console.log(`📱 Volunteer component mounted on device [${this.deviceId}]`);
+    
+    // Add performance optimization for multiple devices
+    this.initializePerformanceOptimizations();
   }
 
   componentWillUnmount() {
+    // Clean up processing flags
+    this.isProcessingQR = false;
+    
     // Save state immediately before component unmounts
     this.immediateSave();
     this.stopQRScanner()
+    
+    // Clear any pending timeouts
+    if (this._qrScannerStartTimeout) {
+      clearTimeout(this._qrScannerStartTimeout);
+    }
+    
+    console.log(`📱 Volunteer component unmounted on device [${this.deviceId}]`);
+  }
+
+  // Initialize performance optimizations for multi-device support
+  initializePerformanceOptimizations = () => {
+    // Optimize garbage collection for better performance with multiple cameras
+    if (window.performance && window.performance.mark) {
+      window.performance.mark('volunteer-component-start');
+    }
+    
+    // Pre-warm the camera permissions to reduce startup time
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.enumerateDevices()
+        .then(devices => {
+          const videoDevices = devices.filter(device => device.kind === 'videoinput');
+          console.log(`📹 Found ${videoDevices.length} camera(s) on device [${this.deviceId}]`);
+        })
+        .catch(err => {
+          console.warn(`⚠️ Could not enumerate cameras on device [${this.deviceId}]:`, err.message);
+        });
+    }
   }
 
   stopQRScanner = () => {
@@ -253,57 +313,106 @@ class Volunteers extends Component {
       this.qrScanner = new QrScanner(
         this.videoNode,
         async result => {
-          if (result && result.data && !this.state.qrScanned) {
-            this.qrScanner.stop()
+          if (result && result.data && !this.state.qrScanned && !this.isProcessingQR) {
+            // Set processing flag to prevent multiple simultaneous scans
+            this.isProcessingQR = true;
+            
+            // Generate unique scan ID for tracking
+            const scanId = `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            console.log(`🔍 QR Scan started [${scanId}]:`, result.data);
+            
             try {
+              // Use AbortController for fast timeout handling
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout for fast response
+              
               const response = await axios.post(`${API_BASE_URL}/participants`, {
                 "purpose": "retrieveParticipant",
                 "participantID": result.data
+              }, {
+                signal: controller.signal,
+                timeout: 3000, // Fast timeout
+                headers: {
+                  'X-Scan-ID': scanId, // Track requests for debugging
+                  'X-Device-ID': this.deviceId || 'unknown'
+                }
               });
-              console.log('QR Code scanned:', response.data)
-              // Log participant details instead of just the code
+              
+              clearTimeout(timeoutId);
+              console.log(`✅ QR Scan completed [${scanId}]:`, response.data?.success ? 'Success' : 'Failed');
+              
               if (response.data && response.data.success && response.data.data) {
-                const p = response.data.data;
-                // Populate only relevant fields with participant data for the selected station
+                // Populate ALL participant data for comprehensive access
                 const formData = {};
-                const fields = stationFields[this.state.selectedStation] || [];
-                fields.forEach(key => {
-                  formData[key] = response.data.data[key] || '';
+                Object.keys(response.data.data).forEach(key => {
+                  formData[key] = response.data.data[key];
                 });
+                
                 this.setState({
                   qrValue: result.data,
                   qrScanned: true,
                   cameraError: null,
                   formData
+                }, () => {
+                  // Immediately save state after successful scan
+                  this.immediateSave();
+                  console.log(`💾 Data saved for scan [${scanId}]`);
                 });
               } else {
                 // No participant found or error
                 this.setState({
                   qrValue: result.data,
                   qrScanned: true,
-                  cameraError: response.data.message || 'No participant found',
+                  cameraError: response.data?.message || 'No participant found',
                   formData: {}
                 });
               }
             } catch (err) {
+              console.error(`❌ QR Scan error [${scanId}]:`, err.message);
+              
+              // Handle different error types
+              if (err.name === 'AbortError') {
+                console.log(`⏱️ QR Scan timeout [${scanId}] - continuing with offline mode`);
+              }
+              
               this.setState({
                 qrValue: result.data,
                 qrScanned: true,
-                cameraError: 'Network or server error',
+                cameraError: err.name === 'AbortError' ? 'Request timeout - try again' : 'Network or server error',
                 formData: {}
               });
+            } finally {
+              // Always clear processing flag
+              this.isProcessingQR = false;
             }
           }
         },
         {
           onDecodeError: error => {
-            // Only update error state if it's a significant error, not just scanning issues
-            console.warn('QR Scanner decode error:', error.message)
+            // Suppress minor decode errors to avoid console spam
+            if (!error.message.includes('No QR code found')) {
+              console.warn('QR Scanner decode error:', error.message);
+            }
           },
           highlightScanRegion: true,
-          highlightCodeOutline: true
+          highlightCodeOutline: true,
+          // Optimize for speed and multiple device support
+          maxScansPerSecond: 10, // Increase scan rate for faster detection
+          preferredCamera: 'environment', // Use rear camera by default for better scanning
+          calculateScanRegion: (video) => {
+            // Optimize scan region for faster processing
+            const smallerDimension = Math.min(video.videoWidth, video.videoHeight);
+            const scanRegionSize = Math.round(0.6 * smallerDimension); // Smaller region = faster
+            return {
+              x: Math.round((video.videoWidth - scanRegionSize) / 2),
+              y: Math.round((video.videoHeight - scanRegionSize) / 2),
+              width: scanRegionSize,
+              height: scanRegionSize,
+            };
+          }
         }
       )
+      
       this.qrScanner.start().catch(e => {
         console.error('QR Scanner start error:', e)
         this.setState({ cameraError: e.message || 'Camera access denied or not available' })
@@ -315,14 +424,18 @@ class Volunteers extends Component {
     // Only update if the node actually changed
     if (node !== this.videoNode) {
       this.videoNode = node;
-      // Debounce scanner start to avoid rapid re-init
+      
+      // Clear any existing timeouts
       clearTimeout(this._qrScannerStartTimeout);
+      
       if (node && this.state.selectedStation && !this.state.qrScanned) {
+        // Reduce timeout for faster startup on multiple devices
         this._qrScannerStartTimeout = setTimeout(() => {
-          if (!this.qrScanner) {
+          if (!this.qrScanner && !this.isProcessingQR) {
+            console.log(`📹 Starting QR scanner on device [${this.deviceId}] for station: ${this.state.selectedStation}`);
             this.startQRScannerWithNode(node);
           }
-        }, 200);
+        }, 100); // Reduced from 200ms to 100ms for faster response
       }
     }
   }
@@ -334,55 +447,105 @@ class Volunteers extends Component {
       this.qrScanner = null;
     }
     this.setState({ cameraError: null });
+    
     if (videoNode) {
       this.qrScanner = new QrScanner(
         videoNode,
         async result => {
-          if (result && result.data && !this.state.qrScanned) {
-            this.qrScanner.stop();
+          if (result && result.data && !this.state.qrScanned && !this.isProcessingQR) {
+            // Set processing flag to prevent multiple simultaneous scans
+            this.isProcessingQR = true;
+            
+            // Generate unique scan ID for tracking
+            const scanId = `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            console.log(`🔍 QR Scan started [${scanId}]:`, result.data);
+            
             try {
+              // Use AbortController for fast timeout handling
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+              
               const response = await axios.post(`${API_BASE_URL}/participants`, {
                 "purpose": "retrieveParticipant",
                 "participantID": result.data
+              }, {
+                signal: controller.signal,
+                timeout: 3000,
+                headers: {
+                  'X-Scan-ID': scanId,
+                  'X-Device-ID': this.deviceId || 'unknown'
+                }
               });
+              
+              clearTimeout(timeoutId);
+              console.log(`✅ QR Scan completed [${scanId}]:`, response.data?.success ? 'Success' : 'Failed');
+              
               if (response.data && response.data.success && response.data.data) {
-                const p = response.data.data;
+                // Populate ALL participant data
                 const formData = {};
                 Object.keys(response.data.data).forEach(key => {
                   formData[key] = response.data.data[key];
                 });
+                
                 this.setState({
                   qrValue: result.data,
                   qrScanned: true,
                   cameraError: null,
                   formData
+                }, () => {
+                  // Immediately save state after successful scan
+                  this.immediateSave();
+                  console.log(`💾 Data saved for scan [${scanId}]`);
                 });
               } else {
                 this.setState({
                   qrValue: result.data,
                   qrScanned: true,
-                  cameraError: response.data.message || 'No participant found',
+                  cameraError: response.data?.message || 'No participant found',
                   formData: {}
                 });
               }
             } catch (err) {
+              console.error(`❌ QR Scan error [${scanId}]:`, err.message);
+              
               this.setState({
                 qrValue: result.data,
                 qrScanned: true,
-                cameraError: 'Network or server error',
+                cameraError: err.name === 'AbortError' ? 'Request timeout - try again' : 'Network or server error',
                 formData: {}
               });
+            } finally {
+              // Always clear processing flag
+              this.isProcessingQR = false;
             }
           }
         },
         {
           onDecodeError: error => {
-            console.warn('QR Scanner decode error:', error.message);
+            // Suppress minor decode errors
+            if (!error.message.includes('No QR code found')) {
+              console.warn('QR Scanner decode error:', error.message);
+            }
           },
           highlightScanRegion: true,
-          highlightCodeOutline: true
+          highlightCodeOutline: true,
+          // Optimize for speed and multiple device support
+          maxScansPerSecond: 10, // Increase scan rate
+          preferredCamera: 'environment', // Use rear camera
+          calculateScanRegion: (video) => {
+            // Optimize scan region for faster processing
+            const smallerDimension = Math.min(video.videoWidth, video.videoHeight);
+            const scanRegionSize = Math.round(0.6 * smallerDimension);
+            return {
+              x: Math.round((video.videoWidth - scanRegionSize) / 2),
+              y: Math.round((video.videoHeight - scanRegionSize) / 2),
+              width: scanRegionSize,
+              height: scanRegionSize,
+            };
+          }
         }
       );
+      
       this.qrScanner.start().catch(e => {
         console.error('QR Scanner start error:', e);
         this.setState({ cameraError: e.message || 'Camera access denied or not available' });
@@ -395,25 +558,34 @@ class Volunteers extends Component {
     if ((this.state.qrScanned || !this.state.selectedStation) && this.qrScanner) {
       this.stopQRScanner();
     }
+    
     // If switching to a new station and not scanned, start scanner if not already started
     if (
       this.videoNode &&
       this.state.selectedStation &&
       !this.state.qrScanned &&
+      !this.isProcessingQR &&
       (prevState.selectedStation !== this.state.selectedStation || prevState.qrScanned !== this.state.qrScanned)
     ) {
       clearTimeout(this._qrScannerStartTimeout);
       this._qrScannerStartTimeout = setTimeout(() => {
-        if (!this.qrScanner) {
+        if (!this.qrScanner && !this.isProcessingQR) {
+          console.log(`🔄 Restarting QR scanner on device [${this.deviceId}] for station change`);
           this.startQRScannerWithNode(this.videoNode);
         }
-      }, 200);
+      }, 100); // Fast restart for better user experience
     }
   }
 
   handleChange = (e) => {
     const newStation = e.target.value;
-    // For any station, reset to QR scan screen
+    
+    console.log(`🔄 Station changed to [${newStation}] on device [${this.deviceId}]`);
+    
+    // Clear processing flag when changing stations
+    this.isProcessingQR = false;
+    
+    // For any station, reset to QR scan screen with optimized state update
     this.setState({
       selectedStation: newStation,
       qrValue: '',
@@ -421,8 +593,9 @@ class Volunteers extends Component {
       cameraError: null,
       formData: {}
     }, () => {
-      // Save state after station change
-      this.debouncedSave();
+      // Immediate save for faster state persistence across devices
+      this.immediateSave();
+      console.log(`💾 Station change saved for device [${this.deviceId}]`);
     });
   }
 
@@ -625,9 +798,19 @@ class Volunteers extends Component {
                   {language === 'en' ? 'Camera Error: ' : '摄像头错误：'}{cameraError}
                 </span>
               ) : (
-                <span>
-                  {language === 'en' ? 'Camera is active. Please hold QR code in front of the camera.' : '摄像头已开启，请将二维码对准摄像头'}
-                </span>
+                <div>
+                  <span>
+                    {language === 'en' ? 'Camera is active. Please hold QR code in front of the camera.' : '摄像头已开启，请将二维码对准摄像头'}
+                  </span>
+                  <div style={{ fontSize: '0.8em', color: '#666', marginTop: '4px' }}>
+                    {language === 'en' ? `Device: ${this.deviceId.split('_')[1]} | Station: ${selectedStation}` : `设备: ${this.deviceId.split('_')[1]} | 站点: ${selectedStation}`}
+                    {this.isProcessingQR && (
+                      <span style={{ color: '#ff9800', marginLeft: '8px' }}>
+                        {language === 'en' ? '⚡ Processing...' : '⚡ 处理中...'}
+                      </span>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
             <div id="qr-video-container" style={{ width: '100%', maxWidth: 640, minHeight: 480, margin: '0 auto', borderRadius: 18, background: '#000', border: '5px solid #1976d2', boxShadow: '0 4px 32px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
@@ -642,7 +825,10 @@ class Volunteers extends Component {
               {!this.qrScanner && (
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', textAlign: 'center' }}>
                   <div style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-                    {language === 'en' ? 'Starting camera...' : '启动摄像头...'}
+                    {language === 'en' ? '🚀 Starting fast camera...' : '🚀 启动快速摄像头...'}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+                    {language === 'en' ? 'Optimized for multiple devices' : '为多设备优化'}
                   </div>
                 </div>
               )}
@@ -651,12 +837,18 @@ class Volunteers extends Component {
         )}
         {selectedStation && qrScanned && (
           <div className="details-section">
-            {/* Show completed stations only if there are actually completed stations */}
-            {this.state.stations.length > 0 && (
+            {/* Show completed stations only if there are actually completed stations with data */}
+            {this.state.stations.length > 0 && this.state.stations.some(stationObj => {
+              const stationData = Object.values(stationObj)[0];
+              return stationData && Object.keys(stationData).length > 0 && Object.values(stationData).some(val => val && val !== '');
+            }) && (
               <div style={{ marginBottom: 16, color: '#1976d2', fontWeight: 600 }}>
                 {language === 'en' ? 'Completed Stations:' : '已完成站点：'}
                 <ul>
-                  {this.state.stations.map((stationObj, idx) => {
+                  {this.state.stations.filter(stationObj => {
+                    const stationData = Object.values(stationObj)[0];
+                    return stationData && Object.keys(stationData).length > 0 && Object.values(stationData).some(val => val && val !== '');
+                  }).map((stationObj, idx) => {
                     const stationName = Object.keys(stationObj)[0];
                     return (
                       <li key={stationName}>

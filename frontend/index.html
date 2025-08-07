@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />    
     <link rel="icon" href="https://ecss.org.sg/wp-content/uploads/2023/07/En_logo_Final_Large_RGB.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Web App Manifest for "Add to Home Screen" -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS specific meta tags for PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="ECSS FFT" />
+    <link rel="apple-touch-icon" href="https://ecss.org.sg/wp-content/uploads/2023/07/En_logo_Final_Large_RGB.png" />
+    
+    <!-- Theme color for Android -->
+    <meta name="theme-color" content="#1976d2" />
+    
     <title>ECSS FFT Test</title>
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
@@ -54,6 +67,21 @@
           OneSignal.User.addTag('current_path', newPath);
         };
       });
+    </script>
+    
+    <!-- Service Worker Registration for PWA -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+              console.log('SW registered: ', registration);
+            })
+            .catch(function(registrationError) {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
     </script>
   </head>
   <body>
