@@ -592,21 +592,8 @@ import { io } from 'socket.io-client';
                       </div>
                     </div>
                   )}
-                  
-                  <div style={{ 
-                    color: '#666', 
-                    fontSize: '14px',
-                    lineHeight: '1.5',
-                    marginBottom: '20px'
-                  }}>
-                    <p>
-                      {language === 'en' 
-                        ? '📱 Station master will scan this QR code to access your participant information and record test results.'
-                        : '📱 站长将扫描此二维码以访问您的参与者信息并记录测试结果。'
-                      }
-                    </p>
-                  </div>
-                  
+
+                                    
                   {/* Station Progress Checklist */}
                   <div style={{
                     marginBottom: '15px',
@@ -694,6 +681,20 @@ import { io } from 'socket.io-client';
                         );
                       })}
                     </div>
+                  </div>
+                  
+                  <div style={{ 
+                    color: '#666', 
+                    fontSize: '14px',
+                    lineHeight: '1.5',
+                    marginBottom: '20px'
+                  }}>
+                    <p>
+                      {language === 'en' 
+                        ? '📱 Station master will scan this QR code to access your participant information and record test results.'
+                        : '📱 站长将扫描此二维码以访问您的参与者信息并记录测试结果。'
+                      }
+                    </p>
                   </div>
                   
                   <div style={{ 
