@@ -147,7 +147,7 @@ import { io } from 'socket.io-client';
           purpose: 'retrieveParticipant',
           participantID: participantId
         });
-        
+        console.log('Response from server:', response.data);
         if (response.data && response.data.success) {
           console.log('okkkkk:', response.data.data);
           // You can update state with the retrieved data if needed

@@ -33,11 +33,12 @@ class ParticipantDetails extends Component {
   initializeSocket = () => {
     try {
       console.log('🔌 Initializing socket connection for ParticipantDetails...');
-      console.log("ParticipantDetails props:", this.props.participant);
+      console.log("ParticipantDetails 123props:", this.props.participant);
       this.socket = io(API_BASE_URL);
 
       // Get participant ID from props
       const participantId = this.props.participant?.id;
+      console.log("ParticipantDetailsID:", participantId);
       
       // Listen for participant updates and refresh data live
       this.socket.on('participant-updated', (data) => {
