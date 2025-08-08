@@ -13,16 +13,90 @@ class ParticipantDetails extends Component {
   constructor(props) {
     super(props)
     this.state = {
-      liveHeight: props.participant?.height || '',
-      liveWeight: props.participant?.weight || '',
-      liveBMI: props.participant?.bmi || ''
+
     }
     this.socket = null
   }
   
+  componentDidMount() {
+    // Initialize socket connection for real-time updates
+    this.initializeSocket();
+  }
+
   componentWillUnmount() {
     if (this.socket) {
       this.socket.disconnect()
+    }
+  }
+
+  // Initialize socket connection for real-time participant updates
+  initializeSocket = () => {
+    try {
+      console.log('🔌 Initializing socket connection for ParticipantDetails...');
+      
+      this.socket = io(API_BASE_URL, {
+        transports: ['websocket', 'polling'],
+        timeout: 5000,
+        forceNew: true
+      });
+
+      this.socket.on('connect', () => {
+        console.log('✅ ParticipantDetails socket connected');
+      });
+
+      this.socket.on('disconnect', () => {
+        console.log('🔌 ParticipantDetails socket disconnected');
+      });
+
+      this.socket.on('connect_error', (error) => {
+        console.error('❌ ParticipantDetails socket connection error:', error);
+      });
+
+      // Get participant ID from props
+      const participantId = this.props.participant?._id || this.props.participantId;
+      
+      // Listen for participant updates and refresh data live
+      this.socket.on('participant-updated', (data) => {
+        try {
+          console.log("🔔 Socket event received in ParticipantDetails", data);
+          console.log("🔄 Triggering handleParticipantUpdate...");
+          
+          console.log("Current participant ID:", participantId, typeof participantId);
+          console.log("Event participant ID:", data.participantID, typeof data.participantID);
+          console.log("Participant ID Matches:", participantId === data.participantID);
+          
+          // Update only if it matches current participant
+          if (participantId === data.participantID) {
+            console.log("✅ Event matches current participant");
+            this.handleParticipantUpdate(participantId);
+          } else {
+            console.log("ℹ️ Event for different participant, ignoring update");
+          }
+        } catch (socketEventError) {
+          console.error('❌ Error handling socket event:', socketEventError);
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error initializing socket:', error);
+    }
+  }
+
+  // Handle participant update by refreshing data
+  handleParticipantUpdate = (participantId) => {
+    try {
+      console.log('🔄 Handling participant update for ID:', participantId);
+      
+      // If there's an onParticipantUpdate callback from parent, use it
+      if (this.props.onParticipantUpdate && typeof this.props.onParticipantUpdate === 'function') {
+        console.log('📞 Calling parent onParticipantUpdate callback');
+        this.props.onParticipantUpdate(participantId);
+      } else {
+        console.log('ℹ️ No onParticipantUpdate callback available, data will update via props');
+        // Data will be updated via props from parent component
+      }
+    } catch (error) {
+      console.error('❌ Error in handleParticipantUpdate:', error);
     }
   }
 
