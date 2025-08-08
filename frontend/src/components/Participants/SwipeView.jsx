@@ -423,6 +423,89 @@ import { io } from 'socket.io-client';
                     language={language} 
                     onClose={onClose}
                   />
+                  
+                  {/* Station Progress Checklist - Details View */}
+                  <div style={{
+                    margin: '20px 10px 10px 10px',
+                    padding: '15px',
+                    backgroundColor: 'white',
+                    borderRadius: '12px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    border: '1px solid #e9ecef'
+                  }}>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#495057',
+                      marginBottom: '12px',
+                      fontWeight: '600',
+                      textAlign: 'center'
+                    }}>
+                      {language === 'en' ? 'Station Progress Overview' : '测试站进度总览'}
+                    </div>
+                    
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '10px',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }}>
+                      {/* Height & Weight */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: '12px',
+                        color: hasHeightWeight ? '#28a745' : '#6c757d',
+                        backgroundColor: hasHeightWeight ? '#e8f5e8' : '#f8f9fa',
+                        padding: '6px 12px',
+                        borderRadius: '15px',
+                        border: `1px solid ${hasHeightWeight ? '#28a745' : '#dee2e6'}`,
+                        minWidth: 'fit-content'
+                      }}>
+                        <span style={{ marginRight: '6px', fontSize: '14px' }}>
+                          {hasHeightWeight ? '✅' : '⬜'}
+                        </span>
+                        <span>{language === 'en' ? 'Height & Weight' : '身高体重'}</span>
+                      </div>
+                      
+                      {/* Station Tests */}
+                      {Object.keys(stationNames).filter(key => key !== 'heightWeight').map((stationKey) => {
+                        const isCompleted = completedStations.some(station => station.name === stationKey);
+                        return (
+                          <div key={stationKey} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            fontSize: '12px',
+                            color: isCompleted ? '#28a745' : '#6c757d',
+                            backgroundColor: isCompleted ? '#e8f5e8' : '#f8f9fa',
+                            padding: '6px 12px',
+                            borderRadius: '15px',
+                            border: `1px solid ${isCompleted ? '#28a745' : '#dee2e6'}`,
+                            minWidth: 'fit-content'
+                          }}>
+                            <span style={{ marginRight: '6px', fontSize: '14px' }}>
+                              {isCompleted ? '✅' : '⬜'}
+                            </span>
+                            <span>{stationNames[stationKey]}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Swipe Instructions */}
+                    <div style={{ 
+                      color: '#888', 
+                      fontSize: '12px',
+                      fontStyle: 'italic',
+                      textAlign: 'center',
+                      marginTop: '15px'
+                    }}>
+                      {language === 'en' 
+                        ? '👉 Swipe left to view your QR code' 
+                        : '👉 向左滑动查看您的二维码'
+                      }
+                    </div>
+                  </div>
                 </div>
               )}
 
