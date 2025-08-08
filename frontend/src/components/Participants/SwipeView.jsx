@@ -605,37 +605,41 @@ import { io } from 'socket.io-client';
                   <div style={{
                     marginBottom: '15px',
                     padding: '15px',
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '10px',
+                    backgroundColor: 'white',
+                    borderRadius: '12px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                     border: '1px solid #e9ecef'
                   }}>
                     <div style={{
-                      fontSize: '12px',
-                      color: '#6c757d',
-                      marginBottom: '8px',
-                      fontWeight: '500'
+                      fontSize: '14px',
+                      color: '#495057',
+                      marginBottom: '12px',
+                      fontWeight: '600',
+                      textAlign: 'center'
                     }}>
-                      {language === 'en' ? 'Station Progress:' : '测试站进度:'}
+                      {language === 'en' ? 'Station Progress Overview' : '测试站进度总览'}
                     </div>
                     
                     <div style={{
                       display: 'flex',
                       flexWrap: 'wrap',
-                      gap: '8px',
+                      gap: '10px',
+                      justifyContent: 'center',
                       alignItems: 'center'
                     }}>
                       {/* Height & Weight */}
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        fontSize: '11px',
+                        fontSize: '12px',
                         color: hasHeightWeight ? '#28a745' : '#6c757d',
                         backgroundColor: hasHeightWeight ? '#e8f5e8' : '#f8f9fa',
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        border: `1px solid ${hasHeightWeight ? '#28a745' : '#dee2e6'}`
+                        padding: '6px 12px',
+                        borderRadius: '15px',
+                        border: `1px solid ${hasHeightWeight ? '#28a745' : '#dee2e6'}`,
+                        minWidth: 'fit-content'
                       }}>
-                        <span style={{ marginRight: '4px' }}>
+                        <span style={{ marginRight: '6px', fontSize: '14px' }}>
                           {hasHeightWeight ? '✅' : '⬜'}
                         </span>
                         <span>{language === 'en' ? 'Height & Weight' : '身高体重'}</span>
@@ -648,14 +652,15 @@ import { io } from 'socket.io-client';
                           <div key={stationKey} style={{
                             display: 'flex',
                             alignItems: 'center',
-                            fontSize: '11px',
+                            fontSize: '12px',
                             color: isCompleted ? '#28a745' : '#6c757d',
                             backgroundColor: isCompleted ? '#e8f5e8' : '#f8f9fa',
-                            padding: '4px 8px',
-                            borderRadius: '12px',
-                            border: `1px solid ${isCompleted ? '#28a745' : '#dee2e6'}`
+                            padding: '6px 12px',
+                            borderRadius: '15px',
+                            border: `1px solid ${isCompleted ? '#28a745' : '#dee2e6'}`,
+                            minWidth: 'fit-content'
                           }}>
-                            <span style={{ marginRight: '4px' }}>
+                            <span style={{ marginRight: '6px', fontSize: '14px' }}>
                               {isCompleted ? '✅' : '⬜'}
                             </span>
                             <span>{stationNames[stationKey]}</span>
