@@ -1326,6 +1326,56 @@ class ParticipantDetails extends Component {
     }
   }
 
+  // Check if participant has height and weight data
+  hasHeightWeightData = () => {
+    const { participant } = this.props
+    return participant.height && participant.weight && 
+          participant.height !== '' && participant.weight !== '' &&
+          participant.height !== '-' && participant.weight !== '-'
+  }
+
+  // Get station summary from the stations array
+  getStationSummary = () => {
+    const { participant } = this.props
+    if (!participant.stations || !Array.isArray(participant.stations)) {
+      return { completed: [], incomplete: [] }
+    }
+    
+    const completed = []
+    const incomplete = []
+    
+    // Process each station in the stations array
+    participant.stations.forEach(stationObj => {
+      Object.entries(stationObj).forEach(([stationName, stationData]) => {
+        // Check if station has meaningful data
+        const hasData = Object.values(stationData).some(value => {
+          if (!value || value === '' || value === '-') return false
+          if (typeof value === 'string') {
+            const trimmed = value.trim()
+            if (trimmed === '0' || trimmed.match(/^\s*(cm|kg|secs)\s*$/)) return false
+            return trimmed.length > 0
+          }
+          return true
+        })
+        
+        if (hasData) {
+          completed.push({ 
+            name: stationName, 
+            data: stationData,
+            completedAt: new Date().toISOString() // Stations don't have timestamps, use current time
+          })
+        } else {
+          incomplete.push({ 
+            name: stationName, 
+            data: stationData 
+          })
+        }
+      })
+    })
+    
+    return { completed, incomplete }
+  }
+
   render() {
     console.log('ParticipantDetails this.props:', this.props)
     const { participant, language, onClose } = this.props
@@ -1437,6 +1487,93 @@ class ParticipantDetails extends Component {
           </div>
         </div>
 
+        {/* Station Progress Checklist */}
+        <div className="details-section">
+          <h3 className="details-section-title">{fallbackT.stationProgressOverview || 'Station Progress Overview'}</h3>
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 'clamp(6px, 2vw, 10px)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            maxWidth: '100%',
+            padding: '0 5px'
+          }}>
+            {/* Height & Weight */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: 'clamp(10px, 2.5vw, 12px)',
+              color: this.hasHeightWeightData() ? '#28a745' : '#6c757d',
+              backgroundColor: this.hasHeightWeightData() ? '#e8f5e8' : '#f8f9fa',
+              padding: 'clamp(4px, 1.5vw, 6px) clamp(8px, 3vw, 12px)',
+              borderRadius: '15px',
+              border: `1px solid ${this.hasHeightWeightData() ? '#28a745' : '#dee2e6'}`,
+              minWidth: 'fit-content',
+              maxWidth: '100%',
+              textAlign: 'center'
+            }}>
+              <span style={{ marginRight: '6px', fontSize: 'clamp(12px, 3vw, 14px)' }}>
+                {this.hasHeightWeightData() ? '✅' : '⬜'}
+              </span>
+              <span style={{ 
+                whiteSpace: 'nowrap', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis',
+                maxWidth: '120px' 
+              }}>
+                {currentLanguage === 'en' ? 'Height & Weight' : '身高体重'}
+              </span>
+            </div>
+            
+            {/* Station Tests */}
+            {(() => {
+              const stationNames = {
+                sitStand: currentLanguage === 'en' ? 'Sit & Stand' : '坐立测试',
+                armBanding: currentLanguage === 'en' ? 'Arm Banding' : '臂力测试',
+                marching: currentLanguage === 'en' ? 'Marching in Place' : '原地踏步',
+                sitReach: currentLanguage === 'en' ? 'Sit & Reach' : '坐位体前屈',
+                backStretch: currentLanguage === 'en' ? 'Back Stretch' : '背部伸展',
+                speedWalking: currentLanguage === 'en' ? 'Speed Walking' : '快速步行',
+                handGrip: currentLanguage === 'en' ? 'Hand Grip' : '握力测试'
+              };
+              
+              const { completed: completedStations } = this.getStationSummary();
+              
+              return Object.keys(stationNames).map((stationKey) => {
+                const isCompleted = completedStations.some(station => station.name === stationKey);
+                return (
+                  <div key={stationKey} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    fontSize: 'clamp(10px, 2.5vw, 12px)',
+                    color: isCompleted ? '#28a745' : '#6c757d',
+                    backgroundColor: isCompleted ? '#e8f5e8' : '#f8f9fa',
+                    padding: 'clamp(4px, 1.5vw, 6px) clamp(8px, 3vw, 12px)',
+                    borderRadius: '15px',
+                    border: `1px solid ${isCompleted ? '#28a745' : '#dee2e6'}`,
+                    minWidth: 'fit-content',
+                    maxWidth: '100%',
+                    textAlign: 'center'
+                  }}>
+                    <span style={{ marginRight: '6px', fontSize: 'clamp(12px, 3vw, 14px)' }}>
+                      {isCompleted ? '✅' : '⬜'}
+                    </span>
+                    <span style={{ 
+                      whiteSpace: 'nowrap', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis',
+                      maxWidth: '120px' 
+                    }}>
+                      {stationNames[stationKey]}
+                    </span>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+
         {/* Fitness Test Results */}
         <div className="details-section">
           <h3 className="details-section-title">{fallbackT.stationResults}</h3>
@@ -1446,7 +1583,7 @@ class ParticipantDetails extends Component {
         </div>
 
         <div className="swipe-instructions">
-          <p className="swipe-instructions-text">{fallbackT.swipeInstructions}</p>
+          <p className="swipe-instructions-text">{fallbackT.swipeInstructionsDetails}</p>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: 24 }}>
