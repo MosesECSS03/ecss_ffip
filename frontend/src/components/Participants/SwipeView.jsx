@@ -610,14 +610,78 @@ import { io } from 'socket.io-client';
                     </p>
                   </div>
                   
+                  {/* Station Progress Checklist */}
+                  <div style={{
+                    marginBottom: '15px',
+                    padding: '15px',
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: '10px',
+                    border: '1px solid #e9ecef'
+                  }}>
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#6c757d',
+                      marginBottom: '8px',
+                      fontWeight: '500'
+                    }}>
+                      {language === 'en' ? 'Station Progress:' : '测试站进度:'}
+                    </div>
+                    
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      alignItems: 'center'
+                    }}>
+                      {/* Height & Weight */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: '11px',
+                        color: hasHeightWeight ? '#28a745' : '#6c757d',
+                        backgroundColor: hasHeightWeight ? '#e8f5e8' : '#f8f9fa',
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        border: `1px solid ${hasHeightWeight ? '#28a745' : '#dee2e6'}`
+                      }}>
+                        <span style={{ marginRight: '4px' }}>
+                          {hasHeightWeight ? '✅' : '⬜'}
+                        </span>
+                        <span>{language === 'en' ? 'Height & Weight' : '身高体重'}</span>
+                      </div>
+                      
+                      {/* Station Tests */}
+                      {Object.keys(stationNames).filter(key => key !== 'heightWeight').map((stationKey) => {
+                        const isCompleted = completedStations.some(station => station.name === stationKey);
+                        return (
+                          <div key={stationKey} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            fontSize: '11px',
+                            color: isCompleted ? '#28a745' : '#6c757d',
+                            backgroundColor: isCompleted ? '#e8f5e8' : '#f8f9fa',
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            border: `1px solid ${isCompleted ? '#28a745' : '#dee2e6'}`
+                          }}>
+                            <span style={{ marginRight: '4px' }}>
+                              {isCompleted ? '✅' : '⬜'}
+                            </span>
+                            <span>{stationNames[stationKey]}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
                   <div style={{ 
                     color: '#888', 
                     fontSize: '12px',
                     fontStyle: 'italic'
                   }}>
                     {language === 'en' 
-                      ? '👉 Swipe right to view your details' 
-                      : '👉 向右滑动查看您的详细信息'
+                      ? '👉 Swipe right to view participant details' 
+                      : '👉 向右滑动查看参与者详细信息'
                     }
                   </div>
                 </div>
