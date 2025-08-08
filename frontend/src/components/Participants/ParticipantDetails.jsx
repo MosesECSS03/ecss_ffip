@@ -1343,6 +1343,8 @@ class ParticipantDetails extends Component {
     
     const completed = []
     const incomplete = []
+
+    //OK
     
     // Process each station in the stations array
     participant.stations.forEach(stationObj => {
