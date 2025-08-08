@@ -511,20 +511,6 @@ import { io } from 'socket.io-client';
                         );
                       })}
                     </div>
-                    
-                    {/* Swipe Instructions */}
-                    <div style={{ 
-                      color: '#888', 
-                      fontSize: '12px',
-                      fontStyle: 'italic',
-                      textAlign: 'center',
-                      marginTop: '15px'
-                    }}>
-                      {language === 'en' 
-                        ? '👉 Swipe left to view your QR code' 
-                        : '👉 向左滑动查看您的二维码'
-                      }
-                    </div>
                   </div>
                 </div>
               )}
@@ -716,9 +702,9 @@ import { io } from 'socket.io-client';
                     fontStyle: 'italic'
                   }}>
                     {language === 'en' 
-                      ? '👉 Swipe right to view participant details' 
-                      : '👉 向右滑动查看参与者详细信息'
-                    }
+                        ? '👉 Swipe left to view your QR code' 
+                        : '👉 向左滑动查看您的二维码'
+                      }
                   </div>
                 </div>
               )}
