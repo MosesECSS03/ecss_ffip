@@ -434,7 +434,7 @@ import { io } from 'socket.io-client';
                     border: '1px solid #e9ecef'
                   }}>
                     <div style={{
-                      fontSize: '14px',
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
                       color: '#495057',
                       marginBottom: '12px',
                       fontWeight: '600',
@@ -446,26 +446,37 @@ import { io } from 'socket.io-client';
                     <div style={{
                       display: 'flex',
                       flexWrap: 'wrap',
-                      gap: '10px',
+                      gap: 'clamp(6px, 2vw, 10px)',
                       justifyContent: 'center',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      maxWidth: '100%',
+                      padding: '0 5px'
                     }}>
                       {/* Height & Weight */}
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        fontSize: '12px',
+                        fontSize: 'clamp(10px, 2.5vw, 12px)',
                         color: hasHeightWeight ? '#28a745' : '#6c757d',
                         backgroundColor: hasHeightWeight ? '#e8f5e8' : '#f8f9fa',
-                        padding: '6px 12px',
+                        padding: 'clamp(4px, 1.5vw, 6px) clamp(8px, 3vw, 12px)',
                         borderRadius: '15px',
                         border: `1px solid ${hasHeightWeight ? '#28a745' : '#dee2e6'}`,
-                        minWidth: 'fit-content'
+                        minWidth: 'fit-content',
+                        maxWidth: '100%',
+                        textAlign: 'center'
                       }}>
-                        <span style={{ marginRight: '6px', fontSize: '14px' }}>
+                        <span style={{ marginRight: '6px', fontSize: 'clamp(12px, 3vw, 14px)' }}>
                           {hasHeightWeight ? '✅' : '⬜'}
                         </span>
-                        <span>{language === 'en' ? 'Height & Weight' : '身高体重'}</span>
+                        <span style={{ 
+                          whiteSpace: 'nowrap', 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis',
+                          maxWidth: '120px' 
+                        }}>
+                          {language === 'en' ? 'Height & Weight' : '身高体重'}
+                        </span>
                       </div>
                       
                       {/* Station Tests */}
@@ -475,18 +486,27 @@ import { io } from 'socket.io-client';
                           <div key={stationKey} style={{
                             display: 'flex',
                             alignItems: 'center',
-                            fontSize: '12px',
+                            fontSize: 'clamp(10px, 2.5vw, 12px)',
                             color: isCompleted ? '#28a745' : '#6c757d',
                             backgroundColor: isCompleted ? '#e8f5e8' : '#f8f9fa',
-                            padding: '6px 12px',
+                            padding: 'clamp(4px, 1.5vw, 6px) clamp(8px, 3vw, 12px)',
                             borderRadius: '15px',
                             border: `1px solid ${isCompleted ? '#28a745' : '#dee2e6'}`,
-                            minWidth: 'fit-content'
+                            minWidth: 'fit-content',
+                            maxWidth: '100%',
+                            textAlign: 'center'
                           }}>
-                            <span style={{ marginRight: '6px', fontSize: '14px' }}>
+                            <span style={{ marginRight: '6px', fontSize: 'clamp(12px, 3vw, 14px)' }}>
                               {isCompleted ? '✅' : '⬜'}
                             </span>
-                            <span>{stationNames[stationKey]}</span>
+                            <span style={{ 
+                              whiteSpace: 'nowrap', 
+                              overflow: 'hidden', 
+                              textOverflow: 'ellipsis',
+                              maxWidth: '120px' 
+                            }}>
+                              {stationNames[stationKey]}
+                            </span>
                           </div>
                         );
                       })}
@@ -611,7 +631,7 @@ import { io } from 'socket.io-client';
                     border: '1px solid #e9ecef'
                   }}>
                     <div style={{
-                      fontSize: '14px',
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
                       color: '#495057',
                       marginBottom: '12px',
                       fontWeight: '600',
@@ -623,26 +643,37 @@ import { io } from 'socket.io-client';
                     <div style={{
                       display: 'flex',
                       flexWrap: 'wrap',
-                      gap: '10px',
+                      gap: 'clamp(6px, 2vw, 10px)',
                       justifyContent: 'center',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      maxWidth: '100%',
+                      padding: '0 5px'
                     }}>
                       {/* Height & Weight */}
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        fontSize: '12px',
+                        fontSize: 'clamp(10px, 2.5vw, 12px)',
                         color: hasHeightWeight ? '#28a745' : '#6c757d',
                         backgroundColor: hasHeightWeight ? '#e8f5e8' : '#f8f9fa',
-                        padding: '6px 12px',
+                        padding: 'clamp(4px, 1.5vw, 6px) clamp(8px, 3vw, 12px)',
                         borderRadius: '15px',
                         border: `1px solid ${hasHeightWeight ? '#28a745' : '#dee2e6'}`,
-                        minWidth: 'fit-content'
+                        minWidth: 'fit-content',
+                        maxWidth: '100%',
+                        textAlign: 'center'
                       }}>
-                        <span style={{ marginRight: '6px', fontSize: '14px' }}>
+                        <span style={{ marginRight: '6px', fontSize: 'clamp(12px, 3vw, 14px)' }}>
                           {hasHeightWeight ? '✅' : '⬜'}
                         </span>
-                        <span>{language === 'en' ? 'Height & Weight' : '身高体重'}</span>
+                        <span style={{ 
+                          whiteSpace: 'nowrap', 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis',
+                          maxWidth: '120px' 
+                        }}>
+                          {language === 'en' ? 'Height & Weight' : '身高体重'}
+                        </span>
                       </div>
                       
                       {/* Station Tests */}
@@ -652,18 +683,27 @@ import { io } from 'socket.io-client';
                           <div key={stationKey} style={{
                             display: 'flex',
                             alignItems: 'center',
-                            fontSize: '12px',
+                            fontSize: 'clamp(10px, 2.5vw, 12px)',
                             color: isCompleted ? '#28a745' : '#6c757d',
                             backgroundColor: isCompleted ? '#e8f5e8' : '#f8f9fa',
-                            padding: '6px 12px',
+                            padding: 'clamp(4px, 1.5vw, 6px) clamp(8px, 3vw, 12px)',
                             borderRadius: '15px',
                             border: `1px solid ${isCompleted ? '#28a745' : '#dee2e6'}`,
-                            minWidth: 'fit-content'
+                            minWidth: 'fit-content',
+                            maxWidth: '100%',
+                            textAlign: 'center'
                           }}>
-                            <span style={{ marginRight: '6px', fontSize: '14px' }}>
+                            <span style={{ marginRight: '6px', fontSize: 'clamp(12px, 3vw, 14px)' }}>
                               {isCompleted ? '✅' : '⬜'}
                             </span>
-                            <span>{stationNames[stationKey]}</span>
+                            <span style={{ 
+                              whiteSpace: 'nowrap', 
+                              overflow: 'hidden', 
+                              textOverflow: 'ellipsis',
+                              maxWidth: '120px' 
+                            }}>
+                              {stationNames[stationKey]}
+                            </span>
                           </div>
                         );
                       })}
