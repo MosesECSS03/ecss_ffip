@@ -33,27 +33,11 @@ class ParticipantDetails extends Component {
   initializeSocket = () => {
     try {
       console.log('🔌 Initializing socket connection for ParticipantDetails...');
-      
-      this.socket = io(API_BASE_URL, {
-        transports: ['websocket', 'polling'],
-        timeout: 5000,
-        forceNew: true
-      });
-
-      this.socket.on('connect', () => {
-        console.log('✅ ParticipantDetails socket connected');
-      });
-
-      this.socket.on('disconnect', () => {
-        console.log('🔌 ParticipantDetails socket disconnected');
-      });
-
-      this.socket.on('connect_error', (error) => {
-        console.error('❌ ParticipantDetails socket connection error:', error);
-      });
+      console.log("ParticipantDetails props:", this.props.participant);
+      this.socket = io(API_BASE_URL);
 
       // Get participant ID from props
-      const participantId = this.props.participant?._id || this.props.participantId;
+      const participantId = this.props.participant?.id;
       
       // Listen for participant updates and refresh data live
       this.socket.on('participant-updated', (data) => {

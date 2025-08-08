@@ -422,6 +422,7 @@ import { io } from 'socket.io-client';
                     participant={participant} 
                     language={language} 
                     onClose={onClose}
+                    onParticipantUpdate ={this.handleParticipantUpdate}
                   />
                 </div>
               )}

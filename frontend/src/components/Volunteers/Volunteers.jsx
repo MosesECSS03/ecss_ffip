@@ -370,43 +370,34 @@ class Volunteers extends Component {
 
   /**
    * Handle station selection change
-   * Clears previous station data and initializes new station fields
+   * Resets form to QR scanner state when station changes
    * @param {Event} e - Select change event
    */
   handleChange = (e) => {
     const newStation = e.target.value;
     this.isProcessingQR = false;
     
-    this.setState(prevState => {
-      const newFormData = { ...prevState.formData };
-      
-      // Clear previous station fields
-      if (prevState.selectedStation && stationFields[prevState.selectedStation]) {
-        stationFields[prevState.selectedStation].forEach(field => {
-          if (!['name', 'age', 'gender', 'dateOfBirth', 'phoneNumber', 'height', 'weight', 'bmi', 'stations', 'hasHeightWeight'].includes(field)) {
-            delete newFormData[field];
-          }
-        });
-      }
-      
-      // Initialize new station fields
-      if (newStation && stationFields[newStation]) {
-        stationFields[newStation].forEach(field => {
-          if (!['name', 'age', 'gender', 'dateOfBirth', 'phoneNumber', 'height', 'weight', 'bmi', 'stations', 'hasHeightWeight'].includes(field)) {
-            newFormData[field] = '';
-          }
-        });
-      }
-      
-      return {
-        selectedStation: newStation,
-        qrValue: newFormData.name ? prevState.qrValue : '',
-        qrScanned: newFormData.name ? prevState.qrScanned : false,
-        cameraError: null,
-        formData: newFormData
-      };
+    // Stop existing QR scanner
+    this.stopQRScanner();
+    
+    // Reset to QR scanner state
+    this.setState({
+      selectedStation: newStation,
+      qrValue: '',
+      qrScanned: false,
+      cameraError: null,
+      formData: {}
     }, () => {
       this.debouncedSave();
+      
+      // Restart QR scanner if station is selected and video node is available
+      if (newStation && this.videoNode) {
+        setTimeout(() => {
+          if (!this.qrScanner && !this.isProcessingQR) {
+            this.startQRScannerWithNode(this.videoNode);
+          }
+        }, 200);
+      }
     });
   }
 
@@ -557,26 +548,26 @@ class Volunteers extends Component {
       if (response.data && response.data.success) {
         alert(language === 'en' ? 'Data submitted successfully!' : '数据提交成功！');
         
-        // Keep participant loaded but clear current station fields
-        this.setState(prevState => {
-          const newFormData = { ...prevState.formData };
-          
-          // Clear only the current station's fields, keep participant info
-          if (selectedStation && stationFields[selectedStation]) {
-            stationFields[selectedStation].forEach(field => {
-              if (!['name', 'age', 'gender', 'dateOfBirth', 'phoneNumber', 'height', 'weight', 'bmi', 'stations', 'hasHeightWeight'].includes(field)) {
-                newFormData[field] = '';
-              }
-            });
-          }
-          
-          return {
-            formData: newFormData,
-            // Keep participant loaded (don't reset qrScanned, qrValue, etc.)
-            // selectedStation stays the same so volunteer can continue with same station or change
-          };
+        // Reset to QR scanner state after successful submission
+        this.isProcessingQR = false;
+        this.stopQRScanner();
+        
+        this.setState({
+          qrValue: '',
+          qrScanned: false,
+          cameraError: null,
+          formData: {}
         }, () => {
           this.saveStateToLocalStorage();
+          
+          // Restart QR scanner if station is selected and video node is available
+          if (this.state.selectedStation && this.videoNode) {
+            setTimeout(() => {
+              if (!this.qrScanner && !this.isProcessingQR) {
+                this.startQRScannerWithNode(this.videoNode);
+              }
+            }, 200);
+          }
         });
       } else {
         alert(language === 'en' ? 'Failed to submit data.' : '提交数据失败。');
@@ -766,15 +757,22 @@ class Volunteers extends Component {
                 </div>
                 <button 
                   onClick={() => {
+                    // Stop QR processing and scanner
                     this.isProcessingQR = false;
                     this.stopQRScanner();
                     
+                    // Completely clear all participant data and reset to QR scanner state
                     this.setState({ 
                       qrScanned: false, 
                       qrValue: '', 
                       formData: {},
-                      cameraError: null
+                      cameraError: null,
+                      dataStatusMessage: ''
                     }, () => {
+                      // Save the cleared state to localStorage
+                      this.saveStateToLocalStorage();
+                      
+                      // Restart QR scanner if station is selected and video node is available
                       if (this.videoNode && this.state.selectedStation) {
                         setTimeout(() => {
                           if (!this.qrScanner && !this.isProcessingQR) {
