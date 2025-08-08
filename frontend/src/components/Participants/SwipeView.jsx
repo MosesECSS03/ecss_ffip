@@ -29,6 +29,7 @@ import { io } from 'socket.io-client';
 
   componentDidMount = async () => {
     const { participant } = this.props;
+    console.log("🔄 SwipeView mounted with participant:", participant);
     const participantId = participant?.id;
     
     // Generate QR code in parallel (don't wait for it)
