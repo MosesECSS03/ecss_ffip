@@ -79,6 +79,65 @@ import { io } from 'socket.io-client';
       }
     }
 
+    // Handle component updates for automatic QR code generation
+    componentDidUpdate(prevProps, prevState) {
+      const { participant } = this.props;
+      const prevParticipant = prevProps.participant;
+      
+      // Check if participant ID changed and we don't have a QR code yet
+      if (participant?.id !== prevParticipant?.id && participant?.id) {
+        console.log('🔄 Participant changed, auto-generating QR code for:', participant.id);
+        this.setState({ 
+          showLoadingPopup: true,
+          isGeneratingQR: true,
+          qrCodeUrl: '' 
+        });
+        this.generateQR(participant.id);
+        return;
+      }
+      
+      // For same participant ID: Check if QR generation failed or is missing
+      if (participant?.id && participant.id === prevParticipant?.id) {
+        // If QR generation finished but no QR code was produced (failed generation)
+        if (prevState.isGeneratingQR && !this.state.isGeneratingQR && !this.state.qrCodeUrl) {
+          console.log('🔄 QR generation failed, auto-retrying for participant:', participant.id);
+          setTimeout(() => {
+            this.setState({ 
+              showLoadingPopup: true,
+              isGeneratingQR: true 
+            });
+            this.generateQR(participant.id);
+          }, 1000);
+          return;
+        }
+        
+        // If we have a participant but no QR code and not currently generating
+        if (!this.state.qrCodeUrl && !this.state.isGeneratingQR) {
+          console.log('🔄 Missing QR code, auto-generating for participant:', participant.id);
+          this.setState({ 
+            showLoadingPopup: true,
+            isGeneratingQR: true 
+          });
+          this.generateQR(participant.id);
+          return;
+        }
+      }
+      
+      // Handle updated participant data from socket events
+      if (this.state.updatedParticipant && 
+          this.state.updatedParticipant !== prevState.updatedParticipant &&
+          this.state.updatedParticipant.id && 
+          !this.state.qrCodeUrl && 
+          !this.state.isGeneratingQR) {
+        console.log('🔄 Updated participant data received, auto-generating QR for:', this.state.updatedParticipant.id);
+        this.setState({ 
+          showLoadingPopup: true,
+          isGeneratingQR: true 
+        });
+        this.generateQR(this.state.updatedParticipant.id);
+      }
+    }
+
     // Method to retrieve participant data using the ID
     retrieveParticipantData = async (participantId) => {
       try {
@@ -527,11 +586,11 @@ import { io } from 'socket.io-client';
                       marginBottom: '20px'
                     }}>
                       <div style={{ fontSize: '48px', marginBottom: '10px' }}>🔄</div>
-                      <div style={{ fontSize: '18px', fontWeight: 'bold' }}>Generating QR Code...</div>
+                      <div style={{ fontSize: '18px', fontWeight: 'bold' }}>Creating Your QR Code</div>
                       <div style={{ fontSize: '14px', marginTop: '10px' }}>
                         {language === 'en' 
-                          ? 'Please wait while we create your QR code' 
-                          : '请稍候，我们正在生成您的二维码'
+                          ? 'Preparing your unique participant identifier...' 
+                          : '正在准备您的专属参与者标识...'
                         }
                       </div>
                     </div>
@@ -599,8 +658,8 @@ import { io } from 'socket.io-client';
                 <div className="loading-popup">
                   <div className="loading-spinner"></div>
                   <div className="loading-text">
-                    <h3>Generating QR Code...</h3>
-                    <p>Please wait while we prepare your participant QR code</p>
+                    <h3>🔄 Creating Your QR Code</h3>
+                    <p>Preparing your unique participant identifier...</p>
                   </div>
                 </div>
               </div>
