@@ -478,6 +478,7 @@ import { io } from 'socket.io-client';
                           {language === 'en' ? 'Height & Weight' : '身高体重'}
                         </span>
                       </div>
+                    </div>
                       
                       {/* Station Tests */}
                       {Object.keys(stationNames).filter(key => key !== 'heightWeight').map((stationKey) => {
@@ -511,7 +512,6 @@ import { io } from 'socket.io-client';
                         );
                       })}
                     </div>
-                  </div>
                 </div>
               )}
 
