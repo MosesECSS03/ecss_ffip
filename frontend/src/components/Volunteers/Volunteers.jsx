@@ -421,9 +421,7 @@ class Volunteers extends Component {
 
             if (response.data && response.data.success && response.data.data) {
               const participant = response.data.data;
-              console.log('📋 Participant data from backend:', participant);
-              console.log('📋 Participant name:', participant.name);
-              console.log('📋 Participant keys:', Object.keys(participant));
+              console.log('📋 Participant loaded successfully:', participant.name);
               
               this.setState({
                 qrValue: participantID,
@@ -441,32 +439,47 @@ class Volunteers extends Component {
                   hasHeightWeight: !!(participant.height && participant.weight)
                 }
               }, () => {
-                console.log('📋 FormData updated after QR scan:', this.state.formData);
-                console.log('📋 FormData name after update:', this.state.formData.name);
-                console.log('📋 QR scanned state:', this.state.qrScanned);
-                console.log('📋 Selected station:', this.state.selectedStation);
-                console.log('📋 Form conditions met?', {
-                  hasName: !!this.state.formData.name,
-                  hasStation: !!this.state.selectedStation,
-                  shouldShowForm: !!(this.state.formData.name && this.state.selectedStation)
-                });
+                console.log('📋 State updated after QR scan');
+                console.log('✅ Participant name:', this.state.formData.name);
+                console.log('✅ Selected station:', this.state.selectedStation);
+                console.log('✅ Should show form:', !!(this.state.formData.name && this.state.selectedStation));
+                
+                // Show user-friendly message
+                if (this.state.formData.name && this.state.selectedStation) {
+                  console.log('🎉 Form should now be visible!');
+                } else if (!this.state.selectedStation) {
+                  console.warn('⚠️ No station selected - form will not appear until station is chosen');
+                } else if (!this.state.formData.name) {
+                  console.warn('⚠️ No participant name - something went wrong with data loading');
+                }
               });
               this.stopQRScanner();
             } else {
-              console.warn('❌ Invalid response structure:', response.data);
+              console.warn('❌ Invalid API response:', response.data);
+              const errorMsg = response.data?.message || 'Participant not found or invalid response';
               this.setState({
-                qrValue: qrData,
+                qrValue: participantID,
                 qrScanned: false,
-                cameraError: 'Invalid participant data received',
+                cameraError: `Participant not found: ${errorMsg}`,
                 formData: {}
               });
             }
           } catch (err) {
-            console.error('QR processing error:', err);
+            console.error('❌ QR processing error:', err);
+            
+            let userMessage = 'Failed to load participant data';
+            if (err.response?.status === 404) {
+              userMessage = 'Participant not found. Please check the QR code.';
+            } else if (err.code === 'ERR_NETWORK') {
+              userMessage = 'Network error. Please check your connection.';
+            } else if (err.response?.data?.message) {
+              userMessage = err.response.data.message;
+            }
+            
             this.setState({
               qrValue: qrData,
               qrScanned: false,
-              cameraError: 'Failed to load participant data',
+              cameraError: userMessage,
               formData: {}
             });
           } finally {
@@ -1114,105 +1127,7 @@ class Volunteers extends Component {
                   )}
                 </div>
                 
-                {/* Debug buttons */}
-                {this.qrScanner && (
-                  <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                    <button
-                      onClick={() => {
-                        console.log('📹 Manual camera restart triggered');
-                        this.refreshCamera();
-                      }}
-                      style={{
-                        backgroundColor: '#ffc107',
-                        color: '#000',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        marginRight: '8px'
-                      }}
-                    >
-                      {language === 'en' ? '🔄 Restart Camera' : '🔄 重启摄像头'}
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        console.log('🔍 Checking QR scanner status...');
-                        console.log('🔍 Scanner object:', this.qrScanner);
-                        console.log('🔍 Video element:', this.videoNode);
-                        console.log('🔍 Video ready state:', this.videoNode ? this.videoNode.readyState : 'no video');
-                        console.log('🔍 Video dimensions:', this.videoNode ? {
-                          width: this.videoNode.videoWidth,
-                          height: this.videoNode.videoHeight,
-                          clientWidth: this.videoNode.clientWidth,
-                          clientHeight: this.videoNode.clientHeight
-                        } : 'no video');
-                        console.log('🔍 Processing state:', this.isProcessingQR);
-                        
-                        if (this.qrScanner) {
-                          console.log('🔍 Scanner state:', {
-                            hasCamera: !!this.qrScanner._qrWorker,
-                            isDestroyed: this.qrScanner._destroyed,
-                            scanCount: this.qrScanner._scanCount || 'unknown'
-                          });
-                        }
-                      }}
-                      style={{
-                        backgroundColor: '#6c757d',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        marginRight: '8px'
-                      }}
-                    >
-                      {language === 'en' ? '🔍 Debug Info' : '🔍 调试信息'}
-                    </button>
-                    
-                    <button
-                      onClick={async () => {
-                        console.log('🧪 Testing QR scanner with dummy data');
-                        console.log('🧪 Current scanner state:', {
-                          hasScanner: !!this.qrScanner,
-                          isProcessing: this.isProcessingQR,
-                          videoReady: this.videoNode ? this.videoNode.readyState : 'no video'
-                        });
-                        
-                        // Test with a dummy QR result
-                        if (this.qrScanner) {
-                          try {
-                            // Simulate a QR scan result with test data
-                            const testResult = { data: 'TEST123' };
-                            console.log('🧪 Triggering QR result handler with:', testResult);
-                            
-                            // Call the result handler directly
-                            await this.qrScanner._onDecodeResult(testResult);
-                          } catch (error) {
-                            console.error('🧪 Test scan error:', error);
-                            // Fallback: just log the test
-                            alert('Test QR scanner functionality logged to console');
-                          }
-                        } else {
-                          alert('No QR scanner active. Start camera first.');
-                        }
-                      }}
-                      style={{
-                        backgroundColor: '#17a2b8',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                      }}
-                    >
-                      {language === 'en' ? '🧪 Test Scanner' : '🧪 测试扫描器'}
-                    </button>
-                  </div>
-                )}
+
               </div>
             )}
 
@@ -1689,102 +1604,6 @@ class Volunteers extends Component {
             title="Clear all saved volunteer form data from browser storage"
           >
             🗑️ {language === 'en' ? 'Clear Saved Data' : '清除保存的数据'}
-          </button>
-          
-          {/* Debug Test Button */}
-          <button 
-            onClick={async () => {
-              console.log('🧪 Manual test scan triggered');
-              console.log('🧪 Current state:', {
-                selectedStation: this.state.selectedStation,
-                qrValue: this.state.qrValue,
-                qrScanned: this.state.qrScanned,
-                formDataName: this.state.formData.name,
-                isProcessing: this.isProcessingQR
-              });
-              
-              if (!this.state.selectedStation) {
-                alert('Please select a station first!');
-                return;
-              }
-              
-              if (this.isProcessingQR) {
-                console.log('🧪 Already processing, skipping test');
-                return;
-              }
-              
-              // Test the QR processing with a known participant ID
-              // Replace 'TEST123' with an actual participant ID from your database if needed
-              try {
-                this.isProcessingQR = true;
-                const testParticipantID = 'P001'; // Use a real ID from your database
-                
-                console.log('🧪 Testing with participant ID:', testParticipantID);
-                console.log('🧪 API URL:', API_BASE_URL);
-                
-                const response = await axios.post(`${API_BASE_URL}/participants`, {
-                  purpose: 'retrieveParticipant',
-                  participantID: testParticipantID
-                }, { timeout: 10000 });
-
-                console.log('🧪 Test response:', response.data);
-                
-                if (response.data && response.data.success && response.data.data) {
-                  const participant = response.data.data;
-                  console.log('🧪 Test participant data:', participant);
-                  
-                  this.setState({
-                    qrValue: testParticipantID,
-                    qrScanned: true,
-                    formData: {
-                      name: participant.name || '',
-                      age: participant.age || '',
-                      gender: participant.gender || '',
-                      dateOfBirth: participant.dateOfBirth || '',
-                      phoneNumber: participant.phoneNumber || '',
-                      height: participant.height || '',
-                      weight: participant.weight || '',
-                      bmi: participant.bmi || '',
-                      stations: participant.stations || [],
-                      hasHeightWeight: !!(participant.height && participant.weight)
-                    }
-                  }, () => {
-                    console.log('🧪 Test state updated:', {
-                      qrValue: this.state.qrValue,
-                      qrScanned: this.state.qrScanned,
-                      formDataName: this.state.formData.name,
-                      selectedStation: this.state.selectedStation,
-                      shouldShowForm: !!(this.state.formData.name && this.state.selectedStation)
-                    });
-                    alert('Test scan successful! Check if form appears.');
-                  });
-                  
-                  this.stopQRScanner();
-                } else {
-                  console.warn('🧪 Test failed - invalid response:', response.data);
-                  alert('Test failed: Invalid participant data');
-                }
-              } catch (testErr) {
-                console.error('🧪 Test API error:', testErr);
-                alert(`Test failed: ${testErr.message}`);
-              } finally {
-                this.isProcessingQR = false;
-              }
-            }}
-            style={{
-              backgroundColor: '#17a2b8',
-              color: 'white',
-              border: 'none',
-              padding: window.innerWidth <= 480 ? '6px 12px' : '8px 16px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: window.innerWidth <= 480 ? '11px' : '12px',
-              minHeight: '44px',
-              flex: window.innerWidth <= 480 ? '1' : 'none'
-            }}
-            title="Test QR scanning with a known participant ID"
-          >
-            🧪 {language === 'en' ? 'Test Scan' : '测试扫描'}
           </button>
         </div>
       </div>
