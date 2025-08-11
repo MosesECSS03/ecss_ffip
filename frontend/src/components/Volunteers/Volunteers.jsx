@@ -45,6 +45,10 @@ class Volunteers extends Component {
     this.cameraHealthCheckInterval = null  // Interval for checking camera health
     this.lastVideoFrameTime = 0  // Track last time video had new frame
     this.videoHealthCheckCount = 0  // Count consecutive health check failures
+    this.qrDecodeAttempts = 0    // Track QR decode attempts for debugging
+    this.autoRefreshTimeout = null  // Timeout for auto-refresh functionality
+    this.cameraStartTime = null  // Track when camera was started
+    this.lastSuccessfulScan = null  // Track last successful QR scan time
   }
 
   /**
@@ -63,7 +67,6 @@ class Volunteers extends Component {
     this.isProcessingQR = false;
     this.saveStateToLocalStorage();
     this.stopQRScanner();
-    this.stopCameraHealthCheck();
     
     if (this._qrScannerStartTimeout) {
       clearTimeout(this._qrScannerStartTimeout);
@@ -72,6 +75,14 @@ class Volunteers extends Component {
     if (this.loadingTimeout) {
       clearTimeout(this.loadingTimeout);
     }
+    
+    if (this.autoRefreshTimeout) {
+      clearTimeout(this.autoRefreshTimeout);
+    }
+    
+    if (this.cameraHealthCheckInterval) {
+      clearInterval(this.cameraHealthCheckInterval);
+    }
   }
 
   /**
@@ -79,136 +90,40 @@ class Volunteers extends Component {
    * Safely destroys the QR scanner instance and resets processing flags
    */
   stopQRScanner = () => {
+    // Reset processing flag immediately
+    this.isProcessingQR = false;
+    
     try {
       if (this.qrScanner) {
+        console.log('🛑 Stopping QR scanner...');
         this.qrScanner.stop();
         this.qrScanner.destroy();
         this.qrScanner = null;
       }
     } catch (e) {
-      // Silently handle cleanup errors
+      console.warn('Error stopping QR scanner:', e);
+      // Force null the scanner even if destroy fails
+      this.qrScanner = null;
     }
     
-    this.isProcessingQR = false;
-    this.setState({ cameraError: null });
-    this.stopCameraHealthCheck();
-  }
-
-  /**
-   * Start camera health monitoring
-   * Automatically detects if camera feed is frozen or blacked out
-   * Enhanced for Azure hosting environment compatibility
-   */
-  startCameraHealthCheck = () => {
-    this.stopCameraHealthCheck(); // Clear any existing interval
+    // Clear any pending timeouts and intervals
+    if (this._qrScannerStartTimeout) {
+      clearTimeout(this._qrScannerStartTimeout);
+      this._qrScannerStartTimeout = null;
+    }
     
-    this.cameraHealthCheckInterval = setInterval(() => {
-      if (!this.videoNode || !this.qrScanner || this.isProcessingQR) {
-        return;
-      }
-      
-      try {
-        // Check if video is playing and has valid dimensions
-        const video = this.videoNode;
-        const isVideoPlaying = !!(video.currentTime > 0 && !video.paused && !video.ended && video.readyState > 2);
-        const hasValidDimensions = video.videoWidth > 0 && video.videoHeight > 0;
-        
-        // Enhanced black screen detection with Azure hosting compatibility
-        let avgBrightness = 0;
-        let canvasCheckPassed = false;
-        
-        try {
-          // Only perform canvas check if video has valid dimensions
-          if (hasValidDimensions && video.videoWidth > 0 && video.videoHeight > 0) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            
-            // Use smaller canvas for better Azure performance
-            canvas.width = 50;
-            canvas.height = 50;
-            
-            // Add security policy compatibility for Azure
-            if (ctx && typeof ctx.drawImage === 'function') {
-              ctx.drawImage(video, 0, 0, 50, 50);
-              
-              // Add try-catch for getImageData in case of CORS issues in Azure
-              try {
-                const imageData = ctx.getImageData(0, 0, 50, 50);
-                const data = imageData.data;
-                
-                // Calculate average brightness
-                let totalBrightness = 0;
-                for (let i = 0; i < data.length; i += 4) {
-                  const r = data[i];
-                  const g = data[i + 1];
-                  const b = data[i + 2];
-                  totalBrightness += (r + g + b) / 3;
-                }
-                avgBrightness = totalBrightness / (data.length / 4);
-                canvasCheckPassed = true;
-              } catch (imageDataError) {
-                // Canvas getImageData failed - likely CORS or security policy
-                console.warn('Canvas getImageData failed (Azure security policy):', imageDataError.message);
-                // Skip brightness check but mark as passed to avoid false positives
-                canvasCheckPassed = true;
-                avgBrightness = 50; // Assume reasonable brightness
-              }
-            }
-          }
-        } catch (canvasError) {
-          // Canvas operations failed - common in Azure hosting
-          console.warn('Canvas operations failed (Azure environment):', canvasError.message);
-          // Skip canvas check but don't treat as failure
-          canvasCheckPassed = true;
-          avgBrightness = 50; // Assume reasonable brightness
-        }
-        
-        // Enhanced health check criteria for Azure hosting
-        const isUnhealthy = (
-          !isVideoPlaying || 
-          !hasValidDimensions || 
-          (canvasCheckPassed && avgBrightness < 5) // Lower threshold and only if canvas check worked
-        );
-        
-        if (isUnhealthy) {
-          this.videoHealthCheckCount++;
-          console.warn(`📹 Camera health check failed (${this.videoHealthCheckCount}/3):`, {
-            isVideoPlaying,
-            hasValidDimensions,
-            avgBrightness: canvasCheckPassed ? Math.round(avgBrightness) : 'canvas-check-skipped',
-            environment: 'azure-compatible'
-          });
-          
-          // Auto-refresh after 3 consecutive failures
-          if (this.videoHealthCheckCount >= 3) {
-            console.log('🔄 Auto-refreshing camera due to health check failures (Azure-compatible)');
-            this.refreshCamera();
-          }
-        } else {
-          // Reset counter on healthy check
-          this.videoHealthCheckCount = 0;
-        }
-        
-      } catch (error) {
-        console.warn('Camera health check error (Azure environment):', error);
-        this.videoHealthCheckCount++;
-        if (this.videoHealthCheckCount >= 3) {
-          console.log('🔄 Auto-refreshing camera due to health check error (Azure-compatible)');
-          this.refreshCamera();
-        }
-      }
-    }, 3000); // Check every 3 seconds
-  }
-
-  /**
-   * Stop camera health monitoring
-   */
-  stopCameraHealthCheck = () => {
+    if (this.autoRefreshTimeout) {
+      clearTimeout(this.autoRefreshTimeout);
+      this.autoRefreshTimeout = null;
+    }
+    
     if (this.cameraHealthCheckInterval) {
       clearInterval(this.cameraHealthCheckInterval);
       this.cameraHealthCheckInterval = null;
     }
-    this.videoHealthCheckCount = 0;
+    
+    // Reset state
+    this.setState({ cameraError: null });
   }
 
   /**
@@ -248,6 +163,105 @@ class Volunteers extends Component {
         }
       }, 500);
     }
+  }
+
+  /**
+   * Start camera health monitoring
+   * Monitors video stream and automatically refreshes if issues are detected
+   */
+  startCameraHealthCheck = () => {
+    // Clear any existing health check
+    if (this.cameraHealthCheckInterval) {
+      clearInterval(this.cameraHealthCheckInterval);
+    }
+    
+    this.cameraStartTime = Date.now();
+    this.videoHealthCheckCount = 0;
+    
+    // Faster health checks for quicker problem detection
+    this.cameraHealthCheckInterval = setInterval(() => {
+      if (!this.videoNode || !this.qrScanner) {
+        return;
+      }
+      
+      try {
+        const video = this.videoNode;
+        const currentTime = video.currentTime;
+        
+        // Check if video is playing and has content
+        const isVideoHealthy = (
+          video.videoWidth > 0 && 
+          video.videoHeight > 0 && 
+          !video.paused && 
+          !video.ended &&
+          video.readyState >= 2
+        );
+        
+        if (!isVideoHealthy) {
+          this.videoHealthCheckCount++;
+          console.warn(`📱 Camera health check failed (${this.videoHealthCheckCount}/2):`, {
+            videoWidth: video.videoWidth,
+            videoHeight: video.videoHeight,
+            paused: video.paused,
+            ended: video.ended,
+            readyState: video.readyState
+          });
+          
+          // Faster auto-refresh after 2 consecutive failures (reduced from 3)
+          if (this.videoHealthCheckCount >= 2 && this.scannerRetryCount < this.maxRetryAttempts) {
+            console.log('🔄 Auto-refreshing camera due to health check failures...');
+            this.scannerRetryCount++;
+            this.autoRefreshCamera();
+          }
+        } else {
+          // Reset failure count on successful health check
+          this.videoHealthCheckCount = 0;
+        }
+        
+        // Shorter timeout for inactivity detection (reduced from 30 seconds to 20)
+        const timeSinceStart = Date.now() - this.cameraStartTime;
+        if (timeSinceStart > 20000 && this.scannerRetryCount < this.maxRetryAttempts) { // 20 seconds
+          console.log('🔄 Auto-refreshing camera due to extended inactivity...');
+          this.scannerRetryCount++;
+          this.autoRefreshCamera();
+        }
+        
+      } catch (error) {
+        console.warn('Camera health check error:', error);
+      }
+    }, 2000); // Reduced from 3000ms to 2000ms for faster detection
+  }
+
+  /**
+   * Auto-refresh camera with user notification
+   * Shows status message and restarts camera automatically
+   */
+  autoRefreshCamera = () => {
+    const { language } = this.context;
+    
+    // Clear existing timeout
+    if (this.autoRefreshTimeout) {
+      clearTimeout(this.autoRefreshTimeout);
+    }
+    
+    this.setState({
+      dataStatusMessage: language === 'en' ? '🔄 Auto-refreshing camera...' : '🔄 自动刷新摄像头...'
+    });
+    
+    // Stop and restart scanner
+    this.stopQRScanner();
+    
+    // Faster restart for quicker recovery
+    this.autoRefreshTimeout = setTimeout(() => {
+      if (this.videoNode && this.state.selectedStation && !this.qrScanner) {
+        this.startQRScannerWithNode(this.videoNode);
+      }
+      
+      // Clear status message faster
+      setTimeout(() => {
+        this.setState({ dataStatusMessage: '' });
+      }, 1500); // Reduced from 2000ms to 1500ms
+    }, 500); // Reduced from 1000ms to 500ms for faster restart
   }
 
   /**
@@ -354,23 +368,30 @@ class Volunteers extends Component {
       clearTimeout(this._qrScannerStartTimeout);
       
       if (node && this.state.selectedStation) {
+        // Start immediately for faster loading
         this._qrScannerStartTimeout = setTimeout(() => {
           this.startQRScannerWithNode(node);
-        }, 100);
+        }, 50); // Reduced from 100ms to 50ms
       }
     }
   }
 
   /**
    * Initialize and start QR scanner with given video node
-   * Sets up QR code detection, participant data retrieval, and error handling
+   * Optimized version for fast camera loading and reliable QR detection
    * @param {HTMLVideoElement} videoNode - Video element for camera display
    */
   startQRScannerWithNode = (videoNode) => {
-    if (this.isProcessingQR) return;
+    if (this.isProcessingQR) {
+      console.log('⚠️ QR scanner start blocked - already processing');
+      return;
+    }
 
-    // Clean up existing scanner
+    console.log('🚀 Starting QR scanner for station:', this.state.selectedStation);
+
+    // Clean up existing scanner first
     if (this.qrScanner) {
+      console.log('🧹 Cleaning up existing scanner...');
       this.qrScanner.destroy();
       this.qrScanner = null;
     }
@@ -384,47 +405,30 @@ class Volunteers extends Component {
           if (this.isProcessingQR) return;
           this.isProcessingQR = true;
           
-          console.log('🔍 QR Code detected:', result);
-          console.log('🔍 QR data:', result.data || result);
-          console.log('🔍 QR result type:', typeof result);
-          console.log('🔍 QR result keys:', Object.keys(result || {}));
+          console.log('🎉 QR Code detected!', result.data || result);
+          
+          // Track successful scan time
+          this.lastSuccessfulScan = Date.now();
           
           const qrData = result.data || result;
           
-          // Clear any existing timeout
-          if (this.loadingTimeout) {
-            clearTimeout(this.loadingTimeout);
+          if (!qrData || qrData.trim() === '') {
+            console.warn('Empty QR code');
+            this.isProcessingQR = false;
+            return;
           }
           
-          // Set a timeout to clear loading state if it gets stuck
-          this.loadingTimeout = setTimeout(() => {
-            console.warn('⚠️ QR loading timeout, resetting state');
-            this.setState({
-              qrValue: '',
-              qrScanned: false,
-              cameraError: 'Loading timeout - please try scanning again',
-              formData: {}
-            });
-            this.isProcessingQR = false;
-          }, 15000); // 15 second timeout
-          
           try {
-            const participantID = qrData;
-            console.log('📤 Sending request for participant:', participantID);
             const response = await axios.post(`${API_BASE_URL}/participants`, {
               purpose: 'retrieveParticipant',
-              participantID: participantID
+              participantID: qrData
             }, { timeout: 10000 });
-
-            console.log('📡 QR code scanned:', participantID, response.data);
-            
 
             if (response.data && response.data.success && response.data.data) {
               const participant = response.data.data;
-              console.log('📋 Participant loaded successfully:', participant.name);
               
               this.setState({
-                qrValue: participantID,
+                qrValue: qrData,
                 qrScanned: true,
                 formData: {
                   name: participant.name || '',
@@ -439,130 +443,70 @@ class Volunteers extends Component {
                   hasHeightWeight: !!(participant.height && participant.weight)
                 },
                 cameraError: null
-              }, () => {
-                console.log('📋 State updated after QR scan');
-                console.log('✅ Participant name:', this.state.formData.name);
-                console.log('✅ Selected station:', this.state.selectedStation);
               });
-              
-              // Keep QR scanner running - don't stop it
-              // this.stopQRScanner();
             } else {
-              console.warn('❌ Invalid API response:', response.data);
-              const errorMsg = response.data?.message || 'Participant not found or invalid response';
+              const errorMsg = response.data?.message || 'Participant not found';
               this.setState({
-                qrValue: participantID,
-                qrScanned: false,
-                cameraError: `Participant not found: ${errorMsg}`,
-                formData: {}
+                cameraError: `Participant not found: ${errorMsg}`
               });
             }
           } catch (err) {
-            console.error('❌ QR processing error:', err);
-            
-            let userMessage = 'Failed to load participant data';
-            if (err.response?.status === 404) {
-              userMessage = 'Participant not found. Please check the QR code.';
-            } else if (err.code === 'ERR_NETWORK') {
-              userMessage = 'Network error. Please check your connection.';
-            } else if (err.response?.data?.message) {
-              userMessage = err.response.data.message;
-            }
-            
+            console.error('QR processing error:', err);
             this.setState({
-              qrValue: qrData,
-              qrScanned: false,
-              cameraError: userMessage,
-              formData: {}
+              cameraError: 'Failed to load participant data'
             });
           } finally {
-            // Clear the loading timeout
-            if (this.loadingTimeout) {
-              clearTimeout(this.loadingTimeout);
-              this.loadingTimeout = null;
-            }
             this.isProcessingQR = false;
           }
         },
         {
-          onDecodeError: (error) => {
-            // Minimal logging for decode attempts to reduce noise
-            if (error && error.message && !error.message.includes('No QR code found')) {
-              console.log('🔍 QR decode attempt:', error.message);
-            }
-          },
           highlightScanRegion: true,
           highlightCodeOutline: true,
-          maxScansPerSecond: 10, // Increased for better detection
+          maxScansPerSecond: 30, // Increased from 25 for faster detection
           preferredCamera: 'environment',
-          // Enhanced settings for better QR detection
-          returnDetailedScanResult: true,
-          // Larger scan region for better QR detection
-          calculateScanRegion: (video) => {
-            const smallerDimension = Math.min(video.videoWidth, video.videoHeight);
-            const scanRegionSize = Math.round(0.95 * smallerDimension); // Increased to 95%
-            const x = (video.videoWidth - scanRegionSize) / 2;
-            const y = (video.videoHeight - scanRegionSize) / 2;
-            console.log('📐 QR scan region:', {
-              videoSize: `${video.videoWidth}x${video.videoHeight}`,
-              scanRegion: `${scanRegionSize}x${scanRegionSize}`,
-              coverage: '95%'
-            });
-            return {
-              x: x / video.videoWidth,
-              y: y / video.videoHeight,
-              width: scanRegionSize / video.videoWidth,
-              height: scanRegionSize / video.videoHeight
+          // Optimize for speed
+          returnDetailedScanResult: false,
+          calculateScanRegion: videoNode => {
+            // Optimize scan region for faster processing
+            const smallerRegion = {
+              x: videoNode.videoWidth * 0.1,
+              y: videoNode.videoHeight * 0.1,
+              width: videoNode.videoWidth * 0.8,
+              height: videoNode.videoHeight * 0.8
             };
+            return smallerRegion;
           }
         }
       );
       
+      // Set video constraints for faster loading
+      this.qrScanner.$video.setAttribute('preload', 'metadata');
+      this.qrScanner.$video.setAttribute('playsinline', 'true');
+      
       this.qrScanner.start()
         .then(() => {
-          this.scannerRetryCount = 0;
-          console.log('✅ QR Scanner started successfully');
-          console.log('📹 Camera details:', {
-            videoWidth: videoNode.videoWidth,
-            videoHeight: videoNode.videoHeight,
-            readyState: videoNode.readyState
-          });
-          // Start health monitoring after successful camera start
+          console.log('✅ QR Scanner started successfully for station:', this.state.selectedStation);
+          // Start camera health monitoring with shorter interval for faster detection
           this.startCameraHealthCheck();
         })
         .catch(e => {
-          let userMessage = '';
-          console.error('❌ QR Scanner start error (Azure environment):', e);
+          console.error('❌ QR Scanner failed to start:', e);
+          this.setState({ 
+            cameraError: 'Camera failed to start. Please refresh and allow camera access.' 
+          });
+          this.qrScanner = null; // Ensure we clear the failed scanner
           
-          if (e.name === 'NotAllowedError') {
-            userMessage = 'Camera permission denied. Please allow camera access and refresh the page.';
-          } else if (e.name === 'NotFoundError') {
-            userMessage = 'No camera found. Please ensure a camera is connected.';
-          } else if (e.name === 'NotSupportedError') {
-            userMessage = 'Camera not supported in this browser/environment. Please try a different browser.';
-          } else if (e.name === 'SecurityError' || e.message.includes('secure')) {
-            userMessage = 'Camera access blocked by security policy. Please ensure HTTPS is used.';
-          } else {
-            userMessage = `Camera initialization failed: ${e.message || 'Unknown error'}. Please refresh the page.`;
-          }
-          
-          this.setState({ cameraError: userMessage });
-          
-          // Enhanced auto-retry for Azure hosting
+          // Auto-retry faster if within retry limits
           if (this.scannerRetryCount < this.maxRetryAttempts) {
+            console.log(`🔄 Auto-retrying camera start (${this.scannerRetryCount + 1}/${this.maxRetryAttempts})...`);
             this.scannerRetryCount++;
-            const retryDelay = this.scannerRetryCount * 2000; // Progressive delay
-            console.log(`🔄 Retrying camera start (${this.scannerRetryCount}/${this.maxRetryAttempts}) in ${retryDelay}ms`);
-            
             setTimeout(() => {
-              if (!this.qrScanner && this.videoNode && this.state.selectedStation) {
-                this.startQRScannerWithNode(this.videoNode);
-              }
-            }, retryDelay);
-          } else {
-            console.error('📹 Camera initialization failed after maximum retries in Azure environment');
+              this.autoRefreshCamera();
+            }, 1000); // Reduced from 2000ms to 1000ms for faster retry
           }
         });
+    } else {
+      console.warn('⚠️ No video node available for QR scanner');
     }
   }
 
@@ -573,22 +517,29 @@ class Volunteers extends Component {
    * @param {Object} prevState - Previous component state
    */
   componentDidUpdate(prevProps, prevState) {
+    // Stop scanner if no station is selected
     if (!this.state.selectedStation && this.qrScanner) {
       this.stopQRScanner();
+      return;
     }
     
-    if (
-      this.videoNode &&
-      this.state.selectedStation &&
-      !this.isProcessingQR &&
-      (prevState.selectedStation !== this.state.selectedStation)
-    ) {
-      clearTimeout(this._qrScannerStartTimeout);
-      this._qrScannerStartTimeout = setTimeout(() => {
-        if (!this.qrScanner && !this.isProcessingQR) {
-          this.startQRScannerWithNode(this.videoNode);
-        }
-      }, 100);
+    // Handle station change - restart scanner with new configuration
+    if (prevState.selectedStation !== this.state.selectedStation && this.state.selectedStation) {
+      // Clear any existing timeouts
+      if (this._qrScannerStartTimeout) {
+        clearTimeout(this._qrScannerStartTimeout);
+        this._qrScannerStartTimeout = null;
+      }
+      
+      // Only restart if we have a video node and no scanner is currently active
+      if (this.videoNode && !this.qrScanner && !this.isProcessingQR) {
+        console.log('📱 Station changed, restarting QR scanner...');
+        this._qrScannerStartTimeout = setTimeout(() => {
+          if (!this.qrScanner && !this.isProcessingQR && this.state.selectedStation) {
+            this.startQRScannerWithNode(this.videoNode);
+          }
+        }, 100); // Reduced from 200ms to 100ms for faster restart
+      }
     }
   }
 
@@ -599,10 +550,22 @@ class Volunteers extends Component {
    */
   handleChange = (e) => {
     const newStation = e.target.value;
+    
+    // Reset processing flags immediately
     this.isProcessingQR = false;
     
-    // Stop existing QR scanner and health check
+    // Stop existing QR scanner completely
     this.stopQRScanner();
+    
+    // Clear any existing timeouts
+    if (this._qrScannerStartTimeout) {
+      clearTimeout(this._qrScannerStartTimeout);
+      this._qrScannerStartTimeout = null;
+    }
+    
+    // Reset retry counters
+    this.scannerRetryCount = 0;
+    this.videoHealthCheckCount = 0;
     
     // Reset to QR scanner state
     this.setState({
@@ -612,30 +575,28 @@ class Volunteers extends Component {
       cameraError: null,
       formData: {},
       dataStatusMessage: newStation ? 
-        (this.context.language === 'en' ? '🔄 Refreshing camera for new station...' : '🔄 为新站点刷新摄像头...') : 
+        (this.context.language === 'en' ? '🔄 Initializing camera for new station...' : '🔄 为新站点初始化摄像头...') : 
         ''
     }, () => {
       this.debouncedSave();
       
-      // Clear the status message after a short delay
+      // Clear the status message after a delay
       if (newStation) {
         setTimeout(() => {
           this.setState({ dataStatusMessage: '' });
-        }, 2000);
+        }, 2500);
       }
       
       // Restart QR scanner if station is selected and video node is available
-      // This will automatically refresh the camera feed
       if (newStation && this.videoNode) {
-        // Force a complete camera refresh by resetting retry counts
-        this.scannerRetryCount = 0;
-        this.videoHealthCheckCount = 0;
-        
-        setTimeout(() => {
+        // Use a shorter delay to ensure complete cleanup but faster restart
+        this._qrScannerStartTimeout = setTimeout(() => {
+          // Double-check that we don't have an existing scanner
           if (!this.qrScanner && !this.isProcessingQR) {
+            console.log('🔄 Starting QR scanner for new station:', newStation);
             this.startQRScannerWithNode(this.videoNode);
           }
-        }, 300); // Slightly longer delay to ensure clean restart
+        }, 300); // Reduced from 500ms to 300ms for faster station switching
       }
     });
   }
@@ -1046,14 +1007,14 @@ class Volunteers extends Component {
                 {cameraError ? (
                   <div style={{ color: '#ff9800' }}>
                     <div style={{ marginBottom: '4px' }}>
-                      {language === 'en' ? '⚠️ Scan issue detected' : '⚠️ 检测到扫描问题'}
+                      {language === 'en' ? '⚠️ Camera issue detected' : '⚠️ 检测到摄像头问题'}
                     </div>
                     <div style={{ fontSize: '0.8em', marginBottom: '4px' }}>
                       {cameraError}
                     </div>
                     {this.scannerRetryCount < this.maxRetryAttempts && (
-                      <div style={{ fontSize: '0.8em' }}>
-                        {language === 'en' ? '🔄 Auto-restarting scanner...' : '🔄 自动重启扫描器...'}
+                      <div style={{ fontSize: '0.8em', color: '#007bff' }}>
+                        {language === 'en' ? `🔄 Auto-retry ${this.scannerRetryCount + 1}/${this.maxRetryAttempts}...` : `🔄 自动重试 ${this.scannerRetryCount + 1}/${this.maxRetryAttempts}...`}
                       </div>
                     )}
                   </div>
@@ -1067,6 +1028,9 @@ class Volunteers extends Component {
                         {language === 'en' ? '⚡ Processing QR code...' : '⚡ 处理二维码中...'}
                       </div>
                     )}
+                    <div style={{ fontSize: '0.7em', color: '#6c757d', marginTop: '4px' }}>
+                      {language === 'en' ? '🤖 Auto-monitoring enabled' : '🤖 已启用自动监控'}
+                    </div>
                   </div>
                 ) : (
                   <div>
@@ -1088,6 +1052,10 @@ class Volunteers extends Component {
                     autoPlay
                     playsInline
                     muted
+                    preload="metadata"
+                    disablePictureInPicture
+                    controls={false}
+                    webkit-playsinline="true"
                   />
                   {!this.qrScanner && (
                     <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', textAlign: 'center' }}>
@@ -1097,72 +1065,195 @@ class Volunteers extends Component {
                     </div>
                   )}
                   
-                  {/* Enhanced debug overlay with detection info */}
+                  {/* Enhanced QR scanner status overlay */}
                   {this.qrScanner && (
                     <div style={{ 
                       position: 'absolute', 
                       top: '10px', 
                       left: '10px', 
-                      backgroundColor: 'rgba(0,0,0,0.8)', 
+                      backgroundColor: 'rgba(0,0,0,0.85)', 
                       color: 'white', 
-                      padding: '8px 12px', 
-                      borderRadius: '6px', 
-                      fontSize: '12px',
-                      fontFamily: 'monospace'
+                      padding: '10px 14px', 
+                      borderRadius: '8px', 
+                      fontSize: '13px',
+                      fontFamily: 'monospace',
+                      border: '1px solid rgba(255,255,255,0.2)'
                     }}>
-                      <div>{language === 'en' ? '🎯 QR Scanner Active' : '🎯 二维码扫描器激活'}</div>
-                      <div style={{ fontSize: '10px', marginTop: '2px' }}>
-                        {language === 'en' ? 'Point QR code at center' : '将二维码对准中心'}
+                      <div style={{ color: '#00ff88', fontWeight: 'bold' }}>
+                        {language === 'en' ? '🎯 QR Scanner Active' : '🎯 二维码扫描器激活'}
                       </div>
+                      <div style={{ fontSize: '11px', marginTop: '3px', color: '#ffcc00' }}>
+                        {language === 'en' ? 'Hold QR code steady in target area' : '将二维码稳定地放在目标区域'}
+                      </div>
+                      {this.isProcessingQR && (
+                        <div style={{ fontSize: '11px', marginTop: '3px', color: '#ff6600' }}>
+                          {language === 'en' ? '⚡ Processing...' : '⚡ 处理中...'}
+                        </div>
+                      )}
                     </div>
                   )}
                   
-                  {/* QR code target overlay */}
+                  {/* Enhanced QR code target overlay with animation */}
                   {this.qrScanner && (
                     <div style={{
                       position: 'absolute',
                       top: '50%',
                       left: '50%',
                       transform: 'translate(-50%, -50%)',
-                      width: '200px',
-                      height: '200px',
-                      border: '3px solid #00ff00',
-                      borderRadius: '12px',
+                      width: '240px',
+                      height: '240px',
+                      border: '4px solid #00ff88',
+                      borderRadius: '16px',
                       pointerEvents: 'none',
-                      opacity: 0.7
+                      opacity: this.isProcessingQR ? 0.9 : 0.7,
+                      animation: this.isProcessingQR ? 'pulse 1s infinite' : 'none',
+                      transition: 'all 0.3s ease'
                     }}>
+                      {/* Corner brackets for better targeting */}
                       <div style={{
                         position: 'absolute',
-                        top: '-25px',
+                        top: '-2px',
+                        left: '-2px',
+                        width: '40px',
+                        height: '40px',
+                        borderTop: '6px solid #00ff88',
+                        borderLeft: '6px solid #00ff88',
+                        borderRadius: '16px 0 0 0'
+                      }} />
+                      <div style={{
+                        position: 'absolute',
+                        top: '-2px',
+                        right: '-2px',
+                        width: '40px',
+                        height: '40px',
+                        borderTop: '6px solid #00ff88',
+                        borderRight: '6px solid #00ff88',
+                        borderRadius: '0 16px 0 0'
+                      }} />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '-2px',
+                        left: '-2px',
+                        width: '40px',
+                        height: '40px',
+                        borderBottom: '6px solid #00ff88',
+                        borderLeft: '6px solid #00ff88',
+                        borderRadius: '0 0 0 16px'
+                      }} />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '-2px',
+                        right: '-2px',
+                        width: '40px',
+                        height: '40px',
+                        borderBottom: '6px solid #00ff88',
+                        borderRight: '6px solid #00ff88',
+                        borderRadius: '0 0 16px 0'
+                      }} />
+                      
+                      {/* Target center */}
+                      <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '20px',
+                        height: '20px',
+                        background: 'rgba(0, 255, 136, 0.3)',
+                        borderRadius: '50%',
+                        border: '2px solid #00ff88'
+                      }} />
+                      
+                      {/* Label */}
+                      <div style={{
+                        position: 'absolute',
+                        top: '-35px',
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        color: '#00ff00',
-                        fontSize: '14px',
+                        color: '#00ff88',
+                        fontSize: '16px',
                         fontWeight: 'bold',
-                        textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+                        textShadow: '2px 2px 6px rgba(0,0,0,0.9)',
+                        backgroundColor: 'rgba(0,0,0,0.7)',
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(0, 255, 136, 0.3)'
                       }}>
-                        {language === 'en' ? 'QR Code Area' : '二维码区域'}
+                        {language === 'en' ? 'QR Target Zone' : '二维码目标区域'}
                       </div>
                     </div>
                   )}
                 </div>
                 
-                {/* Manual refresh button */}
-                <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                {/* Add CSS animations for QR scanner */}
+                <style>
+                  {`
+                    @keyframes pulse {
+                      0% {
+                        opacity: 0.7;
+                        transform: translate(-50%, -50%) scale(1);
+                      }
+                      50% {
+                        opacity: 1;
+                        transform: translate(-50%, -50%) scale(1.05);
+                      }
+                      100% {
+                        opacity: 0.7;
+                        transform: translate(-50%, -50%) scale(1);
+                      }
+                    }
+                    
+                    @keyframes scanLine {
+                      0% {
+                        top: 0%;
+                      }
+                      100% {
+                        top: 100%;
+                      }
+                    }
+                  `}
+                </style>
+                
+                {/* Simple QR Tips */}
+                <div style={{ 
+                  marginTop: '16px', 
+                  padding: '12px', 
+                  backgroundColor: 'rgba(0, 123, 255, 0.1)', 
+                  border: '1px solid rgba(0, 123, 255, 0.3)',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#0056b3',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                    💡 {language === 'en' ? 'QR Code Tips:' : '二维码提示：'}
+                  </div>
+                  <div>
+                    {language === 'en' 
+                      ? 'Hold QR code steady in the green area • Ensure good lighting • Keep flat'
+                      : '将二维码稳定保持在绿色区域 • 确保光线充足 • 保持平整'}
+                  </div>
+                </div>
+                
+                {/* Simple camera refresh button */}
+                <div style={{ 
+                  textAlign: 'center', 
+                  marginTop: '12px'
+                }}>
                   <button
                     onClick={this.refreshCamera}
                     style={{
                       backgroundColor: '#17a2b8',
                       color: 'white',
                       border: 'none',
-                      padding: '8px 16px',
+                      padding: '12px 24px',
                       borderRadius: '6px',
                       cursor: 'pointer',
-                      fontSize: '14px',
+                      fontSize: '16px',
                       fontWeight: '600'
                     }}
                   >
-                    🔄 {language === 'en' ? 'Refresh Scanner' : '刷新扫描器'}
+                    🔄 {language === 'en' ? 'Refresh Camera' : '刷新摄像头'}
                   </button>
                 </div>
               </div>
