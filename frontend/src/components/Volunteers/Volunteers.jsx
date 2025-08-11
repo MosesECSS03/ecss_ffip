@@ -437,22 +437,22 @@ class Volunteers extends Component {
                   bmi: participant.bmi || '',
                   stations: participant.stations || [],
                   hasHeightWeight: !!(participant.height && participant.weight)
-                }
+                },
+                cameraError: null
               }, () => {
                 console.log('📋 State updated after QR scan');
                 console.log('✅ Participant name:', this.state.formData.name);
                 console.log('✅ Selected station:', this.state.selectedStation);
-                console.log('✅ Should show form:', !!(this.state.formData.name && this.state.selectedStation));
                 
-                // Show user-friendly message
-                if (this.state.formData.name && this.state.selectedStation) {
-                  console.log('🎉 Form should now be visible!');
-                } else if (!this.state.selectedStation) {
-                  console.warn('⚠️ No station selected - form will not appear until station is chosen');
-                } else if (!this.state.formData.name) {
-                  console.warn('⚠️ No participant name - something went wrong with data loading');
-                }
+                // Show success alert
+                const { language } = this.context;
+                const alertMessage = language === 'en' 
+                  ? `QR Code scanned successfully!\nParticipant: ${this.state.formData.name}` 
+                  : `二维码扫描成功！\n参与者：${this.state.formData.name}`;
+                alert(alertMessage);
               });
+              
+              // Stop QR scanner to hide camera
               this.stopQRScanner();
             } else {
               console.warn('❌ Invalid API response:', response.data);
@@ -1090,7 +1090,7 @@ class Volunteers extends Component {
               </div>
             )}
             
-            {/* Camera view */}
+            {/* Camera view - only show when no participant is loaded */}
             {!formData.name && !qrScanned && (
               <div>
                 <div id="qr-video-container" style={{ width: '100%', maxWidth: 640, minHeight: 480, margin: '0 auto', borderRadius: 18, background: '#000', border: '5px solid #1976d2', boxShadow: '0 4px 32px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
