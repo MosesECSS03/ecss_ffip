@@ -13,7 +13,9 @@ class ParticipantDetails extends Component {
   constructor(props) {
     super(props)
     this.state = {
-
+      liveHeight: null,    // Live height updates
+      liveWeight: null,    // Live weight updates  
+      liveBMI: null        // Live BMI calculation
     }
     this.socket = null
   }
@@ -21,6 +23,15 @@ class ParticipantDetails extends Component {
   componentDidMount() {
     // Initialize socket connection for real-time updates
     this.initializeSocket();
+    // Initialize live data from props
+    this.updateLiveData(this.props.participant);
+  }
+
+  componentDidUpdate(prevProps) {
+    // Update live data when participant props change
+    if (prevProps.participant !== this.props.participant) {
+      this.updateLiveData(this.props.participant);
+    }
   }
 
   componentWillUnmount() {
@@ -83,6 +94,39 @@ class ParticipantDetails extends Component {
     } catch (error) {
       console.error('❌ Error in handleParticipantUpdate:', error);
     }
+  }
+
+  // Update live height, weight, and BMI data
+  updateLiveData = (participant) => {
+    if (!participant) return;
+
+    const height = participant.height;
+    const weight = participant.weight;
+    let bmi = participant.bmi;
+
+    // Calculate BMI if we have height and weight but no BMI
+    if (height && weight && !bmi) {
+      const heightNum = parseFloat(height.replace(/[^0-9.]/g, ''));
+      const weightNum = parseFloat(weight.replace(/[^0-9.]/g, ''));
+      
+      if (heightNum > 0 && weightNum > 0) {
+        const heightInMeters = heightNum / 100;
+        bmi = (weightNum / (heightInMeters * heightInMeters)).toFixed(1);
+      }
+    }
+
+    // Update state with live data
+    this.setState({
+      liveHeight: height,
+      liveWeight: weight,
+      liveBMI: bmi
+    });
+
+    console.log('📊 Live data updated:', {
+      liveHeight: height,
+      liveWeight: weight,
+      liveBMI: bmi
+    });
   }
 
   hasValue = (value) => {
@@ -1536,13 +1580,67 @@ class ParticipantDetails extends Component {
                 </span>
               </div>
             )}
-            {/* Live BMI Field - Always show if data exists */}
+            {/* Enhanced Live BMI Field with Category */}
             {(participant.bmi || this.state.liveBMI) && (
-              <div className="personal-info-card">
+              <div className="personal-info-card" style={{ 
+                backgroundColor: (() => {
+                  const bmiValue = parseFloat((this.state.liveBMI || participant.bmi || '0').toString());
+                  if (bmiValue < 18.5) return '#fff3e0'; // Underweight - orange tint
+                  if (bmiValue < 25) return '#e8f5e8';   // Normal - green tint
+                  if (bmiValue < 30) return '#fff3e0';   // Overweight - orange tint  
+                  return '#ffebee';                      // Obesity - red tint
+                })(),
+                border: `2px solid ${(() => {
+                  const bmiValue = parseFloat((this.state.liveBMI || participant.bmi || '0').toString());
+                  if (bmiValue < 18.5) return '#ff9800'; // Underweight - orange
+                  if (bmiValue < 25) return '#4caf50';   // Normal - green
+                  if (bmiValue < 30) return '#ff9800';   // Overweight - orange
+                  return '#f44336';                      // Obesity - red
+                })()}`
+              }}>
                 <span className="personal-info-label">{fallbackT.bmi || 'BMI'}</span>
-                <span className="personal-info-value">
-                  {this.state.liveBMI || participant.bmi}
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span className="personal-info-value" style={{ 
+                    fontSize: '1.2em', 
+                    fontWeight: 'bold',
+                    color: (() => {
+                      const bmiValue = parseFloat((this.state.liveBMI || participant.bmi || '0').toString());
+                      if (bmiValue < 18.5) return '#ff9800'; // Underweight - orange
+                      if (bmiValue < 25) return '#4caf50';   // Normal - green
+                      if (bmiValue < 30) return '#ff9800';   // Overweight - orange
+                      return '#f44336';                      // Obesity - red
+                    })()
+                  }}>
+                    {this.state.liveBMI || participant.bmi}
+                  </span>
+                  <span style={{ 
+                    fontSize: '0.8em', 
+                    marginTop: '2px',
+                    color: (() => {
+                      const bmiValue = parseFloat((this.state.liveBMI || participant.bmi || '0').toString());
+                      if (bmiValue < 18.5) return '#ff9800';
+                      if (bmiValue < 25) return '#4caf50';
+                      if (bmiValue < 30) return '#ff9800';
+                      return '#f44336';
+                    })(),
+                    fontWeight: '600'
+                  }}>
+                    {(() => {
+                      const bmiValue = parseFloat((this.state.liveBMI || participant.bmi || '0').toString());
+                      if (currentLanguage === 'en') {
+                        if (bmiValue < 18.5) return 'Underweight';
+                        if (bmiValue < 25) return 'Normal';
+                        if (bmiValue < 30) return 'Overweight';
+                        return 'Obesity';
+                      } else {
+                        if (bmiValue < 18.5) return '体重不足';
+                        if (bmiValue < 25) return '正常';
+                        if (bmiValue < 30) return '超重';
+                        return '肥胖';
+                      }
+                    })()}
+                  </span>
+                </div>
               </div>
             )}
           </div>

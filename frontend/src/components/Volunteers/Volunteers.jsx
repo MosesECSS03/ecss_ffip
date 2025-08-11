@@ -615,12 +615,34 @@ class Volunteers extends Component {
       val = val.replace(/[^0-9.]/g, '');
       if (val) val = `${val} ${unit}`;
     }
-    this.setState(prevState => ({
-      formData: {
+    
+    this.setState(prevState => {
+      const newFormData = {
         ...prevState.formData,
         [field]: val
+      };
+      
+      // Auto-calculate BMI for height/weight station
+      if (this.state.selectedStation === 'heightWeight' && (field === 'height' || field === 'weight')) {
+        const height = field === 'height' ? val : newFormData.height;
+        const weight = field === 'weight' ? val : newFormData.weight;
+        
+        if (height && weight) {
+          const heightNum = parseFloat(height.replace(/[^0-9.]/g, ''));
+          const weightNum = parseFloat(weight.replace(/[^0-9.]/g, ''));
+          
+          if (heightNum > 0 && weightNum > 0) {
+            const heightInMeters = heightNum / 100;
+            const bmi = (weightNum / (heightInMeters * heightInMeters)).toFixed(1);
+            newFormData.bmi = bmi;
+          }
+        }
       }
-    }), () => {
+      
+      return {
+        formData: newFormData
+      };
+    }, () => {
       this.debouncedSave();
     });
   }
@@ -639,12 +661,34 @@ class Volunteers extends Component {
       val = val.replace(/[^0-9.]/g, '');
       if (val) val = `${val} ${unit}`;
     }
-    this.setState(prevState => ({
-      formData: {
+    
+    this.setState(prevState => {
+      const newFormData = {
         ...prevState.formData,
         [field]: val
+      };
+      
+      // Auto-calculate BMI for height/weight station
+      if (this.state.selectedStation === 'heightWeight' && (field === 'height' || field === 'weight')) {
+        const height = field === 'height' ? val : newFormData.height;
+        const weight = field === 'weight' ? val : newFormData.weight;
+        
+        if (height && weight) {
+          const heightNum = parseFloat(height.replace(/[^0-9.]/g, ''));
+          const weightNum = parseFloat(weight.replace(/[^0-9.]/g, ''));
+          
+          if (heightNum > 0 && weightNum > 0) {
+            const heightInMeters = heightNum / 100;
+            const bmi = (weightNum / (heightInMeters * heightInMeters)).toFixed(1);
+            newFormData.bmi = bmi;
+          }
+        }
       }
-    }), () => {
+      
+      return {
+        formData: newFormData
+      };
+    }, () => {
       this.debouncedSave();
     });
   }
@@ -1654,6 +1698,85 @@ class Volunteers extends Component {
                           </div>
                         );
                       })}
+                      
+                      {/* Live BMI Display for Height/Weight Station */}
+                      {selectedStation === 'heightWeight' && formData.height && formData.weight && (
+                        <div style={{
+                          padding: '16px',
+                          backgroundColor: '#e3f2fd',
+                          border: '2px solid #2196f3',
+                          borderRadius: '8px',
+                          marginBottom: '16px',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ 
+                            fontSize: window.innerWidth <= 480 ? '1rem' : '1.1rem',
+                            fontWeight: 600,
+                            color: '#1976d2',
+                            marginBottom: '8px'
+                          }}>
+                            📊 {language === 'en' ? 'Live BMI Calculation' : '实时BMI计算'}
+                          </div>
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: window.innerWidth <= 480 ? '1fr' : '1fr 1fr 1fr',
+                            gap: '12px',
+                            fontSize: window.innerWidth <= 480 ? '0.9rem' : '1rem'
+                          }}>
+                            <div>
+                              <strong>{language === 'en' ? 'Height:' : '身高:'}</strong><br/>
+                              <span style={{ color: '#2196f3', fontWeight: 600 }}>{formData.height}</span>
+                            </div>
+                            <div>
+                              <strong>{language === 'en' ? 'Weight:' : '体重:'}</strong><br/>
+                              <span style={{ color: '#2196f3', fontWeight: 600 }}>{formData.weight}</span>
+                            </div>
+                            <div>
+                              <strong>{language === 'en' ? 'BMI:' : 'BMI:'}</strong><br/>
+                              <span style={{ 
+                                color: '#ff5722', 
+                                fontWeight: 700,
+                                fontSize: '1.2em'
+                              }}>
+                                {formData.bmi || 'Calculating...'}
+                              </span>
+                            </div>
+                          </div>
+                          {formData.bmi && (
+                            <div style={{
+                              marginTop: '12px',
+                              fontSize: window.innerWidth <= 480 ? '0.8rem' : '0.9rem',
+                              color: '#666'
+                            }}>
+                              {(() => {
+                                const bmi = parseFloat(formData.bmi);
+                                let category = '';
+                                let color = '#666';
+                                
+                                if (bmi < 18.5) {
+                                  category = language === 'en' ? 'Underweight' : '体重不足';
+                                  color = '#ff9800';
+                                } else if (bmi < 25) {
+                                  category = language === 'en' ? 'Normal weight' : '正常体重';
+                                  color = '#4caf50';
+                                } else if (bmi < 30) {
+                                  category = language === 'en' ? 'Overweight' : '超重';
+                                  color = '#ff9800';
+                                } else {
+                                  category = language === 'en' ? 'Obesity' : '肥胖';
+                                  color = '#f44336';
+                                }
+                                
+                                return (
+                                  <span style={{ color, fontWeight: 600 }}>
+                                    {language === 'en' ? 'Category: ' : '分类: '}{category}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <button
                         style={{
                           marginTop: 24,
