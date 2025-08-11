@@ -53,14 +53,14 @@ router.post('/', async (req, res) =>
       console.log(':', result);
       
       if (result.success) {
-        res.status(201).json({
+        return res.status(201).json({
           status: 'success',
           success: true,
           message: 'Participant registered successfully',
           data: result.data
         });
       } else {
-        res.status(500).json({
+        return res.status(500).json({
           status: 'error',
           success: false,
           message: result.error || 'Failed to register participant'
@@ -117,14 +117,14 @@ router.post('/', async (req, res) =>
           console.warn('⚠️ Available app settings:', Object.keys(req.app.settings || {}));
         }
         
-        res.status(200).json({
+        return res.status(200).json({
           status: 'success',
           success: true,
           message: 'Station data updated successfully',
           data: result.data
-        })
+        });
       } else {
-        res.status(500).json({
+        return res.status(500).json({
           status: 'error',
           success: false,
           message: result.error || 'Failed to update station data'
@@ -141,7 +141,7 @@ router.post('/', async (req, res) =>
       console.log('All participants retrieved:', result);
       
       if (result.success) {
-        res.status(200).json({
+        return res.status(200).json({
           status: 'success',
           success: true,
           message: 'All participants retrieved successfully',
@@ -149,7 +149,7 @@ router.post('/', async (req, res) =>
           count: result.data ? result.data.length : 0
         });
       } else {
-        res.status(500).json({
+        return res.status(500).json({
           status: 'error',
           success: false,
           message: result.error || 'Failed to retrieve participants'
@@ -169,16 +169,35 @@ router.post('/', async (req, res) =>
             ]
           });
           console.log("Smart OneSignal notification sent successfully");
+          
+          return res.status(200).json({
+            status: 'success',
+            success: true,
+            message: 'Health signal notification sent successfully'
+          });
       } catch (error) {
         console.error("Failed to send OneSignal notification:", error);
-        // Continue with the response even if notification fails
+        return res.status(500).json({
+          status: 'error',
+          success: false,
+          message: 'Failed to send health signal notification'
+        });
       }
-
+    } else {
+      return res.status(400).json({
+        status: 'error',
+        success: false,
+        message: 'Invalid purpose specified'
+      });
     }
   }
   catch (error) {
     console.error('Error in POST /participants:', error);
-    res.json({ status: 'error', success: false, message: 'Internal server error' });
+    return res.status(500).json({ 
+      status: 'error', 
+      success: false, 
+      message: 'Internal server error' 
+    });
   }
 });
 

@@ -1585,15 +1585,13 @@ class ParticipantDetails extends Component {
               <div className="personal-info-card" style={{ 
                 backgroundColor: (() => {
                   const bmiValue = parseFloat((this.state.liveBMI || participant.bmi || '0').toString());
-                  if (bmiValue < 18.5) return '#fff3e0'; // Underweight - orange tint
-                  if (bmiValue < 25) return '#e8f5e8';   // Normal - green tint
+                  if (bmiValue < 25) return '#e8f5e8';   // Normal - green tint (includes <18.5)
                   if (bmiValue < 30) return '#fff3e0';   // Overweight - orange tint  
                   return '#ffebee';                      // Obesity - red tint
                 })(),
                 border: `2px solid ${(() => {
                   const bmiValue = parseFloat((this.state.liveBMI || participant.bmi || '0').toString());
-                  if (bmiValue < 18.5) return '#ff9800'; // Underweight - orange
-                  if (bmiValue < 25) return '#4caf50';   // Normal - green
+                  if (bmiValue < 25) return '#4caf50';   // Normal - green (includes <18.5)
                   if (bmiValue < 30) return '#ff9800';   // Overweight - orange
                   return '#f44336';                      // Obesity - red
                 })()}`
@@ -1605,8 +1603,7 @@ class ParticipantDetails extends Component {
                     fontWeight: 'bold',
                     color: (() => {
                       const bmiValue = parseFloat((this.state.liveBMI || participant.bmi || '0').toString());
-                      if (bmiValue < 18.5) return '#ff9800'; // Underweight - orange
-                      if (bmiValue < 25) return '#4caf50';   // Normal - green
+                      if (bmiValue < 25) return '#4caf50';   // Normal - green (includes <18.5)
                       if (bmiValue < 30) return '#ff9800';   // Overweight - orange
                       return '#f44336';                      // Obesity - red
                     })()
@@ -1618,7 +1615,6 @@ class ParticipantDetails extends Component {
                     marginTop: '2px',
                     color: (() => {
                       const bmiValue = parseFloat((this.state.liveBMI || participant.bmi || '0').toString());
-                      if (bmiValue < 18.5) return '#ff9800';
                       if (bmiValue < 25) return '#4caf50';
                       if (bmiValue < 30) return '#ff9800';
                       return '#f44336';
@@ -1628,13 +1624,11 @@ class ParticipantDetails extends Component {
                     {(() => {
                       const bmiValue = parseFloat((this.state.liveBMI || participant.bmi || '0').toString());
                       if (currentLanguage === 'en') {
-                        if (bmiValue < 18.5) return 'Underweight';
-                        if (bmiValue < 25) return 'Normal';
+                        if (bmiValue < 25) return 'Normal';        // No more underweight category
                         if (bmiValue < 30) return 'Overweight';
                         return 'Obesity';
                       } else {
-                        if (bmiValue < 18.5) return '体重不足';
-                        if (bmiValue < 25) return '正常';
+                        if (bmiValue < 25) return '正常';           // No more underweight category
                         if (bmiValue < 30) return '超重';
                         return '肥胖';
                       }

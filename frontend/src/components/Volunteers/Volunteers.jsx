@@ -1753,10 +1753,7 @@ class Volunteers extends Component {
                                 let category = '';
                                 let color = '#666';
                                 
-                                if (bmi < 18.5) {
-                                  category = language === 'en' ? 'Underweight' : '体重不足';
-                                  color = '#ff9800';
-                                } else if (bmi < 25) {
+                                if (bmi < 25) {
                                   category = language === 'en' ? 'Normal weight' : '正常体重';
                                   color = '#4caf50';
                                 } else if (bmi < 30) {
