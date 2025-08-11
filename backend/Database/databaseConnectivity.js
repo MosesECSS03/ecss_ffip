@@ -1,43 +1,55 @@
 const { MongoClient, ObjectId } = require('mongodb');
 
-const uri = 'mongodb+srv://moseslee:Mlxy6695@ecss-course.hejib.mongodb.net/?retryWrites=true&w=majority&appName=ECSS-Course&connectTimeoutMS=30000&socketTimeoutMS=30000&serverSelectionTimeoutMS=30000&maxIdleTimeMS=30000';
+const uri = 'mongodb+srv://moseslee:Mlxy6695@ecss-course.hejib.mongodb.net/?retryWrites=true&w=majority&appName=ECSS-Course';
 
 class DatabaseConnectivity {
     constructor(options = {}) {
         this.client = new MongoClient(uri, {
-            maxPoolSize: 10,        // Reduced pool size
-            minPoolSize: 2,         // Reduced minimum connections
-            maxIdleTimeMS: 30000,   // Reduced timeout values
-            serverSelectionTimeoutMS: 30000,
-            socketTimeoutMS: 30000,
-            connectTimeoutMS: 30000,
+            maxPoolSize: 5,         // Smaller pool for better resource management
+            minPoolSize: 1,         // Minimal connections
+            maxIdleTimeMS: 60000,   // Longer idle time for persistent connections
+            serverSelectionTimeoutMS: 5000,  // Faster server selection
+            socketTimeoutMS: 45000, // Reasonable socket timeout
+            connectTimeoutMS: 10000, // Faster connection timeout
             heartbeatFrequencyMS: 10000,
             retryWrites: true,
             retryReads: true,
-            readPreference: 'primary', // Use primary for better reliability
-            writeConcern: { w: 'majority', j: true } // Ensure data consistency
+            readPreference: 'primaryPreferred', // More flexible read preference
+            writeConcern: { w: 'majority', j: true, wtimeout: 5000 }, // Add write timeout
+            bufferMaxEntries: 0,    // Disable mongoose buffering
+            bufferCommands: false   // Disable command buffering
         });
         this.isConnected = false;
         this.connectionPromise = null;
         this.connectionLock = false; // Prevent connection race conditions
         this.silentMode = options.silentMode || false; // Option to suppress logs
         this.lastConnectionAttempt = 0;
-        this.connectionCooldown = 10000; // 10 seconds cooldown between attempts
+        this.connectionCooldown = 5000; // Reduced to 5 seconds cooldown
+        this.healthCheckInterval = null;
+        this.isHealthy = true;
     }
 
     async initialize() {
+        // Quick health check if already connected
+        if (this.isConnected && this.isHealthy) {
+            try {
+                // Quick ping to verify connection health
+                await this.client.db('admin').command({ ping: 1 }, { maxTimeMS: 2000 });
+                return;
+            } catch (error) {
+                console.warn('Connection health check failed, reconnecting...');
+                this.isConnected = false;
+                this.isHealthy = false;
+            }
+        }
+
         // Check cooldown period to avoid spam connections
         const now = Date.now();
         if (now - this.lastConnectionAttempt < this.connectionCooldown) {
             if (!this.silentMode) {
                 console.log('Connection attempt blocked due to cooldown period');
             }
-            return;
-        }
-
-        // If already connected, return immediately
-        if (this.isConnected && this.client.topology && this.client.topology.isConnected()) {
-            return;
+            throw new Error('Connection cooldown active - please wait before retrying');
         }
 
         // If connection is in progress, wait for it
@@ -52,23 +64,40 @@ class DatabaseConnectivity {
 
     async _connectWithRetry() {
         let retryCount = 0;
-        const maxRetries = 2; // Reduced retry attempts
+        const maxRetries = 3; // Increased retry attempts
         this.lastConnectionAttempt = Date.now();
         
         while (retryCount < maxRetries) {
             try {
                 if (!this.silentMode) {
-                    console.log(`Attempting database connection (attempt ${retryCount + 1}/${maxRetries})`);
+                    console.log(`🔄 Attempting database connection (${retryCount + 1}/${maxRetries})`);
                 }
                 
                 if (!this.isConnected) {
-                    await this.client.connect();
-                    // Test the connection
-                    await this.client.db('admin').command({ ping: 1 });
+                    // Use Promise.race to add our own timeout
+                    await Promise.race([
+                        this.client.connect(),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Connection timeout after 8 seconds')), 8000)
+                        )
+                    ]);
+                    
+                    // Quick health check with timeout
+                    await Promise.race([
+                        this.client.db('admin').command({ ping: 1 }),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Ping timeout after 3 seconds')), 3000)
+                        )
+                    ]);
+                    
                     this.isConnected = true;
+                    this.isHealthy = true;
                     if (!this.silentMode) {
-                        console.log('Database connected successfully');
+                        console.log('✅ Database connected successfully');
                     }
+                    
+                    // Start health monitoring
+                    this._startHealthCheck();
                 }
                 
                 this.connectionPromise = null;
@@ -76,20 +105,20 @@ class DatabaseConnectivity {
                 
             } catch (error) {
                 if (!this.silentMode) {
-                    console.error(`Database connection attempt ${retryCount + 1} failed:`, error.message);
+                    console.error(`❌ Database connection attempt ${retryCount + 1} failed:`, error.message);
                 }
                 retryCount++;
                 this.isConnected = false;
+                this.isHealthy = false;
                 
                 if (retryCount < maxRetries) {
-                    const delay = Math.min(1000 * retryCount, 3000); // Reduced delay
+                    const delay = Math.min(1000 * retryCount, 2000); // Reduced max delay
                     if (!this.silentMode) {
-                        console.log(`Retrying connection in ${delay}ms...`);
+                        console.log(`⏳ Retrying connection in ${delay}ms...`);
                     }
                     await new Promise(resolve => setTimeout(resolve, delay));
                 } else {
                     this.connectionPromise = null;
-                    // In silent mode, don't throw errors, just log them
                     if (this.silentMode) {
                         console.warn(`Database connection failed after ${maxRetries} attempts. Operating in offline mode.`);
                         return;
@@ -97,6 +126,34 @@ class DatabaseConnectivity {
                     throw new Error(`Failed to connect to database after ${maxRetries} attempts: ${error.message}`);
                 }
             }
+        }
+    }
+
+    _startHealthCheck() {
+        // Clear any existing health check
+        if (this.healthCheckInterval) {
+            clearInterval(this.healthCheckInterval);
+        }
+        
+        // Start periodic health monitoring
+        this.healthCheckInterval = setInterval(async () => {
+            try {
+                if (this.isConnected) {
+                    await this.client.db('admin').command({ ping: 1 }, { maxTimeMS: 2000 });
+                    this.isHealthy = true;
+                }
+            } catch (error) {
+                console.warn('💓 Database health check failed:', error.message);
+                this.isHealthy = false;
+                this.isConnected = false;
+            }
+        }, 30000); // Check every 30 seconds
+    }
+
+    _stopHealthCheck() {
+        if (this.healthCheckInterval) {
+            clearInterval(this.healthCheckInterval);
+            this.healthCheckInterval = null;
         }
     }
 
@@ -120,7 +177,13 @@ class DatabaseConnectivity {
                 const db = this.client.db(databaseName);
                 const collection = db.collection(collectionName);
                 
-                const result = await collection.insertOne(document);
+                // Add timeout to insert operation
+                const result = await Promise.race([
+                    collection.insertOne(document, { wtimeout: 5000 }),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Insert operation timeout')), 8000)
+                    )
+                ]);
                 
                 return {
                     success: true,
@@ -129,14 +192,15 @@ class DatabaseConnectivity {
                 };
             } catch (error) {
                 if (!this.silentMode) {
-                    console.error(`Error inserting document (attempt ${retryCount + 1}):`, error.message);
+                    console.error(`💾 Error inserting document (attempt ${retryCount + 1}):`, error.message);
                 }
                 retryCount++;
                 
                 if (this._isConnectionError(error) && retryCount < maxRetries) {
                     this.isConnected = false;
+                    this.isHealthy = false;
                     this.connectionPromise = null;
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, 500));
                     continue;
                 }
                 
@@ -169,7 +233,14 @@ class DatabaseConnectivity {
                 const db = this.client.db(databaseName);
                 const collection = db.collection(collectionName);
                 
-                const document = await collection.findOne(query);
+                // Add timeout to query operation
+                const document = await Promise.race([
+                    collection.findOne(query, { maxTimeMS: 5000 }),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Query operation timeout')), 8000)
+                    )
+                ]);
+                
                 if (!document) {
                     return {
                         success: false,
@@ -184,14 +255,15 @@ class DatabaseConnectivity {
                 };
             } catch (error) {
                 if (!this.silentMode) {
-                    console.error(`Error getting document (attempt ${retryCount + 1}):`, error.message);
+                    console.error(`🔍 Error getting document (attempt ${retryCount + 1}):`, error.message);
                 }
                 retryCount++;
                 
                 if (this._isConnectionError(error) && retryCount < maxRetries) {
                     this.isConnected = false;
+                    this.isHealthy = false;
                     this.connectionPromise = null;
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, 500));
                     continue;
                 }
                 
@@ -261,7 +333,15 @@ class DatabaseConnectivity {
             
             const db = this.client.db(databaseName);
             const collection = db.collection(collectionName);
-            const result = await collection.updateOne(query, update);
+            
+            // Add timeout to update operation
+            const result = await Promise.race([
+                collection.updateOne(query, update, { wtimeout: 5000 }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Update operation timeout')), 8000)
+                )
+            ]);
+            
             if (result.modifiedCount === 1) {
                 return {
                     success: true,
@@ -283,7 +363,7 @@ class DatabaseConnectivity {
             }
         } catch (error) {
             if (!this.silentMode) {
-                console.error('Error updating document:', error);
+                console.error('📝 Error updating document:', error.message);
             }
             return {
                 success: false,
@@ -294,14 +374,17 @@ class DatabaseConnectivity {
 
     async disconnect() {
         try {
+            this._stopHealthCheck();
             await this.client.close();
             this.isConnected = false;
+            this.isHealthy = false;
+            this.connectionPromise = null;
             if (!this.silentMode) {
-                console.log('Database disconnected successfully');
+                console.log('🔌 Database disconnected successfully');
             }
         } catch (error) {
             if (!this.silentMode) {
-                console.error('Error disconnecting from database:', error);
+                console.error('❌ Error disconnecting from database:', error);
             }
             throw error;
         }
