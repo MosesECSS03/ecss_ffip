@@ -311,7 +311,7 @@ class ParticipantDetails extends Component {
       female: {
         sitStand: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, 13], 
             weak: [13, 14], 
             normal: [15, 16], 
@@ -361,7 +361,7 @@ class ParticipantDetails extends Component {
         ],
         armBending: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, 16], 
             weak: [16, 18], 
             normal: [19, 20], 
@@ -411,7 +411,7 @@ class ParticipantDetails extends Component {
         ],
         sitReach: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, 0], 
             weak: [0, 3], 
             normal: [4, 8], 
@@ -461,7 +461,7 @@ class ParticipantDetails extends Component {
         ],
         backStretching: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, -8], 
             weak: [-8, -5], 
             normal: [-4, -1], 
@@ -511,7 +511,7 @@ class ParticipantDetails extends Component {
         ],
         handGrip: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, 18.1], 
             weak: [18.1, 22.5], 
             normal: [22.6, 27.2], 
@@ -561,7 +561,7 @@ class ParticipantDetails extends Component {
         ],
         speedWalking: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [7.7, 999], 
             weak: [7.0, 7.7], 
             normal: [6.3, 7.1], 
@@ -611,7 +611,7 @@ class ParticipantDetails extends Component {
         ],
         marching: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, 76], 
             weak: [76, 85], 
             normal: [86, 95], 
@@ -664,7 +664,7 @@ class ParticipantDetails extends Component {
       male: {
         sitStand: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, 16], 
             weak: [16, 17], 
             normal: [18, 19], 
@@ -714,7 +714,7 @@ class ParticipantDetails extends Component {
         ],
         armBending: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, 17], 
             weak: [17, 19], 
             normal: [20, 22], 
@@ -764,7 +764,7 @@ class ParticipantDetails extends Component {
         ],
         sitReach: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, -3], 
             weak: [-3, 0], 
             normal: [1, 3], 
@@ -814,7 +814,7 @@ class ParticipantDetails extends Component {
         ],
         backStretching: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, -18], 
             weak: [-18, -13], 
             normal: [-12, -8], 
@@ -864,7 +864,7 @@ class ParticipantDetails extends Component {
         ],
         handGrip: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, 30.7], 
             weak: [30.7, 36.6], 
             normal: [36.7, 42.6], 
@@ -914,7 +914,7 @@ class ParticipantDetails extends Component {
         ],
         speedWalking: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [7.2, 999], 
             weak: [6.6, 7.2], 
             normal: [5.9, 6.5], 
@@ -964,7 +964,7 @@ class ParticipantDetails extends Component {
         ],
         marching: [
           { 
-            ageMin: 65, ageMax: 69,
+            ageMin: 0, ageMax: 69,
             veryWeak: [-999, 82], 
             weak: [82, 91], 
             normal: [92, 101], 
