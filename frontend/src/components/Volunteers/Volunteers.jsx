@@ -612,7 +612,31 @@ class Volunteers extends Component {
     let val = e.target.value;
     if (unit) {
       val = val.replace(new RegExp(`\\s*${unit}$`), '');
-      val = val.replace(/[^0-9.]/g, '');
+      
+      // For sitReach and backStretch, allow negative numbers
+      if (["sitReach", "backStretch"].includes(this.state.selectedStation) && field.startsWith('score')) {
+        val = val.replace(/[^0-9.-]/g, ''); // Allow digits, decimal point, and minus sign
+        
+        // Ensure only one minus sign at the beginning
+        const minusCount = (val.match(/-/g) || []).length;
+        if (minusCount > 1) {
+          val = val.replace(/-/g, '');
+          if (val.charAt(0) !== '-') val = '-' + val;
+        } else if (val.includes('-') && val.indexOf('-') !== 0) {
+          val = val.replace('-', '');
+        }
+        
+        // Ensure only one decimal point
+        const decimalCount = (val.match(/\./g) || []).length;
+        if (decimalCount > 1) {
+          const parts = val.split('.');
+          val = parts[0] + '.' + parts.slice(1).join('');
+        }
+      } else {
+        // For all other stations, remove any minus signs to ensure positive numbers only
+        val = val.replace(/[^0-9.]/g, ''); // Remove all non-digits and non-decimal points (including minus signs)
+      }
+      
       if (val) val = `${val} ${unit}`;
     }
     
@@ -658,7 +682,31 @@ class Volunteers extends Component {
     let val = e.target.value;
     if (unit && val && !val.trim().endsWith(unit)) {
       val = val.replace(new RegExp(`\\s*${unit}$`), '');
-      val = val.replace(/[^0-9.]/g, '');
+      
+      // For sitReach and backStretch, allow negative numbers
+      if (["sitReach", "backStretch"].includes(this.state.selectedStation) && field.startsWith('score')) {
+        val = val.replace(/[^0-9.-]/g, ''); // Allow digits, decimal point, and minus sign
+        
+        // Ensure only one minus sign at the beginning
+        const minusCount = (val.match(/-/g) || []).length;
+        if (minusCount > 1) {
+          val = val.replace(/-/g, '');
+          if (val.charAt(0) !== '-') val = '-' + val;
+        } else if (val.includes('-') && val.indexOf('-') !== 0) {
+          val = val.replace('-', '');
+        }
+        
+        // Ensure only one decimal point
+        const decimalCount = (val.match(/\./g) || []).length;
+        if (decimalCount > 1) {
+          const parts = val.split('.');
+          val = parts[0] + '.' + parts.slice(1).join('');
+        }
+      } else {
+        // For all other stations, remove any minus signs to ensure positive numbers only
+        val = val.replace(/[^0-9.]/g, ''); // Remove all non-digits and non-decimal points (including minus signs)
+      }
+      
       if (val) val = `${val} ${unit}`;
     }
     
