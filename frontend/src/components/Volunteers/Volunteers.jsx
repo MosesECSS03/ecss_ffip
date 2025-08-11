@@ -443,17 +443,10 @@ class Volunteers extends Component {
                 console.log('📋 State updated after QR scan');
                 console.log('✅ Participant name:', this.state.formData.name);
                 console.log('✅ Selected station:', this.state.selectedStation);
-                
-                // Show success alert
-                const { language } = this.context;
-                const alertMessage = language === 'en' 
-                  ? `QR Code scanned successfully!\nParticipant: ${this.state.formData.name}` 
-                  : `二维码扫描成功！\n参与者：${this.state.formData.name}`;
-                alert(alertMessage);
               });
               
-              // Stop QR scanner to hide camera
-              this.stopQRScanner();
+              // Keep QR scanner running - don't stop it
+              // this.stopQRScanner();
             } else {
               console.warn('❌ Invalid API response:', response.data);
               const errorMsg = response.data?.message || 'Participant not found or invalid response';
@@ -493,32 +486,27 @@ class Volunteers extends Component {
         },
         {
           onDecodeError: (error) => {
-            // Enhanced logging for decode attempts
-            if (error && error.message) {
-              if (!error.message.includes('No QR code found')) {
-                console.log('🔍 QR decode attempt failed:', error.message);
-              }
-            } else {
-              console.log('🔍 QR scanner checking for codes...');
+            // Minimal logging for decode attempts to reduce noise
+            if (error && error.message && !error.message.includes('No QR code found')) {
+              console.log('🔍 QR decode attempt:', error.message);
             }
           },
           highlightScanRegion: true,
           highlightCodeOutline: true,
-          maxScansPerSecond: 5, // Reduced to prevent overwhelming
+          maxScansPerSecond: 10, // Increased for better detection
           preferredCamera: 'environment',
           // Enhanced settings for better QR detection
-          returnDetailedScanResult: true, // Changed to get more detail
+          returnDetailedScanResult: true,
+          // Larger scan region for better QR detection
           calculateScanRegion: (video) => {
-            // Use a larger scan region for better detection
             const smallerDimension = Math.min(video.videoWidth, video.videoHeight);
-            const scanRegionSize = Math.round(0.9 * smallerDimension); // Increased to 90%
+            const scanRegionSize = Math.round(0.95 * smallerDimension); // Increased to 95%
             const x = (video.videoWidth - scanRegionSize) / 2;
             const y = (video.videoHeight - scanRegionSize) / 2;
-            console.log('📐 Scan region calculated:', {
+            console.log('📐 QR scan region:', {
               videoSize: `${video.videoWidth}x${video.videoHeight}`,
               scanRegion: `${scanRegionSize}x${scanRegionSize}`,
-              position: `${x},${y}`,
-              relativeSize: scanRegionSize / smallerDimension
+              coverage: '95%'
             });
             return {
               x: x / video.videoWidth,
@@ -1090,8 +1078,8 @@ class Volunteers extends Component {
               </div>
             )}
             
-            {/* Camera view - only show when no participant is loaded */}
-            {!formData.name && !qrScanned && (
+            {/* Camera view - show when station selected and no participant loaded */}
+            {selectedStation && !formData.name && (
               <div>
                 <div id="qr-video-container" style={{ width: '100%', maxWidth: 640, minHeight: 480, margin: '0 auto', borderRadius: 18, background: '#000', border: '5px solid #1976d2', boxShadow: '0 4px 32px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                   <video
@@ -1109,25 +1097,74 @@ class Volunteers extends Component {
                     </div>
                   )}
                   
-                  {/* Debug overlay when scanner is active */}
+                  {/* Enhanced debug overlay with detection info */}
                   {this.qrScanner && (
                     <div style={{ 
                       position: 'absolute', 
                       top: '10px', 
                       left: '10px', 
-                      backgroundColor: 'rgba(0,0,0,0.7)', 
+                      backgroundColor: 'rgba(0,0,0,0.8)', 
                       color: 'white', 
                       padding: '8px 12px', 
                       borderRadius: '6px', 
                       fontSize: '12px',
                       fontFamily: 'monospace'
                     }}>
-                      {language === 'en' ? '🎯 Scanning...' : '🎯 扫描中...'}
+                      <div>{language === 'en' ? '🎯 QR Scanner Active' : '🎯 二维码扫描器激活'}</div>
+                      <div style={{ fontSize: '10px', marginTop: '2px' }}>
+                        {language === 'en' ? 'Point QR code at center' : '将二维码对准中心'}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* QR code target overlay */}
+                  {this.qrScanner && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '200px',
+                      height: '200px',
+                      border: '3px solid #00ff00',
+                      borderRadius: '12px',
+                      pointerEvents: 'none',
+                      opacity: 0.7
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        top: '-25px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        color: '#00ff00',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+                      }}>
+                        {language === 'en' ? 'QR Code Area' : '二维码区域'}
+                      </div>
                     </div>
                   )}
                 </div>
                 
-
+                {/* Manual refresh button */}
+                <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                  <button
+                    onClick={this.refreshCamera}
+                    style={{
+                      backgroundColor: '#17a2b8',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    🔄 {language === 'en' ? 'Refresh Scanner' : '刷新扫描器'}
+                  </button>
+                </div>
               </div>
             )}
 
