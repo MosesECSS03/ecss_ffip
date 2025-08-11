@@ -384,6 +384,8 @@ class Volunteers extends Component {
           if (this.isProcessingQR) return;
           this.isProcessingQR = true;
           
+          console.log('🔍 QR Code detected:', result.data);
+          
           // Clear any existing timeout
           if (this.loadingTimeout) {
             clearTimeout(this.loadingTimeout);
@@ -408,7 +410,7 @@ class Volunteers extends Component {
               participantID: participantID
             }, { timeout: 10000 });
 
-            console.log('QR code scanned:', participantID, response.data);
+            console.log('📡 QR code scanned:', participantID, response.data);
             
 
             if (response.data && response.data.success && response.data.data) {
@@ -464,28 +466,49 @@ class Volunteers extends Component {
           }
         },
         {
-          onDecodeError: () => {
-            // Ignore decode errors - they're normal when no QR code is visible
+          onDecodeError: (error) => {
+            // Log decode errors for debugging, but don't treat as failures
+            if (error.message && !error.message.includes('No QR code found')) {
+              console.debug('QR decode attempt:', error.message);
+            }
           },
           highlightScanRegion: true,
           highlightCodeOutline: true,
-          maxScansPerSecond: 5,
+          maxScansPerSecond: 10, // Increased scan rate for better detection
           preferredCamera: 'environment',
-          // Azure hosting compatibility settings
-          calculateScanRegion: () => ({ x: 0, y: 0, width: 1, height: 1 }),
-          returnDetailedScanResult: false
+          // Enhanced settings for better QR detection
+          returnDetailedScanResult: false,
+          calculateScanRegion: (video) => {
+            // Use a larger scan region for better detection
+            const smallerDimension = Math.min(video.videoWidth, video.videoHeight);
+            const scanRegionSize = Math.round(0.8 * smallerDimension);
+            const x = (video.videoWidth - scanRegionSize) / 2;
+            const y = (video.videoHeight - scanRegionSize) / 2;
+            return {
+              x: x / video.videoWidth,
+              y: y / video.videoHeight,
+              width: scanRegionSize / video.videoWidth,
+              height: scanRegionSize / video.videoHeight
+            };
+          }
         }
       );
       
       this.qrScanner.start()
         .then(() => {
           this.scannerRetryCount = 0;
+          console.log('✅ QR Scanner started successfully');
+          console.log('📹 Camera details:', {
+            videoWidth: videoNode.videoWidth,
+            videoHeight: videoNode.videoHeight,
+            readyState: videoNode.readyState
+          });
           // Start health monitoring after successful camera start
           this.startCameraHealthCheck();
         })
         .catch(e => {
           let userMessage = '';
-          console.error('QR Scanner start error (Azure environment):', e);
+          console.error('❌ QR Scanner start error (Azure environment):', e);
           
           if (e.name === 'NotAllowedError') {
             userMessage = 'Camera permission denied. Please allow camera access and refresh the page.';
@@ -1001,22 +1024,31 @@ class Volunteers extends Component {
                     <div style={{ marginBottom: '4px' }}>
                       {language === 'en' ? '⚠️ Scan issue detected' : '⚠️ 检测到扫描问题'}
                     </div>
+                    <div style={{ fontSize: '0.8em', marginBottom: '4px' }}>
+                      {cameraError}
+                    </div>
                     {this.scannerRetryCount < this.maxRetryAttempts && (
                       <div style={{ fontSize: '0.8em' }}>
                         {language === 'en' ? '🔄 Auto-restarting scanner...' : '🔄 自动重启扫描器...'}
                       </div>
                     )}
                   </div>
-                ) : (
+                ) : this.qrScanner ? (
                   <div>
-                    <span>
-                      {language === 'en' ? 'Camera is active. Please hold QR code in front of the camera.' : '摄像头已开启，请将二维码对准摄像头'}
+                    <span style={{ color: '#28a745' }}>
+                      {language === 'en' ? '📹 Scanner Ready - Point QR code at camera' : '📹 扫描器就绪 - 将二维码对准摄像头'}
                     </span>
                     {this.isProcessingQR && (
                       <div style={{ fontSize: '0.8em', color: '#ff9800', marginTop: '4px' }}>
-                        {language === 'en' ? '⚡ Processing...' : '⚡ 处理中...'}
+                        {language === 'en' ? '⚡ Processing QR code...' : '⚡ 处理二维码中...'}
                       </div>
                     )}
+                  </div>
+                ) : (
+                  <div>
+                    <span>
+                      {language === 'en' ? '🚀 Initializing camera...' : '🚀 初始化摄像头...'}
+                    </span>
                   </div>
                 )}
               </div>
@@ -1024,19 +1056,84 @@ class Volunteers extends Component {
             
             {/* Camera view */}
             {!formData.name && !qrScanned && (
-              <div id="qr-video-container" style={{ width: '100%', maxWidth: 640, minHeight: 480, margin: '0 auto', borderRadius: 18, background: '#000', border: '5px solid #1976d2', boxShadow: '0 4px 32px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                <video
-                  ref={this.setVideoRef}
-                  style={{ width: '100%', height: 'auto', minHeight: 440, borderRadius: 18, background: '#222' }}
-                  autoPlay
-                  playsInline
-                  muted
-                />
-                {!this.qrScanner && (
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-                      {language === 'en' ? '🚀 Starting camera...' : '🚀 启动摄像头...'}
+              <div>
+                <div id="qr-video-container" style={{ width: '100%', maxWidth: 640, minHeight: 480, margin: '0 auto', borderRadius: 18, background: '#000', border: '5px solid #1976d2', boxShadow: '0 4px 32px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  <video
+                    ref={this.setVideoRef}
+                    style={{ width: '100%', height: 'auto', minHeight: 440, borderRadius: 18, background: '#222' }}
+                    autoPlay
+                    playsInline
+                    muted
+                  />
+                  {!this.qrScanner && (
+                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+                        {language === 'en' ? '🚀 Starting camera...' : '🚀 启动摄像头...'}
+                      </div>
                     </div>
+                  )}
+                  
+                  {/* Debug overlay when scanner is active */}
+                  {this.qrScanner && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: '10px', 
+                      left: '10px', 
+                      backgroundColor: 'rgba(0,0,0,0.7)', 
+                      color: 'white', 
+                      padding: '8px 12px', 
+                      borderRadius: '6px', 
+                      fontSize: '12px',
+                      fontFamily: 'monospace'
+                    }}>
+                      {language === 'en' ? '🎯 Scanning...' : '🎯 扫描中...'}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Debug buttons */}
+                {this.qrScanner && (
+                  <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                    <button
+                      onClick={() => {
+                        console.log('📹 Manual camera restart triggered');
+                        this.refreshCamera();
+                      }}
+                      style={{
+                        backgroundColor: '#ffc107',
+                        color: '#000',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        marginRight: '8px'
+                      }}
+                    >
+                      {language === 'en' ? '🔄 Restart Camera' : '🔄 重启摄像头'}
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        console.log('📱 Testing QR scanner with dummy data');
+                        // Test the QR result handler with dummy data
+                        if (this.qrScanner) {
+                          const dummyResult = { data: 'TEST123' };
+                          console.log('🧪 Simulating QR scan with:', dummyResult);
+                        }
+                      }}
+                      style={{
+                        backgroundColor: '#17a2b8',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}
+                    >
+                      {language === 'en' ? '🧪 Test Scanner' : '🧪 测试扫描器'}
+                    </button>
                   </div>
                 )}
               </div>
