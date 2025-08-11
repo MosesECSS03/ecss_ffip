@@ -1,28 +1,40 @@
 const { MongoClient, ObjectId } = require('mongodb');
 
-const uri = 'mongodb+srv://moseslee:Mlxy6695@ecss-course.hejib.mongodb.net/?retryWrites=true&w=majority&appName=ECSS-Course&connectTimeoutMS=60000&socketTimeoutMS=60000&serverSelectionTimeoutMS=60000&maxIdleTimeMS=60000';
+const uri = 'mongodb+srv://moseslee:Mlxy6695@ecss-course.hejib.mongodb.net/?retryWrites=true&w=majority&appName=ECSS-Course&connectTimeoutMS=30000&socketTimeoutMS=30000&serverSelectionTimeoutMS=30000&maxIdleTimeMS=30000';
 
 class DatabaseConnectivity {
-    constructor() {
+    constructor(options = {}) {
         this.client = new MongoClient(uri, {
-            maxPoolSize: 20,        // Increased for concurrent access
-            minPoolSize: 5,         // Maintain minimum connections
-            maxIdleTimeMS: 60000,
-            serverSelectionTimeoutMS: 60000,
-            socketTimeoutMS: 60000,
-            connectTimeoutMS: 60000,
+            maxPoolSize: 10,        // Reduced pool size
+            minPoolSize: 2,         // Reduced minimum connections
+            maxIdleTimeMS: 30000,   // Reduced timeout values
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 30000,
+            connectTimeoutMS: 30000,
             heartbeatFrequencyMS: 10000,
             retryWrites: true,
             retryReads: true,
-            readPreference: 'secondaryPreferred', // Distribute read load
+            readPreference: 'primary', // Use primary for better reliability
             writeConcern: { w: 'majority', j: true } // Ensure data consistency
         });
         this.isConnected = false;
         this.connectionPromise = null;
         this.connectionLock = false; // Prevent connection race conditions
+        this.silentMode = options.silentMode || false; // Option to suppress logs
+        this.lastConnectionAttempt = 0;
+        this.connectionCooldown = 10000; // 10 seconds cooldown between attempts
     }
 
     async initialize() {
+        // Check cooldown period to avoid spam connections
+        const now = Date.now();
+        if (now - this.lastConnectionAttempt < this.connectionCooldown) {
+            if (!this.silentMode) {
+                console.log('Connection attempt blocked due to cooldown period');
+            }
+            return;
+        }
+
         // If already connected, return immediately
         if (this.isConnected && this.client.topology && this.client.topology.isConnected()) {
             return;
@@ -40,34 +52,48 @@ class DatabaseConnectivity {
 
     async _connectWithRetry() {
         let retryCount = 0;
-        const maxRetries = 3;
+        const maxRetries = 2; // Reduced retry attempts
+        this.lastConnectionAttempt = Date.now();
         
         while (retryCount < maxRetries) {
             try {
-                console.log(`Attempting database connection (attempt ${retryCount + 1}/${maxRetries})`);
+                if (!this.silentMode) {
+                    console.log(`Attempting database connection (attempt ${retryCount + 1}/${maxRetries})`);
+                }
                 
                 if (!this.isConnected) {
                     await this.client.connect();
                     // Test the connection
                     await this.client.db('admin').command({ ping: 1 });
                     this.isConnected = true;
-                    console.log('Database connected successfully');
+                    if (!this.silentMode) {
+                        console.log('Database connected successfully');
+                    }
                 }
                 
                 this.connectionPromise = null;
                 return;
                 
             } catch (error) {
-                console.error(`Database connection attempt ${retryCount + 1} failed:`, error.message);
+                if (!this.silentMode) {
+                    console.error(`Database connection attempt ${retryCount + 1} failed:`, error.message);
+                }
                 retryCount++;
                 this.isConnected = false;
                 
                 if (retryCount < maxRetries) {
-                    const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
-                    console.log(`Retrying connection in ${delay}ms...`);
+                    const delay = Math.min(1000 * retryCount, 3000); // Reduced delay
+                    if (!this.silentMode) {
+                        console.log(`Retrying connection in ${delay}ms...`);
+                    }
                     await new Promise(resolve => setTimeout(resolve, delay));
                 } else {
                     this.connectionPromise = null;
+                    // In silent mode, don't throw errors, just log them
+                    if (this.silentMode) {
+                        console.warn(`Database connection failed after ${maxRetries} attempts. Operating in offline mode.`);
+                        return;
+                    }
                     throw new Error(`Failed to connect to database after ${maxRetries} attempts: ${error.message}`);
                 }
             }
@@ -81,6 +107,16 @@ class DatabaseConnectivity {
         while (retryCount < maxRetries) {
             try {
                 await this.initialize();
+                
+                // If not connected and in silent mode, return gracefully
+                if (!this.isConnected && this.silentMode) {
+                    return {
+                        success: false,
+                        error: 'Database not available',
+                        offline: true
+                    };
+                }
+                
                 const db = this.client.db(databaseName);
                 const collection = db.collection(collectionName);
                 
@@ -92,7 +128,9 @@ class DatabaseConnectivity {
                     message: 'Document inserted successfully'
                 };
             } catch (error) {
-                console.error(`Error inserting document (attempt ${retryCount + 1}):`, error.message);
+                if (!this.silentMode) {
+                    console.error(`Error inserting document (attempt ${retryCount + 1}):`, error.message);
+                }
                 retryCount++;
                 
                 if (this._isConnectionError(error) && retryCount < maxRetries) {
@@ -117,6 +155,17 @@ class DatabaseConnectivity {
         while (retryCount < maxRetries) {
             try {
                 await this.initialize();
+                
+                // If not connected and in silent mode, return gracefully
+                if (!this.isConnected && this.silentMode) {
+                    return {
+                        success: false,
+                        error: 'Database not available',
+                        data: null,
+                        offline: true
+                    };
+                }
+                
                 const db = this.client.db(databaseName);
                 const collection = db.collection(collectionName);
                 
@@ -134,7 +183,9 @@ class DatabaseConnectivity {
                     data: document
                 };
             } catch (error) {
-                console.error(`Error getting document (attempt ${retryCount + 1}):`, error.message);
+                if (!this.silentMode) {
+                    console.error(`Error getting document (attempt ${retryCount + 1}):`, error.message);
+                }
                 retryCount++;
                 
                 if (this._isConnectionError(error) && retryCount < maxRetries) {
@@ -162,6 +213,17 @@ class DatabaseConnectivity {
     async findDocuments(databaseName, collectionName, query = {}) {
         try {
             await this.initialize();
+            
+            // If not connected and in silent mode, return gracefully
+            if (!this.isConnected && this.silentMode) {
+                return {
+                    success: false,
+                    error: 'Database not available',
+                    data: [],
+                    offline: true
+                };
+            }
+            
             const db = this.client.db(databaseName);
             const collection = db.collection(collectionName);
             
@@ -173,7 +235,9 @@ class DatabaseConnectivity {
                 data: documents
             };
         } catch (error) {
-            console.error('Error finding documents:', error);
+            if (!this.silentMode) {
+                console.error('Error finding documents:', error);
+            }
             return {
                 success: false,
                 error: error.message,
@@ -185,6 +249,16 @@ class DatabaseConnectivity {
     async updateDocument(databaseName, collectionName, query, update) {
         try {
             await this.initialize();
+            
+            // If not connected and in silent mode, return gracefully
+            if (!this.isConnected && this.silentMode) {
+                return {
+                    success: false,
+                    error: 'Database not available',
+                    offline: true
+                };
+            }
+            
             const db = this.client.db(databaseName);
             const collection = db.collection(collectionName);
             const result = await collection.updateOne(query, update);
@@ -208,7 +282,9 @@ class DatabaseConnectivity {
                 };
             }
         } catch (error) {
-            console.error('Error updating document:', error);
+            if (!this.silentMode) {
+                console.error('Error updating document:', error);
+            }
             return {
                 success: false,
                 error: error.message
@@ -220,9 +296,13 @@ class DatabaseConnectivity {
         try {
             await this.client.close();
             this.isConnected = false;
-            console.log('Database disconnected successfully');
+            if (!this.silentMode) {
+                console.log('Database disconnected successfully');
+            }
         } catch (error) {
-            console.error('Error disconnecting from database:', error);
+            if (!this.silentMode) {
+                console.error('Error disconnecting from database:', error);
+            }
             throw error;
         }
     }

@@ -42,6 +42,9 @@ class Volunteers extends Component {
     this.isProcessingQR = false  // Flag to prevent concurrent QR processing
     this.scannerRetryCount = 0   // Track scanner restart attempts
     this.maxRetryAttempts = 3    // Maximum retry attempts before giving up
+    this.cameraHealthCheckInterval = null  // Interval for checking camera health
+    this.lastVideoFrameTime = 0  // Track last time video had new frame
+    this.videoHealthCheckCount = 0  // Count consecutive health check failures
   }
 
   /**
@@ -60,6 +63,7 @@ class Volunteers extends Component {
     this.isProcessingQR = false;
     this.saveStateToLocalStorage();
     this.stopQRScanner();
+    this.stopCameraHealthCheck();
     
     if (this._qrScannerStartTimeout) {
       clearTimeout(this._qrScannerStartTimeout);
@@ -87,6 +91,163 @@ class Volunteers extends Component {
     
     this.isProcessingQR = false;
     this.setState({ cameraError: null });
+    this.stopCameraHealthCheck();
+  }
+
+  /**
+   * Start camera health monitoring
+   * Automatically detects if camera feed is frozen or blacked out
+   * Enhanced for Azure hosting environment compatibility
+   */
+  startCameraHealthCheck = () => {
+    this.stopCameraHealthCheck(); // Clear any existing interval
+    
+    this.cameraHealthCheckInterval = setInterval(() => {
+      if (!this.videoNode || !this.qrScanner || this.isProcessingQR) {
+        return;
+      }
+      
+      try {
+        // Check if video is playing and has valid dimensions
+        const video = this.videoNode;
+        const isVideoPlaying = !!(video.currentTime > 0 && !video.paused && !video.ended && video.readyState > 2);
+        const hasValidDimensions = video.videoWidth > 0 && video.videoHeight > 0;
+        
+        // Enhanced black screen detection with Azure hosting compatibility
+        let avgBrightness = 0;
+        let canvasCheckPassed = false;
+        
+        try {
+          // Only perform canvas check if video has valid dimensions
+          if (hasValidDimensions && video.videoWidth > 0 && video.videoHeight > 0) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            // Use smaller canvas for better Azure performance
+            canvas.width = 50;
+            canvas.height = 50;
+            
+            // Add security policy compatibility for Azure
+            if (ctx && typeof ctx.drawImage === 'function') {
+              ctx.drawImage(video, 0, 0, 50, 50);
+              
+              // Add try-catch for getImageData in case of CORS issues in Azure
+              try {
+                const imageData = ctx.getImageData(0, 0, 50, 50);
+                const data = imageData.data;
+                
+                // Calculate average brightness
+                let totalBrightness = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                  const r = data[i];
+                  const g = data[i + 1];
+                  const b = data[i + 2];
+                  totalBrightness += (r + g + b) / 3;
+                }
+                avgBrightness = totalBrightness / (data.length / 4);
+                canvasCheckPassed = true;
+              } catch (imageDataError) {
+                // Canvas getImageData failed - likely CORS or security policy
+                console.warn('Canvas getImageData failed (Azure security policy):', imageDataError.message);
+                // Skip brightness check but mark as passed to avoid false positives
+                canvasCheckPassed = true;
+                avgBrightness = 50; // Assume reasonable brightness
+              }
+            }
+          }
+        } catch (canvasError) {
+          // Canvas operations failed - common in Azure hosting
+          console.warn('Canvas operations failed (Azure environment):', canvasError.message);
+          // Skip canvas check but don't treat as failure
+          canvasCheckPassed = true;
+          avgBrightness = 50; // Assume reasonable brightness
+        }
+        
+        // Enhanced health check criteria for Azure hosting
+        const isUnhealthy = (
+          !isVideoPlaying || 
+          !hasValidDimensions || 
+          (canvasCheckPassed && avgBrightness < 5) // Lower threshold and only if canvas check worked
+        );
+        
+        if (isUnhealthy) {
+          this.videoHealthCheckCount++;
+          console.warn(`📹 Camera health check failed (${this.videoHealthCheckCount}/3):`, {
+            isVideoPlaying,
+            hasValidDimensions,
+            avgBrightness: canvasCheckPassed ? Math.round(avgBrightness) : 'canvas-check-skipped',
+            environment: 'azure-compatible'
+          });
+          
+          // Auto-refresh after 3 consecutive failures
+          if (this.videoHealthCheckCount >= 3) {
+            console.log('🔄 Auto-refreshing camera due to health check failures (Azure-compatible)');
+            this.refreshCamera();
+          }
+        } else {
+          // Reset counter on healthy check
+          this.videoHealthCheckCount = 0;
+        }
+        
+      } catch (error) {
+        console.warn('Camera health check error (Azure environment):', error);
+        this.videoHealthCheckCount++;
+        if (this.videoHealthCheckCount >= 3) {
+          console.log('🔄 Auto-refreshing camera due to health check error (Azure-compatible)');
+          this.refreshCamera();
+        }
+      }
+    }, 3000); // Check every 3 seconds
+  }
+
+  /**
+   * Stop camera health monitoring
+   */
+  stopCameraHealthCheck = () => {
+    if (this.cameraHealthCheckInterval) {
+      clearInterval(this.cameraHealthCheckInterval);
+      this.cameraHealthCheckInterval = null;
+    }
+    this.videoHealthCheckCount = 0;
+  }
+
+  /**
+   * Refresh the camera and restart QR scanner
+   * Force restarts the camera feed when it's not working properly
+   */
+  refreshCamera = () => {
+    // Reset retry count and health check
+    this.scannerRetryCount = 0;
+    this.videoHealthCheckCount = 0;
+    
+    // Stop existing scanner and health check
+    this.isProcessingQR = false;
+    this.stopQRScanner();
+    
+    // Clear any existing timeouts
+    if (this._qrScannerStartTimeout) {
+      clearTimeout(this._qrScannerStartTimeout);
+    }
+    
+    // Reset state
+    this.setState({ 
+      cameraError: null,
+      dataStatusMessage: this.context.language === 'en' ? '🔄 Auto-refreshing camera...' : '🔄 自动刷新摄像头...'
+    });
+    
+    // Clear the status message after a short delay
+    setTimeout(() => {
+      this.setState({ dataStatusMessage: '' });
+    }, 2000);
+    
+    // Restart scanner if conditions are met
+    if (this.videoNode && this.state.selectedStation) {
+      setTimeout(() => {
+        if (!this.qrScanner && !this.isProcessingQR) {
+          this.startQRScannerWithNode(this.videoNode);
+        }
+      }, 500);
+    }
   }
 
   /**
@@ -309,34 +470,50 @@ class Volunteers extends Component {
           highlightScanRegion: true,
           highlightCodeOutline: true,
           maxScansPerSecond: 5,
-          preferredCamera: 'environment'
+          preferredCamera: 'environment',
+          // Azure hosting compatibility settings
+          calculateScanRegion: () => ({ x: 0, y: 0, width: 1, height: 1 }),
+          returnDetailedScanResult: false
         }
       );
       
       this.qrScanner.start()
         .then(() => {
           this.scannerRetryCount = 0;
+          // Start health monitoring after successful camera start
+          this.startCameraHealthCheck();
         })
         .catch(e => {
           let userMessage = '';
+          console.error('QR Scanner start error (Azure environment):', e);
+          
           if (e.name === 'NotAllowedError') {
             userMessage = 'Camera permission denied. Please allow camera access and refresh the page.';
           } else if (e.name === 'NotFoundError') {
             userMessage = 'No camera found. Please ensure a camera is connected.';
+          } else if (e.name === 'NotSupportedError') {
+            userMessage = 'Camera not supported in this browser/environment. Please try a different browser.';
+          } else if (e.name === 'SecurityError' || e.message.includes('secure')) {
+            userMessage = 'Camera access blocked by security policy. Please ensure HTTPS is used.';
           } else {
-            userMessage = 'Camera initialization failed. Please refresh the page.';
+            userMessage = `Camera initialization failed: ${e.message || 'Unknown error'}. Please refresh the page.`;
           }
           
           this.setState({ cameraError: userMessage });
           
-          // Auto-retry
+          // Enhanced auto-retry for Azure hosting
           if (this.scannerRetryCount < this.maxRetryAttempts) {
             this.scannerRetryCount++;
+            const retryDelay = this.scannerRetryCount * 2000; // Progressive delay
+            console.log(`🔄 Retrying camera start (${this.scannerRetryCount}/${this.maxRetryAttempts}) in ${retryDelay}ms`);
+            
             setTimeout(() => {
               if (!this.qrScanner && this.videoNode && this.state.selectedStation) {
                 this.startQRScannerWithNode(this.videoNode);
               }
-            }, 2000);
+            }, retryDelay);
+          } else {
+            console.error('📹 Camera initialization failed after maximum retries in Azure environment');
           }
         });
     }
@@ -370,14 +547,14 @@ class Volunteers extends Component {
 
   /**
    * Handle station selection change
-   * Resets form to QR scanner state when station changes
+   * Resets form to QR scanner state when station changes and refreshes camera
    * @param {Event} e - Select change event
    */
   handleChange = (e) => {
     const newStation = e.target.value;
     this.isProcessingQR = false;
     
-    // Stop existing QR scanner
+    // Stop existing QR scanner and health check
     this.stopQRScanner();
     
     // Reset to QR scanner state
@@ -386,17 +563,32 @@ class Volunteers extends Component {
       qrValue: '',
       qrScanned: false,
       cameraError: null,
-      formData: {}
+      formData: {},
+      dataStatusMessage: newStation ? 
+        (this.context.language === 'en' ? '🔄 Refreshing camera for new station...' : '🔄 为新站点刷新摄像头...') : 
+        ''
     }, () => {
       this.debouncedSave();
       
+      // Clear the status message after a short delay
+      if (newStation) {
+        setTimeout(() => {
+          this.setState({ dataStatusMessage: '' });
+        }, 2000);
+      }
+      
       // Restart QR scanner if station is selected and video node is available
+      // This will automatically refresh the camera feed
       if (newStation && this.videoNode) {
+        // Force a complete camera refresh by resetting retry counts
+        this.scannerRetryCount = 0;
+        this.videoHealthCheckCount = 0;
+        
         setTimeout(() => {
           if (!this.qrScanner && !this.isProcessingQR) {
             this.startQRScannerWithNode(this.videoNode);
           }
-        }, 200);
+        }, 300); // Slightly longer delay to ensure clean restart
       }
     });
   }
