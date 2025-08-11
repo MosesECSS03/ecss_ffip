@@ -613,8 +613,8 @@ class Volunteers extends Component {
     if (unit) {
       val = val.replace(new RegExp(`\\s*${unit}$`), '');
       
-      // For sitReach and backStretch, allow negative numbers
-      if (["sitReach", "backStretch"].includes(this.state.selectedStation) && field.startsWith('score')) {
+      // For backStretch only, allow negative numbers and decimal points
+      if (this.state.selectedStation === "backStretch" && field.startsWith('score')) {
         val = val.replace(/[^0-9.-]/g, ''); // Allow digits, decimal point, and minus sign
         
         // Ensure only one minus sign at the beginning
@@ -632,9 +632,21 @@ class Volunteers extends Component {
           const parts = val.split('.');
           val = parts[0] + '.' + parts.slice(1).join('');
         }
+      } else if (this.state.selectedStation === "sitReach" && field.startsWith('score')) {
+        // For sitReach, allow negative numbers but no decimal points
+        val = val.replace(/[^0-9-]/g, ''); // Allow digits and minus sign only
+        
+        // Ensure only one minus sign at the beginning
+        const minusCount = (val.match(/-/g) || []).length;
+        if (minusCount > 1) {
+          val = val.replace(/-/g, '');
+          if (val.charAt(0) !== '-') val = '-' + val;
+        } else if (val.includes('-') && val.indexOf('-') !== 0) {
+          val = val.replace('-', '');
+        }
       } else {
-        // For all other stations, remove any minus signs to ensure positive numbers only
-        val = val.replace(/[^0-9.]/g, ''); // Remove all non-digits and non-decimal points (including minus signs)
+        // For all other stations, remove any minus signs and decimal points to ensure positive integers only
+        val = val.replace(/[^0-9]/g, ''); // Remove all non-digits (including minus signs and decimal points)
       }
       
       if (val) val = `${val} ${unit}`;
@@ -683,8 +695,8 @@ class Volunteers extends Component {
     if (unit && val && !val.trim().endsWith(unit)) {
       val = val.replace(new RegExp(`\\s*${unit}$`), '');
       
-      // For sitReach and backStretch, allow negative numbers
-      if (["sitReach", "backStretch"].includes(this.state.selectedStation) && field.startsWith('score')) {
+      // For backStretch only, allow negative numbers and decimal points
+      if (this.state.selectedStation === "backStretch" && field.startsWith('score')) {
         val = val.replace(/[^0-9.-]/g, ''); // Allow digits, decimal point, and minus sign
         
         // Ensure only one minus sign at the beginning
@@ -702,9 +714,21 @@ class Volunteers extends Component {
           const parts = val.split('.');
           val = parts[0] + '.' + parts.slice(1).join('');
         }
+      } else if (this.state.selectedStation === "sitReach" && field.startsWith('score')) {
+        // For sitReach, allow negative numbers but no decimal points
+        val = val.replace(/[^0-9-]/g, ''); // Allow digits and minus sign only
+        
+        // Ensure only one minus sign at the beginning
+        const minusCount = (val.match(/-/g) || []).length;
+        if (minusCount > 1) {
+          val = val.replace(/-/g, '');
+          if (val.charAt(0) !== '-') val = '-' + val;
+        } else if (val.includes('-') && val.indexOf('-') !== 0) {
+          val = val.replace('-', '');
+        }
       } else {
-        // For all other stations, remove any minus signs to ensure positive numbers only
-        val = val.replace(/[^0-9.]/g, ''); // Remove all non-digits and non-decimal points (including minus signs)
+        // For all other stations, remove any minus signs and decimal points to ensure positive integers only
+        val = val.replace(/[^0-9]/g, ''); // Remove all non-digits (including minus signs and decimal points)
       }
       
       if (val) val = `${val} ${unit}`;
