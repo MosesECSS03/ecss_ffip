@@ -15,9 +15,7 @@ class DatabaseConnectivity {
             retryWrites: true,
             retryReads: true,
             readPreference: 'primaryPreferred', // More flexible read preference
-            writeConcern: { w: 'majority', j: true, wtimeout: 5000 }, // Add write timeout
-            bufferMaxEntries: 0,    // Disable mongoose buffering
-            bufferCommands: false   // Disable command buffering
+            writeConcern: { w: 'majority', j: true, wtimeout: 5000 } // Add write timeout
         });
         this.isConnected = false;
         this.connectionPromise = null;
