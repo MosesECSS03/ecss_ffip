@@ -384,7 +384,12 @@ class Volunteers extends Component {
           if (this.isProcessingQR) return;
           this.isProcessingQR = true;
           
-          console.log('🔍 QR Code detected:', result.data);
+          console.log('🔍 QR Code detected:', result);
+          console.log('🔍 QR data:', result.data || result);
+          console.log('🔍 QR result type:', typeof result);
+          console.log('🔍 QR result keys:', Object.keys(result || {}));
+          
+          const qrData = result.data || result;
           
           // Clear any existing timeout
           if (this.loadingTimeout) {
@@ -404,7 +409,8 @@ class Volunteers extends Component {
           }, 15000); // 15 second timeout
           
           try {
-            const participantID = result.data;
+            const participantID = qrData;
+            console.log('📤 Sending request for participant:', participantID);
             const response = await axios.post(`${API_BASE_URL}/participants`, {
               purpose: 'retrieveParticipant',
               participantID: participantID
@@ -442,7 +448,7 @@ class Volunteers extends Component {
             } else {
               console.warn('❌ Invalid response structure:', response.data);
               this.setState({
-                qrValue: result.data,
+                qrValue: qrData,
                 qrScanned: false,
                 cameraError: 'Invalid participant data received',
                 formData: {}
@@ -451,7 +457,7 @@ class Volunteers extends Component {
           } catch (err) {
             console.error('QR processing error:', err);
             this.setState({
-              qrValue: result.data,
+              qrValue: qrData,
               qrScanned: false,
               cameraError: 'Failed to load participant data',
               formData: {}
@@ -467,23 +473,33 @@ class Volunteers extends Component {
         },
         {
           onDecodeError: (error) => {
-            // Log decode errors for debugging, but don't treat as failures
-            if (error.message && !error.message.includes('No QR code found')) {
-              console.debug('QR decode attempt:', error.message);
+            // Enhanced logging for decode attempts
+            if (error && error.message) {
+              if (!error.message.includes('No QR code found')) {
+                console.log('🔍 QR decode attempt failed:', error.message);
+              }
+            } else {
+              console.log('🔍 QR scanner checking for codes...');
             }
           },
           highlightScanRegion: true,
           highlightCodeOutline: true,
-          maxScansPerSecond: 10, // Increased scan rate for better detection
+          maxScansPerSecond: 5, // Reduced to prevent overwhelming
           preferredCamera: 'environment',
           // Enhanced settings for better QR detection
-          returnDetailedScanResult: false,
+          returnDetailedScanResult: true, // Changed to get more detail
           calculateScanRegion: (video) => {
             // Use a larger scan region for better detection
             const smallerDimension = Math.min(video.videoWidth, video.videoHeight);
-            const scanRegionSize = Math.round(0.8 * smallerDimension);
+            const scanRegionSize = Math.round(0.9 * smallerDimension); // Increased to 90%
             const x = (video.videoWidth - scanRegionSize) / 2;
             const y = (video.videoHeight - scanRegionSize) / 2;
+            console.log('📐 Scan region calculated:', {
+              videoSize: `${video.videoWidth}x${video.videoHeight}`,
+              scanRegion: `${scanRegionSize}x${scanRegionSize}`,
+              position: `${x},${y}`,
+              relativeSize: scanRegionSize / smallerDimension
+            });
             return {
               x: x / video.videoWidth,
               y: y / video.videoHeight,
@@ -1115,11 +1131,65 @@ class Volunteers extends Component {
                     
                     <button
                       onClick={() => {
-                        console.log('📱 Testing QR scanner with dummy data');
-                        // Test the QR result handler with dummy data
+                        console.log('🔍 Checking QR scanner status...');
+                        console.log('🔍 Scanner object:', this.qrScanner);
+                        console.log('🔍 Video element:', this.videoNode);
+                        console.log('🔍 Video ready state:', this.videoNode ? this.videoNode.readyState : 'no video');
+                        console.log('🔍 Video dimensions:', this.videoNode ? {
+                          width: this.videoNode.videoWidth,
+                          height: this.videoNode.videoHeight,
+                          clientWidth: this.videoNode.clientWidth,
+                          clientHeight: this.videoNode.clientHeight
+                        } : 'no video');
+                        console.log('🔍 Processing state:', this.isProcessingQR);
+                        
                         if (this.qrScanner) {
-                          const dummyResult = { data: 'TEST123' };
-                          console.log('🧪 Simulating QR scan with:', dummyResult);
+                          console.log('🔍 Scanner state:', {
+                            hasCamera: !!this.qrScanner._qrWorker,
+                            isDestroyed: this.qrScanner._destroyed,
+                            scanCount: this.qrScanner._scanCount || 'unknown'
+                          });
+                        }
+                      }}
+                      style={{
+                        backgroundColor: '#6c757d',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        marginRight: '8px'
+                      }}
+                    >
+                      {language === 'en' ? '🔍 Debug Info' : '🔍 调试信息'}
+                    </button>
+                    
+                    <button
+                      onClick={async () => {
+                        console.log('🧪 Testing QR scanner with dummy data');
+                        console.log('🧪 Current scanner state:', {
+                          hasScanner: !!this.qrScanner,
+                          isProcessing: this.isProcessingQR,
+                          videoReady: this.videoNode ? this.videoNode.readyState : 'no video'
+                        });
+                        
+                        // Test with a dummy QR result
+                        if (this.qrScanner) {
+                          try {
+                            // Simulate a QR scan result with test data
+                            const testResult = { data: 'TEST123' };
+                            console.log('🧪 Triggering QR result handler with:', testResult);
+                            
+                            // Call the result handler directly
+                            await this.qrScanner._onDecodeResult(testResult);
+                          } catch (error) {
+                            console.error('🧪 Test scan error:', error);
+                            // Fallback: just log the test
+                            alert('Test QR scanner functionality logged to console');
+                          }
+                        } else {
+                          alert('No QR scanner active. Start camera first.');
                         }
                       }}
                       style={{
