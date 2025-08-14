@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ParticipantsController = require('../EnhancedParticipantsController');
+const ParticipantsController = require('../Controller/Participants/ParticipantsController');
 const { sendOneSignalNotification } = require('../utils/onesignal');
 
 router.post('/', async (req, res) => 

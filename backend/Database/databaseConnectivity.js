@@ -264,11 +264,11 @@ class DatabaseConnectivity {
                         )
                     ]);
                     
-                    // INSTANT health check with optimized timeout
+                    // INSTANT health check with optimized timeout for M0 wake-up
                     await Promise.race([
                         this.client.db('admin').command({ ping: 1 }),
                         new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Ping timeout after 200ms')), 200) // Reduced from 400ms
+                            setTimeout(() => reject(new Error('Ping timeout after 8000ms')), 8000) // Increased for M0 wake-up
                         )
                     ]);
                     
@@ -331,9 +331,18 @@ class DatabaseConnectivity {
                     
                     if (this.silentMode) {
                         console.warn(`⚠️ Database connection failed after ${maxRetries} attempts. SEAMLESS fallback mode active for shift operations.`);
+                        // Mark as offline but don't throw error in silent mode
+                        this.isConnected = false;
+                        this.isHealthy = false;
                         return;
                     }
-                    throw new Error(`SHIFT CONNECTION FAILED after ${maxRetries} attempts: ${error.message}`);
+                    
+                    // For non-silent mode, log warning but still don't crash
+                    console.warn(`⚠️ SHIFT CONNECTION FAILED after ${maxRetries} attempts: ${error.message}`);
+                    console.warn(`🔄 Application will continue with degraded database functionality`);
+                    this.isConnected = false;
+                    this.isHealthy = false;
+                    return; // Don't throw error - graceful degradation
                 }
             }
         }
