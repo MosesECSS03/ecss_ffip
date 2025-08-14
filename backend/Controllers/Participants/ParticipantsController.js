@@ -265,6 +265,173 @@ class ParticipantsController {
         }
     }
 
+    // QR Scanner Optimized Methods
+    // ============================
+
+    async getParticipantById(participantId) {
+        try {
+            console.log(`🔍 Getting participant by ID: ${participantId}`);
+            
+            // Initialize the database connection
+            await this.dbConnection.initialize();
+            
+            // Query by the participant's form ID (not MongoDB _id)
+            const result = await this.dbConnection.getDocument(
+                'Fitness-Test', // database name
+                'Participants', // collection name
+                { id: participantId.toString() } // Search by form ID
+            );
+
+            if (result.success && result.data) {
+                console.log(`✅ Found participant: ${result.data.name} (ID: ${participantId})`);
+                return { 
+                    success: true, 
+                    data: result.data,
+                    message: 'Participant retrieved successfully' 
+                };
+            } else {
+                console.log(`❌ Participant not found: ${participantId}`);
+                return { 
+                    success: false, 
+                    error: 'Participant not found',
+                    participantId: participantId
+                };
+            }
+        } catch (error) {
+            console.error(`❌ Error getting participant ${participantId}:`, error);
+            return { 
+                success: false, 
+                error: error.message 
+            };
+        }
+    }
+
+    async addParticipantAction(actionData) {
+        try {
+            console.log(`📝 Recording action: ${actionData.action} for participant ${actionData.participantId}`);
+            
+            // Initialize the database connection
+            await this.dbConnection.initialize();
+            
+            // Add timestamp and validation
+            const actionRecord = {
+                ...actionData,
+                recordedAt: new Date().toISOString(),
+                status: 'completed'
+            };
+            
+            const result = await this.dbConnection.insertDocument(
+                'Fitness-Test', // database name
+                'ParticipantActions', // collection name for tracking actions
+                actionRecord
+            );
+
+            if (result.success) {
+                console.log(`✅ Action recorded successfully: ${actionData.action}`);
+                return { 
+                    success: true, 
+                    data: actionRecord,
+                    insertedId: result.insertedId,
+                    message: 'Action recorded successfully' 
+                };
+            } else {
+                return { 
+                    success: false, 
+                    error: 'Failed to record participant action' 
+                };
+            }
+        } catch (error) {
+            console.error('❌ Error recording participant action:', error);
+            return { 
+                success: false, 
+                error: error.message 
+            };
+        }
+    }
+
+    async updateParticipantStatus(participantId, updateData) {
+        try {
+            console.log(`🔄 Updating participant status: ${participantId}`);
+            
+            // Initialize the database connection
+            await this.dbConnection.initialize();
+            
+            // Add update timestamp
+            const updatePayload = {
+                ...updateData,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            const result = await this.dbConnection.updateDocument(
+                'Fitness-Test', // database name
+                'Participants', // collection name
+                { id: participantId.toString() }, // Query by form ID
+                { $set: updatePayload } // Update operation
+            );
+
+            if (result.success) {
+                console.log(`✅ Participant status updated: ${participantId}`);
+                return { 
+                    success: true, 
+                    data: result.data,
+                    message: 'Participant status updated successfully' 
+                };
+            } else {
+                return { 
+                    success: false, 
+                    error: result.message || 'Failed to update participant status' 
+                };
+            }
+        } catch (error) {
+            console.error(`❌ Error updating participant status ${participantId}:`, error);
+            return { 
+                success: false, 
+                error: error.message 
+            };
+        }
+    }
+
+    async getParticipantActions(participantId, limit = 10) {
+        try {
+            console.log(`📊 Getting actions for participant: ${participantId}`);
+            
+            // Initialize the database connection
+            await this.dbConnection.initialize();
+            
+            const result = await this.dbConnection.findDocuments(
+                'Fitness-Test', // database name
+                'ParticipantActions', // collection name
+                { participantId: participantId.toString() } // Query by participant ID
+            );
+
+            if (result.success) {
+                // Sort by timestamp (newest first) and limit results
+                const sortedActions = result.data
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                    .slice(0, limit);
+
+                console.log(`✅ Retrieved ${sortedActions.length} actions for participant ${participantId}`);
+                return { 
+                    success: true, 
+                    data: sortedActions,
+                    count: sortedActions.length,
+                    message: 'Participant actions retrieved successfully' 
+                };
+            } else {
+                return { 
+                    success: false, 
+                    error: 'Failed to retrieve participant actions' 
+                };
+            }
+        } catch (error) {
+            console.error(`❌ Error getting actions for participant ${participantId}:`, error);
+            return { 
+                success: false, 
+                error: error.message 
+            };
+        }
+    }
+
 }
 
 module.exports = ParticipantsController;

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ParticipantsController = require('../Controllers/Participants/ParticipantsController');
+const ParticipantsController = require('../EnhancedParticipantsController');
 const { sendOneSignalNotification } = require('../utils/onesignal');
 
 router.post('/', async (req, res) => 
@@ -197,6 +197,175 @@ router.post('/', async (req, res) =>
       status: 'error', 
       success: false, 
       message: 'Internal server error' 
+    });
+  }
+});
+
+// QR Scanner Optimized Routes
+// ===========================
+
+// GET participant by ID (optimized for QR scanner)
+router.get('/:id', async (req, res) => {
+  try {
+    const participantId = req.params.id;
+    const scanId = req.headers['x-scan-id'];
+    const deviceId = req.headers['x-device-id'];
+    
+    // Log scan attempt for analytics
+    console.log(`🔍 QR Scan attempt: ${participantId} from device ${deviceId} (scan: ${scanId})`);
+    
+    var controller = new ParticipantsController();
+    const result = await controller.getParticipantById(participantId);
+    
+    if (result.success && result.data) {
+      console.log(`✅ QR Scan successful for participant: ${participantId}`);
+      
+      res.json({
+        success: true,
+        data: result.data,
+        scanId: scanId,
+        timestamp: Date.now(),
+        message: 'Participant data retrieved successfully'
+      });
+    } else {
+      console.log(`❌ QR Scan failed - participant not found: ${participantId}`);
+      
+      res.status(404).json({
+        success: false,
+        error: 'Participant not found',
+        participantId: participantId,
+        scanId: scanId,
+        timestamp: Date.now()
+      });
+    }
+  } catch (error) {
+    console.error('❌ QR Scanner API error:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: Date.now()
+    });
+  }
+});
+
+// Process participant action (check-in, check-out, etc.)
+router.post('/action', async (req, res) => {
+  const io = req.app.get('io'); // Get the Socket.IO instance
+  
+  try {
+    const { participantId, action, stationId, deviceId, timestamp } = req.body;
+    
+    console.log(`🎯 Processing QR action: ${action} for participant ${participantId} at station ${stationId}`);
+    
+    // Validate required fields
+    if (!participantId || !action) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: participantId and action'
+      });
+    }
+    
+    // Create action record
+    const actionRecord = {
+      participantId: participantId.toString(),
+      action,
+      stationId: stationId || 'default',
+      deviceId: deviceId || 'unknown',
+      timestamp: timestamp || Date.now(),
+      id: `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    };
+    
+    var controller = new ParticipantsController();
+    
+    // First, verify participant exists
+    const participantResult = await controller.getParticipantById(participantId);
+    if (!participantResult.success) {
+      return res.status(404).json({
+        success: false,
+        error: 'Participant not found',
+        participantId: participantId
+      });
+    }
+    
+    // Record the action in database
+    const actionResult = await controller.addParticipantAction(actionRecord);
+    
+    if (actionResult.success) {
+      // Update participant status
+      const updateData = {
+        lastAction: action,
+        lastActionTime: Date.now(),
+        currentStation: stationId || 'default',
+        status: action === 'check-in' ? 'checked-in' : 
+                action === 'check-out' ? 'checked-out' : 'active'
+      };
+      
+      await controller.updateParticipantStatus(participantId, updateData);
+      
+      // Emit real-time update to connected clients
+      if (io) {
+        io.emit('participant-action', {
+          participantId,
+          action,
+          stationId,
+          timestamp: actionRecord.timestamp,
+          participantData: participantResult.data
+        });
+      }
+      
+      console.log(`✅ QR Action completed: ${action} for participant ${participantId}`);
+      
+      res.json({
+        success: true,
+        action: actionRecord,
+        participant: participantResult.data,
+        message: `${action} completed successfully`,
+        timestamp: Date.now()
+      });
+    } else {
+      throw new Error(actionResult.error || 'Failed to record action');
+    }
+  } catch (error) {
+    console.error('❌ QR Action processing error:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: Date.now()
+    });
+  }
+});
+
+// Get scan statistics (optional - for analytics)
+router.get('/stats/scans', async (req, res) => {
+  try {
+    const { deviceId, stationId, timeRange } = req.query;
+    
+    // This would query your actions collection for statistics
+    // Implementation depends on your data structure
+    const stats = {
+      totalScans: 0,
+      successfulScans: 0,
+      failedScans: 0,
+      averageResponseTime: 0,
+      deviceId,
+      stationId,
+      timeRange: timeRange || '24h',
+      timestamp: Date.now()
+    };
+    
+    res.json({
+      success: true,
+      stats,
+      message: 'Scan statistics retrieved'
+    });
+  } catch (error) {
+    console.error('❌ Stats retrieval error:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
