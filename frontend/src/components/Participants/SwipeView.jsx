@@ -637,22 +637,54 @@ import { io } from 'socket.io-client';
                   {/* Detailed Station Results */}
                   <div className="station-details">
                     <div className="station-results-grid">
-                      {Object.entries(participant.stationResults || {}).map(([stationName, result]) => (
-                        <div key={stationName} className="station-result-card">
-                          <div className="station-name">{stationName}</div>
-                          {result.score && (
-                            <div className="station-score">{result.score}/10</div>
-                          )}
-                          <div className={`station-status ${result.status}`}>
-                            {result.status.toUpperCase()}
-                          </div>
-                          {result.completedAt && (
-                            <div className="station-time">
-                              {new Date(result.completedAt).toLocaleDateString()} {new Date(result.completedAt).toLocaleTimeString()}
+                      {/* Stations in defined order - only the 7 fitness test stations */}
+                      {stationOrder.map((stationKey) => {
+                        // Find the station data from participant.stations array
+                        let stationData = null;
+                        if (participant.stations && Array.isArray(participant.stations)) {
+                          participant.stations.forEach(stationObj => {
+                            if (stationObj[stationKey]) {
+                              stationData = stationObj[stationKey];
+                            }
+                          });
+                        }
+                        
+                        // Also check participant.stationResults for compatibility
+                        if (!stationData && participant.stationResults && participant.stationResults[stationKey]) {
+                          stationData = participant.stationResults[stationKey];
+                        }
+                        
+                        if (!stationData) return null;
+                        
+                        return (
+                          <div key={stationKey} className="station-result-card">
+                            <div className="station-name">{stationNames[stationKey]}</div>
+                            {stationData.score && (
+                              <div className="station-score">{stationData.score}/10</div>
+                            )}
+                            {stationData.score1 && (
+                              <div className="station-score">Score 1: {stationData.score1}</div>
+                            )}
+                            {stationData.score2 && (
+                              <div className="station-score">Score 2: {stationData.score2}</div>
+                            )}
+                            {stationData.leftRight && (
+                              <div className="station-score">Side: {stationData.leftRight}</div>
+                            )}
+                            {stationData.remarks && (
+                              <div className="station-score">Remarks: {stationData.remarks}</div>
+                            )}
+                            <div className={`station-status ${stationData.status || 'completed'}`}>
+                              {(stationData.status || 'COMPLETED').toUpperCase()}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            {stationData.completedAt && (
+                              <div className="station-time">
+                                {new Date(stationData.completedAt).toLocaleDateString()} {new Date(stationData.completedAt).toLocaleTimeString()}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
