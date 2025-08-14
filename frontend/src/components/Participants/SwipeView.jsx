@@ -374,6 +374,17 @@ import { io } from 'socket.io-client';
         handGrip: language === 'en' ? 'Hand Grip' : '握力测试'
       }
 
+      // Define the specific order for station display (excluding heightWeight)
+      const stationOrder = [
+        'sitStand',
+        'armBanding', 
+        'marching',
+        'sitReach',
+        'backStretch',
+        'speedWalking',
+        'handGrip'
+      ]
+
       return (
         <div 
           className="swipe-view-fullscreen"
@@ -562,7 +573,7 @@ import { io } from 'socket.io-client';
                       </div>
                       
                       {/* Station Tests */}
-                      {Object.keys(stationNames).filter(key => key !== 'heightWeight').map((stationKey) => {
+                      {stationOrder.map((stationKey) => {
                         const isCompleted = completedStations.some(station => station.name === stationKey);
                         return (
                           <div key={stationKey} style={{
