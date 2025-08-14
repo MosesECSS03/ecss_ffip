@@ -1035,7 +1035,7 @@ class ParticipantDetails extends Component {
     }
 
     // Check if we have valid inputs
-    if (age < 65 || !genderKey || !scoringTables[genderKey] || !scoringTables[genderKey][stationKey]) {
+    if (!genderKey || !scoringTables[genderKey] || !scoringTables[genderKey][stationKey]) {
       return { category: 'Not Assessed', range: '' }
     }
 
@@ -1063,6 +1063,7 @@ class ParticipantDetails extends Component {
       // Skip the ageMin and ageMax properties
       if (category === 'ageMin' || category === 'ageMax') continue
       
+      // Handle scores that fall within the range
       if (numScore >= range[0] && numScore <= range[1]) {
         // Format the category name and add the range
         const categoryName = category.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()
@@ -1076,6 +1077,22 @@ class ParticipantDetails extends Component {
         }
         return { category: categoryName, range: rangeText }
       }
+    }
+
+    // If score doesn't fall in any range, check if it's above the highest "Very Good" range
+    const veryGoodRange = ageRangeData.veryGood
+    if (veryGoodRange && numScore > veryGoodRange[1] && veryGoodRange[1] !== 999) {
+      // Score is exceptionally high - still classify as Very Good
+      const rangeText = veryGoodRange[1] === 999 ? `${veryGoodRange[0]}+` : `${veryGoodRange[0]}-${veryGoodRange[1]}`
+      return { category: 'Very Good', range: rangeText + ' (Exceptional)' }
+    }
+
+    // If score is below the lowest "Very Weak" range
+    const veryWeakRange = ageRangeData.veryWeak
+    if (veryWeakRange && numScore < veryWeakRange[0] && veryWeakRange[0] !== -999) {
+      // Score is exceptionally low - still classify as Very Weak
+      const rangeText = veryWeakRange[0] === -999 ? `≤${veryWeakRange[1]}` : `${veryWeakRange[0]}-${veryWeakRange[1]}`
+      return { category: 'Very Weak', range: rangeText + ' (Exceptional)' }
     }
 
     return { category: 'Not Assessed', range: '' }
