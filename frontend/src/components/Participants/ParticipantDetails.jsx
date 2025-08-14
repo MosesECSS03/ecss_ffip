@@ -357,259 +357,259 @@ class ParticipantDetails extends Component {
         sitStand: [
           { 
             ageMin: 0, ageMax: 69,
-            veryWeak: [-999, 13], 
+            veryWeak: [-999, 12], 
             weak: [13, 14], 
             normal: [15, 16], 
             good: [17, 18], 
-            veryGood: [18, 999] 
+            veryGood: [19, 999] 
           },
           { 
             ageMin: 70, ageMax: 74,
-            veryWeak: [-999, 12], 
+            veryWeak: [-999, 11], 
             weak: [12, 13], 
             normal: [14, 15], 
             good: [16, 17], 
-            veryGood: [17, 999] 
+            veryGood: [18, 999] 
           },
           { 
             ageMin: 75, ageMax: 79,
-            veryWeak: [-999, 11], 
+            veryWeak: [-999, 10], 
             weak: [11, 12], 
             normal: [13, 14], 
             good: [15, 16], 
-            veryGood: [16, 999] 
+            veryGood: [17, 999] 
           },
           { 
             ageMin: 80, ageMax: 84,
-            veryWeak: [-999, 10], 
+            veryWeak: [-999, 9], 
             weak: [10, 11], 
             normal: [12, 13], 
             good: [14, 15], 
-            veryGood: [15, 999] 
+            veryGood: [16, 999] 
           },
           { 
             ageMin: 85, ageMax: 89,
-            veryWeak: [-999, 8], 
+            veryWeak: [-999, 7], 
             weak: [8, 9], 
             normal: [10, 11], 
             good: [12, 13], 
-            veryGood: [13, 999] 
+            veryGood: [14, 999] 
           },
           { 
             ageMin: 90, ageMax: 999,
-            veryWeak: [-999, 8], 
+            veryWeak: [-999, 7], 
             weak: [8, 8], 
             normal: [9, 10], 
             good: [11, 12], 
-            veryGood: [12, 999] 
+            veryGood: [13, 999] 
           }
         ],
         armBending: [
           { 
             ageMin: 0, ageMax: 69,
-            veryWeak: [-999, 16], 
+            veryWeak: [-999, 15], 
             weak: [16, 18], 
             normal: [19, 20], 
             good: [21, 22], 
-            veryGood: [22, 999] 
+            veryGood: [24, 999] 
           },
           { 
             ageMin: 70, ageMax: 74,
-            veryWeak: [-999, 15], 
+            veryWeak: [-999, 14], 
             weak: [15, 17], 
             normal: [18, 19], 
             good: [20, 21], 
-            veryGood: [21, 999] 
+            veryGood: [22, 999] 
           },
           { 
             ageMin: 75, ageMax: 79,
-            veryWeak: [-999, 15], 
+            veryWeak: [-999, 14], 
             weak: [15, 16], 
             normal: [17, 18], 
             good: [19, 20], 
-            veryGood: [20, 999] 
+            veryGood: [21, 999] 
           },
           { 
             ageMin: 80, ageMax: 84,
-            veryWeak: [-999, 13], 
+            veryWeak: [-999, 12], 
             weak: [13, 15], 
             normal: [16, 17], 
             good: [18, 19], 
-            veryGood: [19, 999] 
+            veryGood: [20, 999] 
           },
           { 
             ageMin: 85, ageMax: 89,
-            veryWeak: [-999, 13], 
+            veryWeak: [-999, 12], 
             weak: [13, 14], 
             normal: [15, 16], 
             good: [17, 18], 
-            veryGood: [18, 999] 
+            veryGood: [19, 999] 
           },
           { 
             ageMin: 90, ageMax: 999,
-            veryWeak: [-999, 10], 
+            veryWeak: [-999, 9], 
             weak: [10, 13], 
             normal: [14, 15], 
             good: [16, 17], 
-            veryGood: [17, 999] 
+            veryGood: [18, 999] 
           }
         ],
         sitReach: [
           { 
             ageMin: 0, ageMax: 69,
-            veryWeak: [-999, 0], 
+            veryWeak: [-999, -1], 
             weak: [0, 3], 
             normal: [4, 8], 
             good: [9, 13], 
-            veryGood: [13, 999] 
+            veryGood: [14, 999] 
           },
           { 
             ageMin: 70, ageMax: 74,
-            veryWeak: [-999, 0], 
+            veryWeak: [-999, -1], 
             weak: [0, 2], 
             normal: [3, 7], 
             good: [8, 12], 
-            veryGood: [12, 999] 
+            veryGood: [13, 999] 
           },
           { 
             ageMin: 75, ageMax: 79,
-            veryWeak: [-999, 0], 
+            veryWeak: [-999, -1], 
             weak: [0, 2], 
             normal: [3, 6], 
             good: [7, 10], 
-            veryGood: [10, 999] 
+            veryGood: [11, 999] 
           },
           { 
             ageMin: 80, ageMax: 84,
-            veryWeak: [-999, 0], 
+            veryWeak: [-999, -1], 
             weak: [0, 1], 
             normal: [2, 4], 
             good: [5, 8], 
-            veryGood: [8, 999] 
+            veryGood: [9, 999] 
           },
           { 
             ageMin: 85, ageMax: 89,
-            veryWeak: [-999, -1.5], 
+            veryWeak: [-999, -1.6], 
             weak: [-1.5, 0], 
             normal: [1, 3], 
             good: [4, 6], 
-            veryGood: [6, 999] 
+            veryGood: [7, 999] 
           },
           { 
             ageMin: 90, ageMax: 999,
-            veryWeak: [-999, -1.8], 
+            veryWeak: [-999, -1.7], 
             weak: [-1.8, -1], 
             normal: [-1, 1], 
             good: [2, 4], 
-            veryGood: [4, 999] 
+            veryGood: [5, 999] 
           }
         ],
         backStretching: [
           { 
             ageMin: 0, ageMax: 69,
-            veryWeak: [-999, -8], 
+            veryWeak: [-999, -9], 
             weak: [-8, -5], 
             normal: [-4, -1], 
             good: [0, 3], 
-            veryGood: [3, 999] 
+            veryGood: [3.1, 999] 
           },
           { 
             ageMin: 70, ageMax: 74,
-            veryWeak: [-999, -11], 
+            veryWeak: [-999, -12], 
             weak: [-11, -7], 
             normal: [-6, -2], 
             good: [-1, 3], 
-            veryGood: [3, 999] 
+            veryGood: [3.1, 999] 
           },
           { 
             ageMin: 75, ageMax: 79,
-            veryWeak: [-999, -15], 
+            veryWeak: [-999, -16], 
             weak: [-15, -12], 
             normal: [-11, -5], 
             good: [-4, 2], 
-            veryGood: [2, 999] 
+            veryGood: [2.1, 999] 
           },
           { 
             ageMin: 80, ageMax: 84,
-            veryWeak: [-999, -17], 
+            veryWeak: [-999, -18], 
             weak: [-17, -12], 
             normal: [-11, -6], 
             good: [-5, 1], 
-            veryGood: [1, 999] 
+            veryGood: [1.1, 999] 
           },
           { 
             ageMin: 85, ageMax: 89,
-            veryWeak: [-999, -20], 
+            veryWeak: [-999, -21], 
             weak: [-20, -13.4], 
             normal: [-13.3, -8.3], 
             good: [-8.2, 0.8], 
-            veryGood: [0.8, 999] 
+            veryGood: [0.9, 999] 
           },
           { 
             ageMin: 90, ageMax: 999,
-            veryWeak: [-999, -20], 
+            veryWeak: [-999, -20.1], 
             weak: [-20, -16], 
             normal: [-15, -8], 
             good: [-7, 0], 
-            veryGood: [0, 999] 
+            veryGood: [0.1, 999] 
           }
         ],
         handGrip: [
           { 
             ageMin: 0, ageMax: 69,
-            veryWeak: [-999, 18.1], 
+            veryWeak: [-999, 18.0], 
             weak: [18.1, 22.5], 
             normal: [22.6, 27.2], 
             good: [27.3, 31.9], 
-            veryGood: [31.9, 999] 
+            veryGood: [32, 999] 
           },
           { 
             ageMin: 70, ageMax: 74,
-            veryWeak: [-999, 17.7], 
+            veryWeak: [-999, 17.6], 
             weak: [17.7, 22.1], 
             normal: [22.2, 26.8], 
             good: [26.9, 31.5], 
-            veryGood: [31.5, 999] 
+            veryGood: [31.6, 999] 
           },
           { 
             ageMin: 75, ageMax: 79,
-            veryWeak: [-999, 17.2], 
+            veryWeak: [-999, 17.1], 
             weak: [17.2, 21.6], 
             normal: [21.7, 26.3], 
             good: [26.4, 31], 
-            veryGood: [31, 999] 
+            veryGood: [31.1, 999] 
           },
           { 
             ageMin: 80, ageMax: 84,
-            veryWeak: [-999, 15.4], 
+            veryWeak: [-999, 15.3], 
             weak: [15.4, 19], 
             normal: [19.1, 23.1], 
             good: [23.2, 27.2], 
-            veryGood: [27.2, 999] 
+            veryGood: [27.3, 999] 
           },
           { 
             ageMin: 85, ageMax: 89,
-            veryWeak: [-999, 14.7], 
+            veryWeak: [-999, 14.6], 
             weak: [14.7, 17.3], 
             normal: [17.4, 21.4], 
             good: [21.5, 24.5], 
-            veryGood: [24.5, 999] 
+            veryGood: [24.6, 999] 
           },
           { 
             ageMin: 90, ageMax: 999,
-            veryWeak: [-999, 14.7], 
+            veryWeak: [-999, 14.6], 
             weak: [14.7, 17.3], 
             normal: [17.4, 21.4], 
             good: [21.5, 24.5], 
-            veryGood: [24.5, 999] 
+            veryGood: [24.6, 999] 
           }
         ],
         speedWalking: [
           { 
             ageMin: 0, ageMax: 69,
-            veryWeak: [7.7, 999], 
-            weak: [7.0, 7.7], 
-            normal: [6.3, 7.1], 
+            veryWeak: [7.2, 999], 
+            weak: [7.0, 7.1], 
+            normal: [6., 7.1], 
             good: [5.7, 6.4], 
             veryGood: [-999, 5.7] 
           },
@@ -657,51 +657,51 @@ class ParticipantDetails extends Component {
         marching: [
           { 
             ageMin: 0, ageMax: 69,
-            veryWeak: [-999, 76], 
+            veryWeak: [-999, 75], 
             weak: [76, 85], 
             normal: [86, 95], 
             good: [96, 105], 
-            veryGood: [105, 999] 
+            veryGood: [106, 999] 
           },
           { 
             ageMin: 70, ageMax: 74,
-            veryWeak: [-999, 69], 
+            veryWeak: [-999, 68], 
             weak: [69, 79], 
             normal: [80, 90], 
             good: [91, 101], 
-            veryGood: [101, 999] 
+            veryGood: [102, 999] 
           },
           { 
             ageMin: 75, ageMax: 79,
-            veryWeak: [-999, 62], 
+            veryWeak: [-999, 61], 
             weak: [62, 73], 
             normal: [74, 85], 
             good: [86, 97], 
-            veryGood: [97, 999] 
+            veryGood: [98, 999] 
           },
           { 
             ageMin: 80, ageMax: 84,
-            veryWeak: [-999, 51], 
+            veryWeak: [-999, 50], 
             weak: [51, 64], 
             normal: [65, 78], 
             good: [79, 92], 
-            veryGood: [92, 999] 
+            veryGood: [93, 999] 
           },
           { 
             ageMin: 85, ageMax: 89,
-            veryWeak: [-999, 42], 
+            veryWeak: [-999, 41], 
             weak: [42, 57], 
             normal: [58, 73], 
             good: [74, 90], 
-            veryGood: [90, 999] 
+            veryGood: [91, 999] 
           },
           { 
             ageMin: 90, ageMax: 999,
-            veryWeak: [-999, 31], 
+            veryWeak: [-999, 30], 
             weak: [31, 47], 
             normal: [48, 64], 
             good: [65, 82], 
-            veryGood: [82, 999] 
+            veryGood: [83, 999] 
           }
         ]
       },
