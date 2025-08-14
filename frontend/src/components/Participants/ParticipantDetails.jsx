@@ -67,8 +67,15 @@ class ParticipantDetails extends Component {
             
             // If the socket event contains complete participant data, use it directly
             if (data.participant) {
-              console.log("📊 Socket contains participant data, updating live data directly");
+              console.log("📊 Socket contains participant data:", {
+                height: data.participant.height,
+                weight: data.participant.weight,
+                bmi: data.participant.bmi
+              });
+              console.log("🔄 Updating live data directly from socket");
               this.updateLiveData(data.participant);
+            } else {
+              console.log("⚠️ Socket event doesn't contain participant data, using fallback");
             }
             
             // Also trigger parent update for other data
@@ -117,7 +124,16 @@ class ParticipantDetails extends Component {
 
   // Update live height, weight, and BMI data
   updateLiveData = (participant) => {
-    if (!participant) return;
+    if (!participant) {
+      console.log('❌ updateLiveData: No participant data provided');
+      return;
+    }
+
+    console.log('📊 updateLiveData called with participant:', {
+      height: participant.height,
+      weight: participant.weight,
+      bmi: participant.bmi
+    });
 
     const height = participant.height;
     const weight = participant.weight;
@@ -131,17 +147,27 @@ class ParticipantDetails extends Component {
       if (heightNum > 0 && weightNum > 0) {
         const heightInMeters = heightNum / 100;
         bmi = (weightNum / (heightInMeters * heightInMeters)).toFixed(1);
+        console.log('🧮 Calculated BMI:', bmi);
       }
     }
 
-    // Update state with live data
+    // Force state update with callback to ensure re-render
     this.setState({
       liveHeight: height,
       liveWeight: weight,
       liveBMI: bmi
+    }, () => {
+      console.log('✅ State updated successfully:', {
+        liveHeight: this.state.liveHeight,
+        liveWeight: this.state.liveWeight,
+        liveBMI: this.state.liveBMI
+      });
+      
+      // Force a re-render to ensure UI updates
+      this.forceUpdate();
     });
 
-    console.log('📊 Live data updated:', {
+    console.log('📊 Live data update initiated:', {
       liveHeight: height,
       liveWeight: weight,
       liveBMI: bmi
