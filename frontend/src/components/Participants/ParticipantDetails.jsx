@@ -64,6 +64,14 @@ class ParticipantDetails extends Component {
           // Update only if it matches current participant
           if (participantId === data.participantID) {
             console.log("✅ Event matches current participant");
+            
+            // If the socket event contains complete participant data, use it directly
+            if (data.participant) {
+              console.log("📊 Socket contains participant data, updating live data directly");
+              this.updateLiveData(data.participant);
+            }
+            
+            // Also trigger parent update for other data
             this.handleParticipantUpdate(participantId);
           } else {
             console.log("ℹ️ Event for different participant, ignoring update");
@@ -79,7 +87,7 @@ class ParticipantDetails extends Component {
   }
 
   // Handle participant update by refreshing data
-  handleParticipantUpdate = (participantId) => {
+  handleParticipantUpdate = async (participantId) => {
     try {
       console.log('🔄 Handling participant update for ID:', participantId);
       
@@ -88,8 +96,19 @@ class ParticipantDetails extends Component {
         console.log('📞 Calling parent onParticipantUpdate callback');
         this.props.onParticipantUpdate(participantId);
       } else {
-        console.log('ℹ️ No onParticipantUpdate callback available, data will update via props');
-        // Data will be updated via props from parent component
+        console.log('ℹ️ No onParticipantUpdate callback available, fetching data directly');
+        
+        // Fallback: Fetch participant data directly
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/participants/${participantId}`);
+          if (response.ok) {
+            const updatedParticipant = await response.json();
+            console.log('📊 Fetched updated participant data:', updatedParticipant);
+            this.updateLiveData(updatedParticipant);
+          }
+        } catch (fetchError) {
+          console.error('❌ Error fetching participant data:', fetchError);
+        }
       }
     } catch (error) {
       console.error('❌ Error in handleParticipantUpdate:', error);
