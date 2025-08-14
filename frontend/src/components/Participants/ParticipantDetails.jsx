@@ -256,7 +256,9 @@ class ParticipantDetails extends Component {
             .map(([stationName, stationData]) => {
               // Get the higher score between score1 and score2 (or lower for speedWalking)
               const higherScore = this.getHigherScore(stationData, stationName)
-              const fitnessResult = age && gender && higherScore ? 
+              console.log(`🔍 Station: ${stationName}, Score1: ${stationData.score1}, Score2: ${stationData.score2}, Higher Score: ${higherScore}`)
+              
+              const fitnessResult = age && gender && higherScore !== null ? 
                 this.calculateFitnessScore(stationName, higherScore, age, gender) : { category: 'Not Assessed', range: '' }
               
               return (
@@ -1073,7 +1075,7 @@ class ParticipantDetails extends Component {
       stationKey = 'handGrip'
     } else if (stationName === 'sitReach') {
       stationKey = 'sitReach'
-    } else if (stationName === 'backStretching') {
+    } else if (stationName === 'backStretching' || stationName === 'backStretch') {
       stationKey = 'backStretching'
     } else if (stationName === 'speedWalking') {
       stationKey = 'speedWalking'
@@ -1088,20 +1090,39 @@ class ParticipantDetails extends Component {
     const stationRanges = scoringTables[genderKey][stationKey]
     let ageRangeData = null
     
+    console.log('🎯 Finding age range for age:', age, 'in station ranges:', stationRanges?.length || 0)
+    
     for (const range of stationRanges) {
+      console.log('🔍 Checking age range:', range.ageMin, '-', range.ageMax, 'for age:', age)
       if (age >= range.ageMin && age <= range.ageMax) {
         ageRangeData = range
+        console.log('✅ Found matching age range:', range)
         break
       }
     }
 
     if (!ageRangeData) {
+      console.log('❌ No age range found for age:', age)
       return { category: 'Not Assessed', range: '' }
     }
 
     const numScore = parseFloat(score)
 
-    if (isNaN(numScore)) return { category: 'Not Assessed', range: '' }
+    console.log('🔍 Fitness scoring debug:', {
+      stationName,
+      stationKey,
+      originalScore: score,
+      numScore,
+      age,
+      gender: genderKey,
+      hasGenderTable: !!scoringTables[genderKey],
+      hasStationTable: !!(scoringTables[genderKey] && scoringTables[genderKey][stationKey])
+    })
+
+    if (isNaN(numScore)) {
+      console.log('❌ Score is NaN, returning Not Assessed')
+      return { category: 'Not Assessed', range: '' }
+    }
 
     // Check which range the score falls into
     for (const [category, range] of Object.entries(ageRangeData)) {
@@ -1148,25 +1169,47 @@ class ParticipantDetails extends Component {
     const score1 = parseFloat(stationData.score1)
     const score2 = parseFloat(stationData.score2)
     
+    console.log(`🔍 getHigherScore for ${stationName}:`, {
+      score1Raw: stationData.score1,
+      score2Raw: stationData.score2,
+      score1Parsed: score1,
+      score2Parsed: score2,
+      isScore1Valid: !isNaN(score1),
+      isScore2Valid: !isNaN(score2)
+    })
+    
     // Check if scores are valid numbers (including negative numbers)
     const isScore1Valid = !isNaN(score1)
     const isScore2Valid = !isNaN(score2)
     
     // If neither score is valid, return null
-    if (!isScore1Valid && !isScore2Valid) return null
+    if (!isScore1Valid && !isScore2Valid) {
+      console.log('❌ Both scores invalid, returning null')
+      return null
+    }
     
     // If only one score is valid, return it
-    if (isScore1Valid && !isScore2Valid) return score1
-    if (isScore2Valid && !isScore1Valid) return score2
+    if (isScore1Valid && !isScore2Valid) {
+      console.log('✅ Only score1 valid, returning:', score1)
+      return score1
+    }
+    if (isScore2Valid && !isScore1Valid) {
+      console.log('✅ Only score2 valid, returning:', score2)
+      return score2
+    }
     
     // For speedWalking, lower time is better (faster completion)
     if (stationName === 'speedWalking') {
-      return Math.min(score1, score2)
+      const result = Math.min(score1, score2)
+      console.log('🏃 SpeedWalking - using lower time:', result)
+      return result
     }
     
     // For all other stations, higher score is better
     // For negative numbers, -1 is higher than -17
-    return Math.max(score1, score2)
+    const result = Math.max(score1, score2)
+    console.log('✅ Using higher score:', result)
+    return result
   }
 
   // Comprehensive data clearing method
