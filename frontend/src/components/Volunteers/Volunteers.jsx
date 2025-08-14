@@ -615,28 +615,34 @@ class Volunteers extends Component {
       
       // For all score fields, allow negative numbers and decimal points
       if (field.startsWith('score')) {
+        // More permissive validation during typing - allow intermediate states
         val = val.replace(/[^0-9.-]/g, ''); // Allow digits, decimal point, and minus sign
         
-        // Ensure only one minus sign at the beginning
-        const minusCount = (val.match(/-/g) || []).length;
-        if (minusCount > 1) {
-          val = val.replace(/-/g, '');
-          if (val.charAt(0) !== '-') val = '-' + val;
-        } else if (val.includes('-') && val.indexOf('-') !== 0) {
-          val = val.replace('-', '');
-        }
-        
-        // Ensure only one decimal point
+        // Allow typing decimal point even if no numbers follow yet
+        // Only prevent multiple decimal points
         const decimalCount = (val.match(/\./g) || []).length;
         if (decimalCount > 1) {
           const parts = val.split('.');
           val = parts[0] + '.' + parts.slice(1).join('');
         }
+        
+        // Allow typing minus sign, but only at the beginning
+        if (val.includes('-')) {
+          const firstMinus = val.indexOf('-');
+          if (firstMinus !== 0) {
+            // Remove minus signs that aren't at the beginning
+            val = val.replace(/-/g, '');
+          } else {
+            // Keep only the first minus sign at the beginning
+            const withoutMinus = val.substring(1).replace(/-/g, '');
+            val = '-' + withoutMinus;
+          }
+        }
       } else {
         // For non-score fields (like height, weight), keep positive numbers with decimals only
         val = val.replace(/[^0-9.]/g, ''); // Allow digits and decimal point only
         
-        // Ensure only one decimal point
+        // Only prevent multiple decimal points
         const decimalCount = (val.match(/\./g) || []).length;
         if (decimalCount > 1) {
           const parts = val.split('.');
@@ -690,9 +696,25 @@ class Volunteers extends Component {
     if (unit && val && !val.trim().endsWith(unit)) {
       val = val.replace(new RegExp(`\\s*${unit}$`), '');
       
-      // For all score fields, allow negative numbers and decimal points
+      // For all score fields, apply stricter validation on blur
       if (field.startsWith('score')) {
         val = val.replace(/[^0-9.-]/g, ''); // Allow digits, decimal point, and minus sign
+        
+        // Clean up invalid states on blur
+        // Remove trailing decimal points (e.g., "5." becomes "5")
+        if (val.endsWith('.')) {
+          val = val.slice(0, -1);
+        }
+        
+        // Remove leading decimal points (e.g., ".5" becomes "0.5")
+        if (val.startsWith('.')) {
+          val = '0' + val;
+        }
+        
+        // Handle negative decimal points (e.g., "-.5" becomes "-0.5")
+        if (val.startsWith('-.')) {
+          val = '-0' + val.substring(1);
+        }
         
         // Ensure only one minus sign at the beginning
         const minusCount = (val.match(/-/g) || []).length;
@@ -712,6 +734,14 @@ class Volunteers extends Component {
       } else {
         // For non-score fields (like height, weight), keep positive numbers with decimals only
         val = val.replace(/[^0-9.]/g, ''); // Allow digits and decimal point only
+        
+        // Clean up decimal points on blur
+        if (val.endsWith('.')) {
+          val = val.slice(0, -1);
+        }
+        if (val.startsWith('.')) {
+          val = '0' + val;
+        }
         
         // Ensure only one decimal point
         const decimalCount = (val.match(/\./g) || []).length;
