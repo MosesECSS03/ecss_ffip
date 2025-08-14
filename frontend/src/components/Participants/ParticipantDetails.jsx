@@ -254,8 +254,8 @@ class ParticipantDetails extends Component {
               return stationNameA.localeCompare(stationNameB);
             })
             .map(([stationName, stationData]) => {
-              // Get the higher score between score1 and score2
-              const higherScore = this.getHigherScore(stationData)
+              // Get the higher score between score1 and score2 (or lower for speedWalking)
+              const higherScore = this.getHigherScore(stationData, stationName)
               const fitnessResult = age && gender && higherScore ? 
                 this.calculateFitnessScore(stationName, higherScore, age, gender) : { category: 'Not Assessed', range: '' }
               
@@ -1144,12 +1144,28 @@ class ParticipantDetails extends Component {
   }
 
   // Helper function to get the higher score between score1 and score2
-  getHigherScore = (stationData) => {
-    const score1 = parseFloat(stationData.score1) || 0
-    const score2 = parseFloat(stationData.score2) || 0
+  getHigherScore = (stationData, stationName) => {
+    const score1 = parseFloat(stationData.score1)
+    const score2 = parseFloat(stationData.score2)
     
-    // Return the higher score, or null if both are 0 or invalid
-    if (score1 === 0 && score2 === 0) return null
+    // Check if scores are valid numbers (including negative numbers)
+    const isScore1Valid = !isNaN(score1)
+    const isScore2Valid = !isNaN(score2)
+    
+    // If neither score is valid, return null
+    if (!isScore1Valid && !isScore2Valid) return null
+    
+    // If only one score is valid, return it
+    if (isScore1Valid && !isScore2Valid) return score1
+    if (isScore2Valid && !isScore1Valid) return score2
+    
+    // For speedWalking, lower time is better (faster completion)
+    if (stationName === 'speedWalking') {
+      return Math.min(score1, score2)
+    }
+    
+    // For all other stations, higher score is better
+    // For negative numbers, -1 is higher than -17
     return Math.max(score1, score2)
   }
 
