@@ -1,7 +1,8 @@
 const { MongoClient, ObjectId } = require('mongodb');
 const MongoCompatibilityWrapper = require('./MongoCompatibilityWrapper');
 
-const uri = 'mongodb+srv://moseslee:Mlxy6695@ecss-course.hejib.mongodb.net/?retryWrites=true&w=majority&appName=ECSS-Course&maxIdleTimeMS=60000&serverSelectionTimeoutMS=15000&socketTimeoutMS=30000&connectTimeoutMS=20000';
+//const uri = 'mongodb+srv://moseslee:Mlxy6695@ecss-course.hejib.mongodb.net/?retryWrites=true&w=majority&appName=ECSS-Course&maxIdleTimeMS=60000&serverSelectionTimeoutMS=15000&socketTimeoutMS=30000&connectTimeoutMS=20000';
+const uri = "mongodb+srv://moseslee:Mlxy6695@ecss-database.dstyrk4.mongodb.net/?retryWrites=true&w=majority&appName=ECSS-Database";
 
 class DatabaseConnectivity {
     constructor(options = {}) {
